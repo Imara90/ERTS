@@ -99,6 +99,10 @@ int	iptr, optr;
 */
 #define CHECKSUM	0x05
 
+#define ENGINE_LIMIT 800
+#define LIFT_OFFSET 127
+#define LIFT_CONVERSION ENGINE_LIMIT/127
+
 
 // Globals
 char	c;
@@ -469,8 +473,10 @@ int check_sum(void)
  * main -- do the test
  *------------------------------------------------------------------
  */
+
 int main() 
 {
+	int i;
 	/* prepare QR rx interrupt handler
 	 */
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -520,6 +526,12 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	while (! demo_done) {
+		for (i = 0; i < 4; i++)
+		{
+			ae[i] = (((char) lift) + LIFT_OFFSET) * LIFT_CONVERSION;
+			//ae[i] += ae[i] + LIFT_OFFSET;
+		}
+		printf("\nae[i] = %x", ae[0]); 
 /*
 		if (check_sum())
 		{

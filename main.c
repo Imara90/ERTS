@@ -19,6 +19,8 @@
 #include "read_js.h" //Diogo's Function
 #include "read_kb.h" // Diogo's keyboard
 
+char c;
+
 
 int open_port()
 {
@@ -70,10 +72,12 @@ int open_port()
 
 struct termios stdin_orig;  // Structure to save parameters
 
+/*
 void term_reset() {
         tcsetattr(STDIN_FILENO,TCSANOW,&stdin_orig);
         tcsetattr(STDIN_FILENO,TCSAFLUSH,&stdin_orig);
 }
+*/
 
 void term_nonblocking() {
         struct termios newt;

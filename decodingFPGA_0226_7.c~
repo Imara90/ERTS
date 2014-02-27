@@ -221,7 +221,7 @@ void isr_rs232_rx(void)
 		fifo[iptr++] = X32_rs232_data;
 // DEBUG DEBUG
 //		printf("[%x]", X32_rs232_data);
-		if (iptr > FIFOSIZE)
+		if (iptr >= FIFOSIZE)
 			iptr = 0;
 	}
 
@@ -239,7 +239,7 @@ int 	getchar(void)
 		return -1;
 	c = fifo[optr++];
 //	printf("[%x]", c);
-	if (optr > FIFOSIZE)
+	if (optr >= FIFOSIZE)
 		optr = 0;
 	return c;
 }
@@ -483,7 +483,7 @@ int main()
 	 * as the main calls are not fast enough
 	 */
 	// TODO find most optimal timing interval for this
-        X32_timer_per = 2 * CLOCKS_PER_MS;
+        X32_timer_per = 20 * CLOCKS_PER_MS;
         SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
         SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
         ENABLE_INTERRUPT(INTERRUPT_TIMER1);
