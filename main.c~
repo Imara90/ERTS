@@ -16,7 +16,8 @@
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
 
-#include "../Diogo/read_js.h" //Diogo's Function
+#include "read_js.h" //Diogo's Function
+#include "read_kb.h" // Diogo's keyboard
 
 
 int open_port()
@@ -88,6 +89,8 @@ int main()
 {
 	term_nonblocking();	
 
+	int keymap[8] = {MODE_SAFE,0,0,0,0,0,0,0};
+	int jmap[4] = {0,0,0,0};
 	int key = getchar();
 	int fd1 = open_port();
 	if (fd1 == 0) {
@@ -97,25 +100,27 @@ int main()
 	clear_js_buffer();
 	
 	
-	
-	int roll, pitch, yaw, lift;
 	int mode, p, p1, p2;
 	int data[PARAM_LENGTH] = {0,0,0,0};
 	Package mPkg;
-	InitPkg(&mPkg,MODE_MANUAL);
+	InitPkg(&mPkg,MODE_SAFE);
 	int i;
 	int result;
 	while (key != 27) {
-
+		
 		read_js(&pitch,&roll,&yaw,&lift);
+		c = getchar();
+		if (c != -1) read_kb(keymap,c);
 
-		data[0] = lift;
-		data[1] = roll;
-		data[2] = pitch;
-		data[3] = yaw;
+		
+		data[0] = lift+keymap[1];
+		data[1] = roll+keymap[2];
+		data[2] = pitch+keymap[3];
+		data[3] = yaw+keymap[4];
 		
 
 		//CREATES THE PACKAGE
+		SetPkgMode(&mPkg, keymap[0]);
 		SetPkgData(&mPkg, data);
 		//Prints the package
 		for (i = 0; i < PKGLEN; i++) {
