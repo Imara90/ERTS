@@ -16,7 +16,7 @@
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
 
-#include "read_js.h" //Diogo's Function
+#include "../Diogo/read_js.h" //Diogo's Function
 
 
 int open_port()

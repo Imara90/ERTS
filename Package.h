@@ -16,7 +16,9 @@
 #define WORD unsigned short
 
 #define INT8_MAX					127
-#define INT8_MIN					-127
+#ifndef INT8_MIN
+	#define INT8_MIN					-127
+#endif
 
 #define INT16_MAX					32767
 #define INT16_MIN					-32768
@@ -30,8 +32,7 @@
 #define MODE_YAW_CONTROL		0x04
 #define MODE_FULL_CONTROL		0x05
 #define MODE_P					0x06
-#define MODE_P1					0x07
-#define MODE_P2					0x08
+#define MODE_P1P2					0x07
 
 
 
@@ -84,7 +85,7 @@ typedef struct
 	BYTE Len;
 }Package;
 
-int SetMode(Package* mPkg, BYTE mMode)
+int SetPkgMode(Package* mPkg, BYTE mMode)
 {
 	//Check the mode
 	if ((mMode < 0) || (mMode > 9)) {
@@ -104,7 +105,7 @@ void InitPkg(Package* mPkg,BYTE mMode)
 	for (i = MODE_POS; i< PKGLEN; i++) {
 		mPkg->Pkg[i] = 0x00;
 	}
-	SetMode(mPkg, mMode);
+	SetPkgMode(mPkg, mMode);
 	mPkg->Mode = mPkg->Pkg[MODE_POS];
 }
 
@@ -116,7 +117,7 @@ int SetChksum(Package* mPkg)
 	for (i = MODE_POS; i < PKGLEN - CHKSUM_LENGTH; i++) {
 		sum += mPkg->Pkg[i];
 	}
-	printf("%i \n",sum);
+//	printf("%i \n",sum);
 	mPkg->ChkSum = ~sum;
 	*(mPkg->Pkg + CHKSUM_POS) = mPkg->ChkSum;
 	return -1;
@@ -144,3 +145,4 @@ void PrintData(Package mPkg)
 
 
 #endif
+

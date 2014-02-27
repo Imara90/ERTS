@@ -483,7 +483,7 @@ int main()
 	 * as the main calls are not fast enough
 	 */
 	// TODO find most optimal timing interval for this
-        X32_timer_per = 5 * CLOCKS_PER_MS;
+        X32_timer_per = 2 * CLOCKS_PER_MS;
         SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
         SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
         ENABLE_INTERRUPT(INTERRUPT_TIMER1);
