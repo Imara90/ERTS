@@ -19,6 +19,7 @@ Output: strike button - 0 for off and 1 for on
 
 #include "joystick.h"
 
+
 #define NAME_LENGTH 128
 #define JS_DEV	"/dev/input/js0"
 #define CONVERSION_FACTOR 127/32767

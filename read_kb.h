@@ -9,6 +9,7 @@ Output: ESC button - 0 for off and 1 for on
 
 */
 
+#include "Definitions.h"
 
 struct termios stdin_orig;  // Structure to save parameters
 
@@ -47,70 +48,76 @@ int i;
 
 	switch (c){
 		case '0'://SAFE MODE
-			*key_map=0;
+			*key_map= MODE_SAFE;
 			break;
 		case '1'://PANIC MODE
-			*key_map=1;
+			*key_map= MODE_PANIC;
 			break;
 		case '2'://MANUAL MODE
-			*key_map=2;
+			*key_map= MODE_MANUAL;
 			break;
 		case '3'://CALIBRATION MODE
-			*key_map=3;
+			*key_map= MODE_CALIBRATION;
 			break;
 		case '4'://YAW CONTROL MODE
-			*key_map=4;
+			*key_map= MODE_YAW_CONTROL;
 			break;
 		case '5':// FULL CONTROL MODE	
-		*key_map=5;
+			*key_map= MODE_FULL_CONTROL;
+			break;
+		case '6':// P GAIN MODE
+			*key_map= MODE_P;
+			break;
+		case '7':// P1P2 GAIN MODE
+			*key_map= MODE_P1P2;
 			break;
 		case 'a'://LIFT UP
-		*(key_map+1)+=2;
+			*(key_map+1)+=2;
 			break;
 		case 'z'://LIFT DOWN
-		*(key_map+1)-=2;
+			*(key_map+1)-=2;
 			break;
 		case 68://LEFT ARROW-ROLL UP
-		*(key_map+2)+=2;
+			*(key_map+2)+=2;
 			break;
 		case 67://RIGHT ARROW-ROLL DOWN
-		*(key_map+2)-=2;
+			*(key_map+2)-=2;
 			break;
 		case 65://UP ARROW-PITCH UP
-		*(key_map+3)+=2;
+			*(key_map+3)+=2;
 			break;
 		case 66://DOWN ARROW-PITCH DOWN
-		*(key_map+3)-=2;
+			*(key_map+3)-=2;
 			break;
 		case 'q'://YAW UP
-		*(key_map+4)+=2;
+			*(key_map+4)+=2;
 			break;
 		case 'w'://YAW DOWN
-		*(key_map+4)-=2;
+			*(key_map+4)-=2;
 			break;
 		case 'u'://YAW CONTROL P UP 
-		*(key_map+5)+=2;
+			*(key_map+5)+=2;
 			break;
 		case 'j'://YAW CONTROL P DOWN 
-		*(key_map+5)-=2;
+			*(key_map+5)-=2;
 			break;
 		case 'i':
-		*(key_map+6)+=2;//ROLL/PITCH CONTROL P1 UP 
-		break;
+			*(key_map+6)+=2;//ROLL/PITCH CONTROL P1 UP
+			break;
 		case 'k':
-		*(key_map+6)-=2;//ROLL/PITCH CONTROL P1 DOWN 
-		break;
+			*(key_map+6)-=2;//ROLL/PITCH CONTROL P1 DOWN
+			break;
 		case 'o':
-		*(key_map+7)+=2;//ROLL/PITCH CONTROL P2 UP 
-		break;
+			*(key_map+7)+=2;//ROLL/PITCH CONTROL P2 UP
+			break;
 		case 'l':
-		*(key_map+7)-=2;//ROLL/PITCH CONTROL P2 DOWN 
-		break;
+			*(key_map+7)-=2;//ROLL/PITCH CONTROL P2 DOWN
+			break;
 		case 'r':
 			for(i=1;i<8;i++){		
 				*(key_map+i)=0;//ROLL/PITCH CONTROL P2 DOWN 
 			}
-		break;
+			break;
 		default:
 			printf("\n CHARACTER NOT VALID\n");
 			break;
