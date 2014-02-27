@@ -108,16 +108,32 @@ int main()
 	int result;
 	while (key != 27) {
 		
-		read_js(&pitch,&roll,&yaw,&lift);
+		read_js(jmap);
 		c = getchar();
 		if (c != -1) read_kb(keymap,c);
-
 		
-		data[0] = lift+keymap[1];
-		data[1] = roll+keymap[2];
-		data[2] = pitch+keymap[3];
-		data[3] = yaw+keymap[4];
-		
+		switch (keymap[0]) {
+			case MODE_P:
+				data[0] = keymap[5];
+				data[1] = 0;
+				data[2] = 0;
+				data[3] = 0;
+				break;
+				
+			case MODE_P1P2:
+				data[0] = keymap[6];
+				data[1] = keymap[7];
+				data[2] = 0;
+				data[3] = 0;
+				break;
+				
+			default: //CONTROL MODES
+				data[0] = jmap[0]+keymap[1];
+				data[1] = jmap[1]+keymap[2];
+				data[2] = jmap[2]+keymap[3];
+				data[3] = jmap[3]+keymap[4];
+				break;
+		}
 
 		//CREATES THE PACKAGE
 		SetPkgMode(&mPkg, keymap[0]);
