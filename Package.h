@@ -83,8 +83,12 @@ int SetChksum(Package* mPkg)
 	for (i = MODE_POS; i < PKGLEN - CHKSUM_LENGTH; i++) {
 		sum += mPkg->Pkg[i];
 	}
-//	printf("%i \n",sum);
+	
 	mPkg->ChkSum = ~sum;
+//	printf("%x \n",mPkg->ChkSum);
+	if (mPkg->ChkSum == 0x80){
+		mPkg->ChkSum = 0;
+	}
 	*(mPkg->Pkg + CHKSUM_POS) = mPkg->ChkSum;
 	return -1;
 }
