@@ -23,12 +23,12 @@ WORD TrimToMaxWord(int value)
 	}
 	else if (value<INT16_MIN)
 	{
-		printf("Clipping %i to %u",value,INT16_MAX);
+		printf("Clipping %i to %u",value,INT16_MIN);
 		value = INT16_MIN;
 	}
 	return value;
 }
-BYTE TrimToMaxByte(int value)
+int TrimToMaxByte(int value)
 {
 	if (value>INT8_MAX)
 	{
@@ -37,10 +37,10 @@ BYTE TrimToMaxByte(int value)
 	}
 	else if (value<INT8_MIN)
 	{
-		printf("Clipping %i to %u",value,INT8_MAX);
+		printf("Clipping %i to %u",value,INT8_MIN);
 		value = INT8_MIN;
 	}
-	return (BYTE)value;
+	return value;
 }
 
 typedef struct
@@ -97,7 +97,7 @@ int SetPkgData(Package* mPkg, int* Data)
 {
 	int i;
 	for (i = 0; i < PARAM_LENGTH; i++) {
-		mPkg->Pkg[DATA_POS + i] = TrimToMaxByte((int)*Data);
+		mPkg->Pkg[DATA_POS + i] = (BYTE)TrimToMaxByte((int)*Data);
 		Data++;
 	}
 	SetChksum(mPkg);

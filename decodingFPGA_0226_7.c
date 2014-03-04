@@ -457,6 +457,8 @@ int check_sum(void)
 		sum += fifo[i];
 	}
 */
+*/	if (sum == 0x80)
+		sum = 0;
 	if (checksum != sum) {
 		printf("\nInvalid Pkg");
 		return 0;
