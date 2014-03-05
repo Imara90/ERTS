@@ -28,11 +28,14 @@ TODO check what the & bytes are for the led function in main
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <x32.h>
 #include "assert.h"
 
-#define BYTE unsigned char
-#define WORD unsigned short
+//For the buffer
+#include <stdlib.h>
+
+/*********************************************************************/
 
 /* define some peripheral short hands
  */
@@ -65,6 +68,11 @@ TODO check what the & bytes are for the led function in main
 #define X32_button		peripherals[PERIPHERAL_BUTTONS]
 #define X32_switches		peripherals[PERIPHERAL_SWITCHES]
 
+/*********************************************************************/
+
+// BYTE and WORD sizes predefined
+#define BYTE unsigned char
+#define WORD unsigned short
 
 // RX FIFO
 #define FIFOSIZE 16
@@ -99,10 +107,27 @@ int	iptr, optr;
 */
 #define CHECKSUM	0x05
 
-#define ENGINE_LIMIT 800
-#define LIFT_OFFSET 127
-#define LIFT_CONVERSION ENGINE_LIMIT/127
+/*********************************************************************/
 
+// For defining the circular buffer
+// Opaque buffer element type.  This would be defined by the application
+typedef struct { BYTE value; } ElemType;
+
+// fixed size for the buffer, no dyanmic allocation is needed
+// actual size is minus one element because of the one slot open protocol 
+#define CB_SIZE (64 + 1)
+ 
+// Circular buffer object 
+typedef struct {
+	int         	start;  	/* index of oldest element              */
+	int	       	end;    	/* index at which to write new element  */
+	ElemType 	elems[CB_SIZE]; /* vector of elements                   */
+	// including extra element for one slot open protocol
+} CircularBuffer;
+
+CircularBuffer cb;
+
+/*********************************************************************/
 
 // Globals
 char	c;
@@ -128,6 +153,83 @@ int 	startflag = 0;
 BYTE 	mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 
 /*------------------------------------------------------------------
+ * Circular buffer initialization - By Imara Speek
+ * Point start and end to the adress of the allocated vector of elements
+ *------------------------------------------------------------------
+ */
+void cbInit(CircularBuffer *cb) {
+    cb->start = 0;
+    cb->end   = 0;
+}
+
+
+/*------------------------------------------------------------------
+ * Check if circular buffer is full - By Imara Speek
+ *------------------------------------------------------------------
+ */ 
+int cbIsFull(CircularBuffer *cb) {
+    return (cb->end + 1) % CB_SIZE == cb->start;
+}
+
+
+/*------------------------------------------------------------------
+ * Check if circular buffer is empty - By Imara Speek
+ *------------------------------------------------------------------
+ */ 
+int cbIsEmpty(CircularBuffer *cb) {
+    return cb->end == cb->start;
+}
+
+/*------------------------------------------------------------------
+ * Clean the buffer - By Imara Speek
+ *------------------------------------------------------------------
+ */ 
+void cbClean(CircularBuffer *cb) {
+	memset(cb->elems, 0, sizeof(ElemType) * CB_SIZE); 	
+}
+
+
+/*------------------------------------------------------------------
+ * Write to buffer - By Imara Speek
+ * Write an element, overwriting oldest element if buffer is full. App can
+ * choose to avoid the overwrite by checking cbIsFull().
+ *------------------------------------------------------------------
+ */ 
+void cbWrite(CircularBuffer *cb, ElemType *elem) {
+    cb->elems[cb->end] = *elem;
+    cb->end = (cb->end + 1) % CB_SIZE;
+    if (cb->end == cb->start)
+	{        
+		cb->start = (cb->start + 1) % CB_SIZE; /* full, overwrite */
+	}
+// TODO determine if we want it to overwrite
+}
+
+/*------------------------------------------------------------------
+ * Read from buffer - By Imara Speek
+ * Read oldest element. App must ensure !cbIsEmpty() first. 
+ *------------------------------------------------------------------  
+ */
+void cbRead(CircularBuffer *cb, ElemType *elem) {
+    *elem = cb->elems[cb->start];
+    cb->start = (cb->start + 1) % CB_SIZE;
+}
+
+/*------------------------------------------------------------------
+ * get from buffer - By Imara Speek
+ * Read oldest element. App must ensure !cbIsEmpty() first. 
+ *------------------------------------------------------------------  
+ */
+BYTE cbGet(CircularBuffer *cb) {
+	BYTE c;	
+
+	c = cb->elems[cb->start].value;
+	cb->start = (cb->start + 1) % CB_SIZE;
+
+	return c;
+}
+
+/*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
  *------------------------------------------------------------------
  */
@@ -137,96 +239,79 @@ void isr_button(void)
 }
 
 /*------------------------------------------------------------------
- * isr_qr_timer -- QR timer interrupt handler
- *------------------------------------------------------------------
- */
-void isr_qr_timer(void)
-{
-	BYTE c;
-	c = getchar();
-//	printf("[%x]", c);
-	if (c == STARTING_BYTE) 
-	{
-//		printf("\nstart");
-		decode();
-		if (check_sum())
-		{
-			printf("\n[%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-//			print_comm();	
-//			printf("\nSucces!");
-		}
-	}
-}
-
-/*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
  *------------------------------------------------------------------
  */
 void isr_qr_link(void)
 {
 	int	ae_index;
-	/* record time
-	 */
+	
+	// record time
 	isr_qr_time = X32_us_clock;
         inst = X32_instruction_counter;
-	/* get sensor and timestamp values
-	 */
+
+	// get sensor and timestamp values
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2; 
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
 
-	/* monitor presence of interrupts 
-	 */
+	// monitor presence of interrupts 
 	isr_qr_counter++;
-	if (isr_qr_counter % 500 == 0) {
+	if (isr_qr_counter % 500 == 0) 
+	{
 		toggle_led(2);
 	}	
 
-	/* Clip engine values to be positive and 10 bits.
-	 */
+	// Clip engine values to be positive and 10 bits.
 	for (ae_index = 0; ae_index < 4; ae_index++) 
 	{
-		if (ae[ae_index] < 0) 
+		if (ae[ae_index] < 0)
+		{ 
 			ae[ae_index] = 0;
-		
+		}
 		ae[ae_index] &= 0x3ff;
 	}
 
-	/* Send actuator values
-	 * (Need to supply a continous stream, otherwise
-	 * QR will go to safe mode, so just send every ms)
-	 */
+	// Send actuator values
+	// (Need to supply a continous stream, otherwise
+	// QR will go to safe mode, so just send every ms)
 	X32_QR_a0 = ae[0];
 	X32_QR_a1 = ae[1];
 	X32_QR_a2 = ae[2];
 	X32_QR_a3 = ae[3];
 
-	/* record isr execution time (ignore overflow)
-	 */
+	// record isr execution time (ignore overflow)
         inst = X32_instruction_counter - inst;
 	isr_qr_time = X32_us_clock - isr_qr_time;
 }
 
 /*------------------------------------------------------------------
- * isr_rs232_rx -- rs232 rx interrupt handler
+ * isr_rs232_rx -- rs232 rx interrupt handler - By Imara Speek
  *------------------------------------------------------------------
  */
 void isr_rs232_rx(void)
 {
-	BYTE	c;
-
-	/* signal interrupt
-	 */
+	// signal interrupt
 	toggle_led(3);
 
-	/* may have received > 1 char before IRQ is serviced so loop
-	 */
-	while (X32_rs232_char) {
+	// may have received > 1 char before IRQ is serviced so loop
+	while (X32_rs232_char) 
+	{
+		cb.elems[cb.end].value = (BYTE)X32_rs232_data;
+		cb.end = (cb.end + 1) % CB_SIZE;
+		if (cb.end == cb.start)
+		{
+			cb.start = (cb.start + 1) % CB_SIZE; /* full, overwrite */
+		}
+// TODO determine if we want it to overwrite		
+
+/*
 		fifo[iptr++] = X32_rs232_data;
 // DEBUG DEBUG
 //		printf("[%x]", X32_rs232_data);
 		if (iptr >= FIFOSIZE)
 			iptr = 0;
+*/
 	}
 
 }
@@ -240,11 +325,15 @@ int 	getchar(void)
 	BYTE	c;
 
 	if (optr == iptr)
+	{
 		return -1;
+	}	
 	c = fifo[optr++];
-//	printf("[%x]", c);
+	printf("[%x]", c);
 	if (optr >= FIFOSIZE)
+	{
 		optr = 0;
+	}	
 	return c;
 }
 
@@ -368,18 +457,6 @@ void print_state(void)
     	}
 }
 
-/*- -----------------------------------------------------------------
- * the execution level is preserved on function calls
- * print the execution level FOR DEBUGGING 
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */
-
-void print_execution_level(void) {
-	printf("The execution level is now: %d\r\n",
-	get_execution_level());
-}
-
 /*------------------------------------------------------------------
  * Decoding function with a higher execution level
  * Function called in the timer ISR 
@@ -389,20 +466,12 @@ void print_execution_level(void) {
 
 void decode(void)
 {	
-	/* Decoding is a critical section, we therefore raise the execution level of the code
-	 */
-
-	// DEBUG DEBUG DEBUG DEBUG DEBUG
-//	print_execution_level();
-
-	/* raise the current code priority to 10, and consequently, disable all interrupts with a
-	 * priority of 10 and lower 
-	 */
-	set_execution_level(25);
-//	print_execution_level();
-
 	/* Get the next character in the buffer after the starting byte
+	 * Whilst disabling all the interrupts CRITICAL SECTION
 	 */
+
+	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+
 	mode = getchar();
 	lift = getchar();
 	roll = getchar();
@@ -417,12 +486,7 @@ void decode(void)
 
 //	printf("\n we are decoding");
 
-	/* restore to original level */
-	restore_execution_level();
-
-	// DEBUG DEBUG DEBUG DEBUG
-//	print_execution_level();
-
+	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -473,10 +537,13 @@ int check_sum(void)
  * main -- do the test
  *------------------------------------------------------------------
  */
-
 int main() 
 {
-	int i;
+	// Character to store bytes from buffer	
+	BYTE c;
+	// Initialize the Circular buffer and elem to write from
+	ElemType elem;
+
 	/* prepare QR rx interrupt handler
 	 */
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -489,10 +556,10 @@ int main()
 	 * as the main calls are not fast enough
 	 */
 	// TODO find most optimal timing interval for this
-        X32_timer_per = 5 * CLOCKS_PER_MS;
-        SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
-        ENABLE_INTERRUPT(INTERRUPT_TIMER1);
+        //X32_timer_per = 5 * CLOCKS_PER_MS;
+        //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
+        //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
+        //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	/* prepare button interrupt handler
 	 */
@@ -521,40 +588,51 @@ int main()
 	X32_leds = 0;
 	demo_done = 0;
 
-	/* start the test loop
-	 */
+	// clean the buffer
+	cbClean(&cb);
+	// initialize the buffer
+	cbInit(&cb);
+	// Initialize value to write
+	elem.value = 0;
+
+	// Print to indicate start
+	printf("Hello! \nMode, Parameter 1, Parameter 2, Parameter 3, Parameter 4, Checksum");
+
+	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	while (! demo_done) {
-		for (i = 0; i < 4; i++)
+		// See if there is a character in the buffer
+		// and check whether that is the starting byte
+// TODO Do we need to check if it is empty, no right?
+		
+		c = cbGet(&cb);
+		printf("[%x]", c);
+		if (c == STARTING_BYTE)
 		{
-			ae[i] = (((char) lift) + LIFT_OFFSET) * LIFT_CONVERSION;
-			//ae[i] += ae[i] + LIFT_OFFSET;
-		}
-		printf("\nae[i] = %x", ae[0]); 
-/*
-		if (check_sum())
-		{
-			print_comm();
+//			decode();
+			printf("\n\n");
 
-		}
- */
-/*
-		check_start();		
-		c = getchar();
-		if (c == 0x80) {
-			//process_key(c);
+		} 
+		
+/*		c = getchar();
+		if (c == STARTING_BYTE) 
+		{
 			decode();
-			print_comm();
-		}
-*/
+			if (check_sum())
+			{
+				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
+			}
+		}	
 		// print_state();
                 X32_leds = (X32_leds & 0xFC) | (X32_switches & 0x03 );
 		if (button == 1){
 			printf("You have pushed the button!!!\r\n");
 			button = 0;
 		}
-		delay_ms(20);
+
+		delay_ms(200);
+*/
 	}
 
 	printf("Exit\r\n");

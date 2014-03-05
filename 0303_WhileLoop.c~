@@ -1,5 +1,5 @@
 /*------------------------------------------------------------------
- *  qrtest.c -- test QR engines and sensors
+ *  based on the qtest - fixing all the todos
  *
  *  reads ae[0-3] from stdin
  *  (q,w,e,r increment ae[0-3], a,s,d,f decrement)
@@ -7,10 +7,23 @@
  *  prints ae[0-3],sax,say,saz,sp,sq,sr,delta_t on stdout
  *  where delta_t is the qr-isr exec time
  *
- *  Arjan J.C. van Gemund
- *  Embedded Software Lab
+ *  Imara Speek
+ *  Embedded Real Time Systems
  *
- *  Version Jan 1, 2010
+ *  Version Feb 26, 2014
+
+TODO determine priorities
+TODO control values have to be send
+TODO ask for log that is saved during running
+TODO also want telemetry set and concurring protocol
+TODO change modes to enum
+TODO Send values to engines
+TODO determine the period for the timer interrupt
+TODO manual mode
+TODO panic mode
+TODO safe mode
+TODO check what the & bytes are for the led function in main
+
  *------------------------------------------------------------------
  */
 
@@ -123,6 +136,7 @@ void isr_button(void)
  * isr_qr_timer -- QR timer interrupt handler
  *------------------------------------------------------------------
  */
+/*
 void isr_qr_timer(void)
 {
 	BYTE c;
@@ -131,16 +145,16 @@ void isr_qr_timer(void)
 	if (c == STARTING_BYTE) 
 	{
 //		printf("\nstart");
-		//process_key(c);
 		decode();
-//		print_comm();
 		if (check_sum())
 		{
-			print_comm();	
+			printf("\n[%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
+//			print_comm();	
 //			printf("\nSucces!");
 		}
 	}
 }
+*/
 
 /*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
@@ -209,7 +223,7 @@ void isr_rs232_rx(void)
 		fifo[iptr++] = X32_rs232_data;
 // DEBUG DEBUG
 //		printf("[%x]", X32_rs232_data);
-		if (iptr > FIFOSIZE)
+		if (iptr >= FIFOSIZE)
 			iptr = 0;
 	}
 
@@ -226,8 +240,8 @@ int 	getchar(void)
 	if (optr == iptr)
 		return -1;
 	c = fifo[optr++];
-//	printf("[%x]", c);
-	if (optr > FIFOSIZE)
+	printf("[%x]", c);
+	if (optr >= FIFOSIZE)
 		optr = 0;
 	return c;
 }
@@ -352,18 +366,6 @@ void print_state(void)
     	}
 }
 
-/*- -----------------------------------------------------------------
- * the execution level is preserved on function calls
- * print the execution level FOR DEBUGGING 
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */
-
-void print_execution_level(void) {
-	printf("The execution level is now: %d\r\n",
-	get_execution_level());
-}
-
 /*------------------------------------------------------------------
  * Decoding function with a higher execution level
  * Function called in the timer ISR 
@@ -373,20 +375,12 @@ void print_execution_level(void) {
 
 void decode(void)
 {	
-	/* Decoding is a critical section, we therefore raise the execution level of the code
-	 */
-
-	// DEBUG DEBUG DEBUG DEBUG DEBUG
-//	print_execution_level();
-
-	/* raise the current code priority to 10, and consequently, disable all interrupts with a
-	 * priority of 10 and lower 
-	 */
-	set_execution_level(25);
-//	print_execution_level();
-
 	/* Get the next character in the buffer after the starting byte
+	 * Whilst disabling all the interrupts CRITICAL SECTION
 	 */
+
+	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+
 	mode = getchar();
 	lift = getchar();
 	roll = getchar();
@@ -401,12 +395,7 @@ void decode(void)
 
 //	printf("\n we are decoding");
 
-	/* restore to original level */
-	restore_execution_level();
-
-	// DEBUG DEBUG DEBUG DEBUG
-//	print_execution_level();
-
+	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -420,28 +409,6 @@ void print_comm(void)
 {		
 	printf("\n[%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
 }
-
-/*------------------------------------------------------------------
- * Check for the starting byte
- * 
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */
-/*
-void check_start(void)
-{
-	startflag = 0;
-	c = getchar();
-	if (c != -1)
-	{
-		if (c == 0x80)
-		{
-			startflag = 1;
-		}	
-	}	
-//	printf("\nc = %x", c);
-}
-*/
 
 /*------------------------------------------------------------------
  * Check the checksum and return error message is package is corrupted
@@ -481,6 +448,9 @@ int check_sum(void)
  */
 int main() 
 {
+	// Character to store bytes from buffer	
+	BYTE c;
+
 	/* prepare QR rx interrupt handler
 	 */
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -493,10 +463,10 @@ int main()
 	 * as the main calls are not fast enough
 	 */
 	// TODO find most optimal timing interval for this
-        X32_timer_per = 1 * CLOCKS_PER_MS;
-        SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
-        ENABLE_INTERRUPT(INTERRUPT_TIMER1);
+        //X32_timer_per = 5 * CLOCKS_PER_MS;
+        //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
+        //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
+        //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	/* prepare button interrupt handler
 	 */
@@ -530,22 +500,18 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	while (! demo_done) {
-/*
-		if (check_sum())
-		{
-			print_comm();
-
-		}
- */
-/*
-		check_start();		
+		/* See if there is a character in the buffer
+		 * and check whether that is the starting byte
+		 */ 		
 		c = getchar();
-		if (c == 0x80) {
-			//process_key(c);
+		if (c == STARTING_BYTE) 
+		{
 			decode();
-			print_comm();
-		}
-*/
+			if (check_sum())
+			{
+				printf("\n[%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
+			}
+		}	
 		// print_state();
                 X32_leds = (X32_leds & 0xFC) | (X32_switches & 0x03 );
 		if (button == 1){

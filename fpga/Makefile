@@ -1,27 +1,24 @@
 CC=lcc-x32
 CFLAGS=-I$(X32INC)
-OBJS=qrtest.o
+OBJS=main.o
 
 .PHONY: clean stubbed stubbedrun uploadrun test
 
-qrtest.ce: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -lib $(X32INC) -o qrtest.ce
+main.ce: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -lib $(X32INC) -o main.ce
 
 stubbed: CFLAGS+=-DSENSOR_STUB
-stubbed: qrtest.ce
+stubbed: main.ce
 
 stubbedrun: stubbed uploadrun
 
 clean:
-	rm -f qrtest.ce $(OBJS) $(OBJS:.o=.d)
+	rm -f main.ce $(OBJS) $(OBJS:.o=.d)
 
-uploadrun: qrtest.ce
-	x32-upload qrtest.ce -c $(X32_PACKAGE_SERIAL) -e
+uploadrun: main.ce
+	x32-upload main.ce -c $(X32_PACKAGE_SERIAL) -e
 
-term: myterm.c
-	gcc -Wall myterm.c -o term -lrt
-
-test: qrtest.ce
+test: test.ce
 	x32-upload test.ce -c $(X32_PACKAGE_SERIAL)
 
 test.ce: test.c

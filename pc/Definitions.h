@@ -30,8 +30,6 @@
 #define MODE_YAW_CONTROL		0x04
 #define MODE_FULL_CONTROL		0x05
 #define MODE_P					0x06
-#define MODE_P1P2					0x07
-
 
 //PACKAGE DEF
 #define HEADER_LENGTH			0x01

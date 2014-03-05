@@ -1,5 +1,5 @@
 /*------------------------------------------------------------------
- *  qrtest.c -- test QR engines and sensors
+ *  based on the qtest - fixing all the todos
  *
  *  reads ae[0-3] from stdin
  *  (q,w,e,r increment ae[0-3], a,s,d,f decrement)
@@ -7,30 +7,35 @@
  *  prints ae[0-3],sax,say,saz,sp,sq,sr,delta_t on stdout
  *  where delta_t is the qr-isr exec time
  *
- *  Arjan J.C. van Gemund
- *  Embedded Software Lab
+ *  Imara Speek
+ *  Embedded Real Time Systems
  *
- *  Adjusted by Imara Speek for decoding in the FPGA
-
-    version 2.1
+ *  Version Feb 26, 2014
 
 TODO determine priorities
 TODO control values have to be send
-TODO what is the first bit? Cannot occur in the others bytes
 TODO ask for log that is saved during running
-TODO also want telemetry set
-TODO Need to determine a protocol for that
-TODO check checksum before decoding
+TODO also want telemetry set and concurring protocol
+TODO change modes to enum
+TODO Send values to engines
+TODO determine the period for the timer interrupt
+TODO manual mode
+TODO panic mode
+TODO safe mode
+TODO check what the & bytes are for the led function in main
 
  *------------------------------------------------------------------
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <x32.h>
 #include "assert.h"
 
-#define BYTE unsigned char
-#define WORD unsigned short
+//For the buffer
+#include <stdlib.h>
+
+/*********************************************************************/
 
 /* define some peripheral short hands
  */
@@ -63,17 +68,22 @@ TODO check checksum before decoding
 #define X32_button		peripherals[PERIPHERAL_BUTTONS]
 #define X32_switches		peripherals[PERIPHERAL_SWITCHES]
 
-// mode, lift ,roll, pitch, yaw, P, P1, P2, checksum
-#define nParams		0x09
+/*********************************************************************/
+
+// BYTE and WORD sizes predefined
+#define BYTE unsigned char
+#define WORD unsigned short
 
 // RX FIFO
 #define FIFOSIZE 16
-
-// TODO changed the fifo type to unsigned characters
-// Still need to adjust the fifosize properly
-
-unsigned char	fifo[FIFOSIZE]; 
+char	fifo[FIFOSIZE]; 
 int	iptr, optr;
+
+// mode, lift ,roll, pitch, yaw, checksum 
+#define nParams		0x06
+
+// mode, P, P1, P2, checksum
+#define nParams2	0x05
 
 // MODES LIST
 #define SAFE_MODE			0x00
@@ -83,16 +93,39 @@ int	iptr, optr;
 #define YAW_CONTROL_MODE		0x04
 #define FULL_CONTROL_MODE		0x05
 
+#define STARTING_BYTE			0x80
+
 // Parameter list numbering
 #define MODE		0x00
 #define LIFT		0x01
 #define ROLL		0x02
 #define PITCH		0x03
 #define YAW		0x04
-#define PCONTROL	0x05
-#define P1CONTROL	0x06
-#define P2CONTROL	0x07
-#define CHECKSUM	0x08
+/*	#define PCONTROL	0x05
+	#define P1CONTROL	0x06
+	#define P2CONTROL	0x07
+*/
+#define CHECKSUM	0x05
+
+/*********************************************************************/
+
+// For defining the circular buffer
+// Opaque buffer element type.  This would be defined by the application
+typedef struct { BYTE value; } ElemType;
+
+// fixed size for the buffer, no dyanmic allocation is needed
+// actual size is minus one element because of the one slot open protocol 
+#define CB_SIZE (16 + 1)
+ 
+// Circular buffer object 
+typedef struct {
+	int         	start;  	/* index of oldest element              */
+	int	       	end;    	/* index at which to write new element  */
+	ElemType 	elems[CB_SIZE]; /* vector of elements                   */
+	// including extra element for one slot open protocol
+} CircularBuffer;
+
+/*********************************************************************/
 
 // Globals
 char	c;
@@ -111,11 +144,80 @@ void	delay_us(int);
 // Own functions
 void	decode();
 void 	print_comm();
+void 	check_start();
+int 	check_sum();
 
-// Package variables (no available byte variable, so using unsigned char typedef)
-int 	ignore = 0, startflag = 0;
+int 	startflag = 0;
 BYTE 	mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 
+/*------------------------------------------------------------------
+ * Circular buffer initialization - By Imara Speek
+ * Point start and end to the adress of the allocated vector of elements
+ *------------------------------------------------------------------
+ */
+void cbInit(CircularBuffer *cb) {
+    cb->start = 0;
+    cb->end   = 0;
+}
+
+
+/*------------------------------------------------------------------
+ * Check if circular buffer is full - By Imara Speek
+ *------------------------------------------------------------------
+ */ 
+int cbIsFull(CircularBuffer *cb) {
+    return (cb->end + 1) % CB_SIZE == cb->start;
+}
+
+
+/*------------------------------------------------------------------
+ * Check if circular buffer is empty - By Imara Speek
+ *------------------------------------------------------------------
+ */ 
+int cbIsEmpty(CircularBuffer *cb) {
+    return cb->end == cb->start;
+}
+
+/*------------------------------------------------------------------
+ * Clean the buffer - By Imara Speek
+ *------------------------------------------------------------------
+ */ 
+void cbClean(CircularBuffer *cb) {
+	memset(cb->elems, 0, sizeof(ElemType) * CB_SIZE); 	
+/*
+	int i;
+	for (i = 0; i < CB_SIZE; i++)
+	{
+		cb->elems[cb->end] = (BYTE) 0;
+		cb->end = (cb->end + 1) % CB_SIZE;
+	}
+*/
+}
+
+
+/*------------------------------------------------------------------
+ * Write to buffer - By Imara Speek
+ * Write an element, overwriting oldest element if buffer is full. App can
+ * choose to avoid the overwrite by checking cbIsFull().
+ *------------------------------------------------------------------
+ */ 
+void cbWrite(CircularBuffer *cb, ElemType *elem) {
+    cb->elems[cb->end] = *elem;
+    cb->end = (cb->end + 1) % CB_SIZE;
+    if (cb->end == cb->start)
+        cb->start = (cb->start + 1) % CB_SIZE; /* full, overwrite */
+// TODO determine if we want it to overwrite
+}
+
+/*------------------------------------------------------------------
+ * Read from buffer - By Imara Speek
+ * Read oldest element. App must ensure !cbIsEmpty() first. 
+ *------------------------------------------------------------------  
+ */
+void cbRead(CircularBuffer *cb, ElemType *elem) {
+    *elem = cb->elems[cb->start];
+    cb->start = (cb->start + 1) % CB_SIZE;
+}
 
 /*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
@@ -127,19 +229,7 @@ void isr_button(void)
 }
 
 /*------------------------------------------------------------------
- * isr_qr_timer -- QR timer interrupt handler
- *------------------------------------------------------------------
- */
-void isr_qr_timer(void)
-{
-//	decode();
-//	print_comm();
-}
-
-/*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
- * arrive at the bitrate of the sensors
- * at about 1270 Hz 
  *------------------------------------------------------------------
  */
 void isr_qr_link(void)
@@ -172,8 +262,6 @@ void isr_qr_link(void)
 		ae[ae_index] &= 0x3ff;
 	}
 
-// TODO based on readings set appropriate values to each rotor 
-
 	/* Send actuator values
 	 * (Need to supply a continous stream, otherwise
 	 * QR will go to safe mode, so just send every ms)
@@ -189,136 +277,28 @@ void isr_qr_link(void)
 	isr_qr_time = X32_us_clock - isr_qr_time;
 }
 
-
 /*------------------------------------------------------------------
  * isr_rs232_rx -- rs232 rx interrupt handler
- * on every received character (8n1 bit)
  *------------------------------------------------------------------
  */
-
 void isr_rs232_rx(void)
 {
-	//Check Data
-	int sum;
-	int i;
+	BYTE	c;
 
 	/* signal interrupt
 	 */
 	toggle_led(3);
 
 	/* may have received > 1 char before IRQ is serviced so loop
-	 * search for the startbytes and then adjust pointer
 	 */
-	iptr = 0;
-	startflag = 0;
-	while (X32_rs232_char && (startflag == 0)) {
-		printf("\nwhile loop");
-		fifo[iptr] = X32_rs232_data;
-
-		if ((fifo[iptr] == 0x00) && (fifo[iptr - 1] == 0x80))
-		{
-			printf("\nstarting header found!");
-			startflag = 1;
-			/* read the entire package and place in the fifo
-	 		*/
-			for (iptr = 0 ; iptr < nParams; iptr++)
-			{
-				fifo[iptr] = X32_rs232_data;
-				printf("\nparameter %d = %x", iptr, fifo[iptr]);
-			}
-			iptr = 0;
-		}
-		iptr++;
-		if (iptr > FIFOSIZE)
+	while (X32_rs232_char) {
+		fifo[iptr++] = X32_rs232_data;
+// DEBUG DEBUG
+//		printf("[%x]", X32_rs232_data);
+		if (iptr >= FIFOSIZE)
 			iptr = 0;
 	}
 
-	/* Clean the fifo
-	 */
-/*
-	for (iptr = 0 ; iptr < FIFOSIZE; iptr++)
-	{
-		fifo[iptr] = 0x00;
-	}
-*/
-
-	
-	/* read the entire package and place in the fifo
-	 */
-/*
-	for (iptr = 0 ; iptr < nParams; iptr++)
-	{
-		fifo[iptr] = X32_rs232_data;
-		printf("\nparameter %d = %x", iptr, fifo[iptr]);
-	}
-	iptr = 0;
-*/
-
-	/* Checksum before decoding the package
-	 */
-	checksum = fifo[CHECKSUM];
-	sum = 0;
-	// DEBUG DEBUG DEBUG DEBUG
-	printf("\nChecksum = %x", checksum);
-
-	for (i = 0; i < CHECKSUM; i++) {
-		sum += fifo[i];
-	}
-	if (checksum != (BYTE)~sum) {
-		printf("\nInvalid Pkg");
-		return;
-	}
-
-	/* If characters are received, switch on base of the first parameter, 
-	   which is the mode and is defined at the top
-	 */
-	switch (fifo[MODE])
-	{
-		case SAFE_MODE:
-			mode = SAFE_MODE;
-			printf("debugging, safe mode received");
-			// no additional commands
-			// ignore everything except for manual mode or exit
-			break;
-		case PANIC_MODE:
-			mode = PANIC_MODE;
-			printf("debugging, panic mode received");
-			// no additional commands
-			// ignore commands PC link and enter safe mode after few s
-			break;
-		case MANUAL_MODE:
-			mode = MANUAL_MODE;
-			printf("debugging, manual mode received");
-			// read other commands in the fifo, so don't ignore
-			break;
-		case CALIBRATION_MODE:
-			mode = CALIBRATION_MODE;
-			printf("debugging, calibration mode received");
-			// no additional commands given
-			// reading sensors values
-			break;
-		case YAW_CONTROL_MODE:
-			mode = YAW_CONTROL_MODE;
-			printf("debugging, yaw mode received");
-			// read other commands in the fifo, so don't ignore
-			break;
-		case FULL_CONTROL_MODE:
-			mode = FULL_CONTROL_MODE;
-			printf("debugging, full control mode received");
-			// read other commands in the fifo, so don't ignore
-			break;	
-		default:
-			mode = SAFE_MODE;
-			printf("debugging, no mode received, switching to safe mode");
-			// no additional commands
-			// ignore everything except for manual mode or exit			
-			break;
-		// TODO might have to change this default statement
-	}
-
-	decode();
-	print_comm();
-	
 }
 
 /*------------------------------------------------------------------
@@ -327,12 +307,13 @@ void isr_rs232_rx(void)
  */
 int 	getchar(void)
 {
-	int	c;
+	BYTE	c;
 
 	if (optr == iptr)
 		return -1;
 	c = fifo[optr++];
-	if (optr > FIFOSIZE)
+	printf("[%x]", c);
+	if (optr >= FIFOSIZE)
 		optr = 0;
 	return c;
 }
@@ -344,7 +325,7 @@ int 	getchar(void)
  */
 void isr_wireless_rx(void)
 {
-	int c;
+	BYTE c;
 
 	/* signal interrupt
 	 */
@@ -457,18 +438,6 @@ void print_state(void)
     	}
 }
 
-/*- -----------------------------------------------------------------
- * the execution level is preserved on function calls
- * print the execution level FOR DEBUGGING 
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */
-
-void print_execution_level(void) {
-	printf("The execution level is now: %d\r\n",
-	get_execution_level());
-}
-
 /*------------------------------------------------------------------
  * Decoding function with a higher execution level
  * Function called in the timer ISR 
@@ -478,54 +447,27 @@ void print_execution_level(void) {
 
 void decode(void)
 {	
-	/* Decoding is a critical section, we therefore raise the execution level of the code
+	/* Get the next character in the buffer after the starting byte
+	 * Whilst disabling all the interrupts CRITICAL SECTION
 	 */
 
-	// DEBUG DEBUG DEBUG DEBUG DEBUG
-//	print_execution_level();
+	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	/* raise the current code priority to 10, and
-	   consequently, disable all interrupts with a
-	   priority of 10 and lower */
-	set_execution_level(10);
-//	print_execution_level();
+	mode = getchar();
+	lift = getchar();
+	roll = getchar();
+	pitch = getchar();
+	yaw = getchar();
+/*
+	pcontrol = getchar();
+	p1control = getchar();
+	p2control = getchar();
+ */
+	checksum = getchar();
 
 //	printf("\n we are decoding");
-	switch (mode) {
-		case SAFE_MODE:
-			printf("\nWe are in Safe mode");
-			break;
-		case PANIC_MODE:
-			printf("\nPANICCCCCCCCCCC");
-			break;
-		case CALIBRATION_MODE:
-			printf("\nBzzzzzzt, calibrating...");
-			break;
-		case MANUAL_MODE:
-			printf("\nWe are in Manual mode");
-			break;
-		case YAW_CONTROL_MODE:
-			printf("\nWe are in Yaw control mode");
-			break;
-		case FULL_CONTROL_MODE:
-			printf("\nWe are in Full control mode");
-			break;
-		default:
-			printf("\n no mode provided");
-			break;
-	}	
-/*
-	roll = 	(char)fifo[ROLL];
-	pitch = (char)fifo[PITCH];
-	yaw = 	(char)fifo[YAW];
-	lift = 	(char)fifo[LIFT];
- */
-	/* restore to original level */
-	restore_execution_level();
 
-	// DEBUG DEBUG DEBUG DEBUG
-//	print_execution_level();
-
+	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -537,14 +479,40 @@ void decode(void)
 
 void print_comm(void)
 {		
-	int i;
-	for (i = 0 ; i <= CHECKSUM; i++) {
-		printf("[%x]",fifo[i]);
-	}
-	printf("\n");
+	printf("\n[%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
 }
 
+/*------------------------------------------------------------------
+ * Check the checksum and return error message is package is corrupted
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+int check_sum(void)
+{
+	BYTE sum;
+	/* Checksum before decoding the package
+	 */
+	sum = 0;
+	// DEBUG DEBUG DEBUG DEBUG
+//	printf("\nChecksum = %x", checksum);
+	
+	sum = mode + lift + roll + pitch + yaw; // + pcontrol + p1control + p2control;
+	sum = ~sum;
+//	printf("\nSum = %x", sum);
 
+//	printf("\n%x %x", checksum, sum);	
+/*
+	for (i = 0; i < CHECKSUM; i++) {
+		sum += fifo[i];
+	}
+*/
+	if (checksum != sum) {
+		printf("\nInvalid Pkg");
+		return 0;
+	}
+	else
+		return 1;
+}
 
 /*------------------------------------------------------------------
  * main -- do the test
@@ -552,6 +520,12 @@ void print_comm(void)
  */
 int main() 
 {
+	// Character to store bytes from buffer	
+	BYTE c;
+	// Initialize the Circular buffer and elem to write from
+	CircularBuffer cb;
+	ElemType elem;
+
 	/* prepare QR rx interrupt handler
 	 */
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -559,14 +533,15 @@ int main()
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
- 
-// TODO check how this interrupt works, does the 200 determine how often?
-	/* prepare timer interrupt for decoding the commands
+ 	
+	/* prepare timer interrupt to make sure the x32 can read fast enough
+	 * as the main calls are not fast enough
 	 */
-        X32_timer_per = 200 * CLOCKS_PER_MS;
-        SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
-        ENABLE_INTERRUPT(INTERRUPT_TIMER1);
+	// TODO find most optimal timing interval for this
+        //X32_timer_per = 5 * CLOCKS_PER_MS;
+        //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
+        //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
+        //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	/* prepare button interrupt handler
 	 */
@@ -576,10 +551,9 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_BUTTONS);	
 
 	/* prepare rs232 rx interrupt and getchar handler
-	 * TODO changed this priority to 22
 	 */
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 22);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
 	while (X32_rs232_char) c = X32_rs232_data; // empty buffer
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
 
@@ -596,20 +570,45 @@ int main()
 	X32_leds = 0;
 	demo_done = 0;
 
-	/* start the test loop
-	 */
+	// clean the buffer
+	cbClean(&cb);
+	// initialize the buffer
+	cbInit(&cb);
+	// Initialize value to write
+	elem.value = 0;
+
+	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	printf("Mode, Lift, Roll, Pitch, Yaw, Checksum:\n");
-
+	/* Fill buffer with test elements 3 times */
+    	for (elem.value = 0; elem.value < 3; elem.value++)
+       		cbWrite(&cb, &elem);
+ 
+    	/* Remove and print all elements */
+    	while (!cbIsEmpty(&cb)) {
+   	     cbRead(&cb, &elem);
+   	     printf("%d\n", elem.value);
+   	}
+ 
+    	//cbFree(&cb);
+    	
+	return 0;    
+/*
 	while (! demo_done) {
+		// See if there is a character in the buffer
+		// and check whether that is the starting byte
+		 
+		
 		c = getchar();
-		if (c != -1) {
-			process_key(c);
-		}
-		//print_state();
-
-// TODO check what this 0xFC and 0x03 is
+		if (c == STARTING_BYTE) 
+		{
+			decode();
+			if (check_sum())
+			{
+				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
+			}
+		}	
+		// print_state();
                 X32_leds = (X32_leds & 0xFC) | (X32_switches & 0x03 );
 		if (button == 1){
 			printf("You have pushed the button!!!\r\n");
@@ -623,5 +622,6 @@ int main()
         DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 
 	return 0;
+*/
 }
 
