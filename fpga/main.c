@@ -150,6 +150,7 @@ void 	check_start();
 int 	check_sum();
 
 int 	startflag = 0;
+int	commflag = 1;
 BYTE 	mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 
 /*------------------------------------------------------------------
@@ -291,6 +292,9 @@ void isr_qr_link(void)
  */
 void isr_rs232_rx(void)
 {
+	// Reset the communication flag
+	commflag = 0;
+
 	// signal interrupt
 	toggle_led(3);
 
@@ -304,14 +308,6 @@ void isr_rs232_rx(void)
 			cb.start = (cb.start + 1) % CB_SIZE; /* full, overwrite */
 		}
 // TODO determine if we want it to overwrite		
-
-/*
-		fifo[iptr++] = X32_rs232_data;
-// DEBUG DEBUG
-//		printf("[%x]", X32_rs232_data);
-		if (iptr >= FIFOSIZE)
-			iptr = 0;
-*/
 	}
 
 }
@@ -346,13 +342,11 @@ void isr_wireless_rx(void)
 {
 	BYTE c;
 
-	/* signal interrupt
-	 */
+	// signal interrupt
 	toggle_led(4);
 
 
-	/* may have received > 1 char before IRQ is serviced so loop
-	 */
+	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_wireless_char) {
 		fifo[iptr++] = X32_wireless_data;
 		if (iptr > FIFOSIZE)
@@ -447,7 +441,8 @@ void print_state(void)
         
 	sprintf(text, "%d %d %d %d \r\n",ae[0],ae[1],ae[2],ae[3]);
     	i = 0;
-    	while( text[i] != 0) {
+    	while( text[i] != 0) 
+	{
        		delay_ms(1);
 		// if (X32_switches == 0x03)
 		if (X32_wireless_stat & 0x01 == 0x01)
@@ -472,19 +467,17 @@ void decode(void)
 
 	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	mode = getchar();
-	lift = getchar();
-	roll = getchar();
-	pitch = getchar();
-	yaw = getchar();
+	mode 	= cbGet(&cb);
+	lift 	= cbGet(&cb);
+	roll 	= cbGet(&cb);
+	pitch 	= cbGet(&cb);
+	yaw 	= cbGet(&cb);
 /*
-	pcontrol = getchar();
-	p1control = getchar();
-	p2control = getchar();
+	pcontrol 	= getchar();
+	p1control 	= getchar();
+	p2control 	= getchar();
  */
-	checksum = getchar();
-
-//	printf("\n we are decoding");
+	checksum = cbGet(&cb);
 
 	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
@@ -509,9 +502,8 @@ void print_comm(void)
 int check_sum(void)
 {
 	BYTE sum;
-	/* Checksum before decoding the package
-	 */
 	sum = 0;
+
 	// DEBUG DEBUG DEBUG DEBUG
 //	printf("\nChecksum = %x", checksum);
 	
@@ -534,7 +526,7 @@ int check_sum(void)
 }
 
 /*------------------------------------------------------------------
- * main -- do the test
+ * main -- By Imara Speek
  *------------------------------------------------------------------
  */
 int main() 
@@ -602,37 +594,31 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	while (! demo_done) {
+		// reset the commflag to check communication
+		commflag++;		
+
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte
 // TODO Do we need to check if it is empty, no right?
 		
 		c = cbGet(&cb);
-		printf("[%x]", c);
+//		printf("[%x]", c);
 		if (c == STARTING_BYTE)
 		{
-//			decode();
-			printf("\n\n");
-
-		} 
-		
-/*		c = getchar();
-		if (c == STARTING_BYTE) 
-		{
 			decode();
-			if (check_sum())
-			{
-				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-			}
-		}	
+//			printf("\n\n");
+			printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
+		} 
+/*		
 		// print_state();
                 X32_leds = (X32_leds & 0xFC) | (X32_switches & 0x03 );
 		if (button == 1){
 			printf("You have pushed the button!!!\r\n");
 			button = 0;
 		}
-
-		delay_ms(200);
 */
+		// Delay according to the sending of the packages
+		delay_us(200);
 	}
 
 	printf("Exit\r\n");
