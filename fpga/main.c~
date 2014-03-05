@@ -152,8 +152,6 @@ int 	startflag = 0;
 int	commflag = 1;
 BYTE 	mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 
-#include "manual_mode.h"
-
 /*------------------------------------------------------------------
  * Circular buffer initialization 
  * Point start and end to the adress of the allocated vector of elements
