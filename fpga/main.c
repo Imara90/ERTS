@@ -82,9 +82,6 @@ int	iptr, optr;
 // mode, lift ,roll, pitch, yaw, checksum 
 #define nParams		0x06
 
-// mode, P, P1, P2, checksum
-#define nParams2	0x05
-
 // MODES LIST
 #define SAFE_MODE			0x00
 #define PANIC_MODE			0x01
@@ -101,10 +98,11 @@ int	iptr, optr;
 #define ROLL		0x02
 #define PITCH		0x03
 #define YAW		0x04
-/*	#define PCONTROL	0x05
-	#define P1CONTROL	0x06
-	#define P2CONTROL	0x07
-*/
+
+#define PCONTROL	0x01
+#define P1CONTROL	0x02
+#define P2CONTROL	0x03
+
 #define CHECKSUM	0x05
 
 /*********************************************************************/
@@ -154,8 +152,9 @@ int	commflag = 1;
 BYTE 	mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 
 /*------------------------------------------------------------------
- * Circular buffer initialization - By Imara Speek
+ * Circular buffer initialization 
  * Point start and end to the adress of the allocated vector of elements
+ * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
 void cbInit(CircularBuffer *cb) {
@@ -165,7 +164,8 @@ void cbInit(CircularBuffer *cb) {
 
 
 /*------------------------------------------------------------------
- * Check if circular buffer is full - By Imara Speek
+ * Check if circular buffer is full - not used
+ * By Imara Speek 1506374
  *------------------------------------------------------------------
  */ 
 int cbIsFull(CircularBuffer *cb) {
@@ -174,7 +174,8 @@ int cbIsFull(CircularBuffer *cb) {
 
 
 /*------------------------------------------------------------------
- * Check if circular buffer is empty - By Imara Speek
+ * Check if circular buffer is empty - not used
+ * By Imara Speek 1506374
  *------------------------------------------------------------------
  */ 
 int cbIsEmpty(CircularBuffer *cb) {
@@ -182,7 +183,8 @@ int cbIsEmpty(CircularBuffer *cb) {
 }
 
 /*------------------------------------------------------------------
- * Clean the buffer - By Imara Speek
+ * Clean the buffer 
+ * By Imara Speek 1506374
  *------------------------------------------------------------------
  */ 
 void cbClean(CircularBuffer *cb) {
@@ -191,9 +193,10 @@ void cbClean(CircularBuffer *cb) {
 
 
 /*------------------------------------------------------------------
- * Write to buffer - By Imara Speek
+ * Write an elemtype to buffer
  * Write an element, overwriting oldest element if buffer is full. App can
- * choose to avoid the overwrite by checking cbIsFull().
+ * choose to avoid the overwrite by checking cbIsFull(). 
+ * By Imara Speek 1506374
  *------------------------------------------------------------------
  */ 
 void cbWrite(CircularBuffer *cb, ElemType *elem) {
@@ -207,8 +210,9 @@ void cbWrite(CircularBuffer *cb, ElemType *elem) {
 }
 
 /*------------------------------------------------------------------
- * Read from buffer - By Imara Speek
+ * Read from buffer and store in elem
  * Read oldest element. App must ensure !cbIsEmpty() first. 
+ * By Imara Speek 1506374 
  *------------------------------------------------------------------  
  */
 void cbRead(CircularBuffer *cb, ElemType *elem) {
@@ -217,14 +221,23 @@ void cbRead(CircularBuffer *cb, ElemType *elem) {
 }
 
 /*------------------------------------------------------------------
- * get from buffer - By Imara Speek
+ * get char from buffer 
  * Read oldest element. App must ensure !cbIsEmpty() first. 
+ * By Imara Speek 1506374
  *------------------------------------------------------------------  
  */
 BYTE cbGet(CircularBuffer *cb) {
 	BYTE c;	
 
 	c = cb->elems[cb->start].value;
+	// Whenever the starting byte is read, the package is decoded
+	// To make sure the same package isn't read twice, we overwrite
+	// the starting byte. The package will still decode because of c
+	// and it will not be recognized again. 
+	if (c == STARTING_BYTE)
+	{
+		cb->elems[cb->start].value = 0;	
+	}
 	cb->start = (cb->start + 1) % CB_SIZE;
 
 	return c;
@@ -287,7 +300,8 @@ void isr_qr_link(void)
 }
 
 /*------------------------------------------------------------------
- * isr_rs232_rx -- rs232 rx interrupt handler - By Imara Speek
+ * isr_rs232_rx -- rs232 rx interrupt handler 
+ * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
 void isr_rs232_rx(void)
@@ -312,30 +326,9 @@ void isr_rs232_rx(void)
 
 }
 
-/*------------------------------------------------------------------
- * getchar -- read char from rx fifo, return -1 if no char available
- *------------------------------------------------------------------
- */
-int 	getchar(void)
-{
-	BYTE	c;
-
-	if (optr == iptr)
-	{
-		return -1;
-	}	
-	c = fifo[optr++];
-	printf("[%x]", c);
-	if (optr >= FIFOSIZE)
-	{
-		optr = 0;
-	}	
-	return c;
-}
-
 
 /*------------------------------------------------------------------
- * isr_wireless_rx -- wireless rx interrupt handler
+ * isr_wireless_rx -- wireless rx interrupt handler - not used
  *------------------------------------------------------------------
  */
 void isr_wireless_rx(void)
@@ -386,71 +379,6 @@ void toggle_led(int i)
 	X32_leds = (X32_leds ^ (1 << i));
 }
 
-/*------------------------------------------------------------------
- * process_key -- process command keys
- *------------------------------------------------------------------
- */
-void process_key(char c) 
-{
-	switch (c) {
-		case 'q':
-			ae[0] += 10;
-			break;
-		case 'a':
-			ae[0] -= 10;
-			if (ae[0] < 0) ae[0] = 0;
-			break;
-		case 'w':
-			ae[1] += 10;
-			break;
-		case 's':
-			ae[1] -= 10;
-			if (ae[1] < 0) ae[1] = 0;
-			break;
-		case 'e':
-			ae[2] += 10;
-			break;
-		case 'd':
-			ae[2] -= 10;
-			if (ae[2] < 0) ae[2] = 0;
-			break;
-		case 'r':
-			ae[3] += 10;
-			break;
-		case 'f':
-			ae[3] -= 10;
-			if (ae[3] < 0) ae[3] = 0;
-			break;
-		default:
-			demo_done = 1;
-	}
-}
-
-/*------------------------------------------------------------------
- * print_state -- print all sensors and actuators
- *------------------------------------------------------------------
- */
-
-void print_state(void) 
-{
-	int i;
-	char text[100] , a;
-	printf("%3d %3d %3d %3d | ",ae[0],ae[1],ae[2],ae[3]);
-	printf("%3d %3d %3d %3d %3d %3d (%3d, %d)\r\n",
-		s0,s1,s2,s3,s4,s5,isr_qr_time, inst);
-        
-	sprintf(text, "%d %d %d %d \r\n",ae[0],ae[1],ae[2],ae[3]);
-    	i = 0;
-    	while( text[i] != 0) 
-	{
-       		delay_ms(1);
-		// if (X32_switches == 0x03)
-		if (X32_wireless_stat & 0x01 == 0x01)
-			X32_wireless_data = text[i];
-
-		i++;
-    	}
-}
 
 /*------------------------------------------------------------------
  * Decoding function with a higher execution level
@@ -465,8 +393,10 @@ void decode(void)
 	 * Whilst disabling all the interrupts CRITICAL SECTION
 	 */
 
-	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
+	// Take the value from the buffer and reset the elem
+	// buffer value to make sure it isn't read multiple times
 	mode 	= cbGet(&cb);
 	lift 	= cbGet(&cb);
 	roll 	= cbGet(&cb);
@@ -479,20 +409,9 @@ void decode(void)
  */
 	checksum = cbGet(&cb);
 
-	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
-/*------------------------------------------------------------------
- * Print commands
- * for DEBUGGING
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */
-
-void print_comm(void)
-{		
-	printf("\n[%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-}
 
 /*------------------------------------------------------------------
  * Check the checksum and return error message is package is corrupted
@@ -504,21 +423,11 @@ int check_sum(void)
 	BYTE sum;
 	sum = 0;
 
-	// DEBUG DEBUG DEBUG DEBUG
-//	printf("\nChecksum = %x", checksum);
-	
 	sum = mode + lift + roll + pitch + yaw; // + pcontrol + p1control + p2control;
 	sum = ~sum;
-//	printf("\nSum = %x", sum);
 
-//	printf("\n%x %x", checksum, sum);	
-/*
-	for (i = 0; i < CHECKSUM; i++) {
-		sum += fifo[i];
-	}
-*/
 	if (checksum != sum) {
-		printf("\nInvalid Pkg");
+//		printf("\nInvalid Pkg");
 		return 0;
 	}
 	else
@@ -526,7 +435,8 @@ int check_sum(void)
 }
 
 /*------------------------------------------------------------------
- * main -- By Imara Speek
+ * main 
+ * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
 int main() 
@@ -536,47 +446,39 @@ int main()
 	// Initialize the Circular buffer and elem to write from
 	ElemType elem;
 
-	/* prepare QR rx interrupt handler
-	 */
+	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
         SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
  	
-	/* prepare timer interrupt to make sure the x32 can read fast enough
-	 * as the main calls are not fast enough
-	 */
+	// timer interrupt
 	// TODO find most optimal timing interval for this
         //X32_timer_per = 5 * CLOCKS_PER_MS;
         //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
         //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
         //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
-	/* prepare button interrupt handler
-	 */
+	// prepare button interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_BUTTONS, &isr_button);
         SET_INTERRUPT_PRIORITY(INTERRUPT_BUTTONS, 8);
 	button = 0;
         ENABLE_INTERRUPT(INTERRUPT_BUTTONS);	
 
-	/* prepare rs232 rx interrupt and getchar handler
-	 */
+	// prepare rs232 rx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
 	while (X32_rs232_char) c = X32_rs232_data; // empty buffer
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
 
-        /* prepare wireless rx interrupt and getchar handler
-	 */
+        // prepare wireless rx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_WIRELESS_RX, &isr_wireless_rx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_WIRELESS_RX, 19);
         while (X32_wireless_char) c = X32_wireless_data; // empty buffer
         ENABLE_INTERRUPT(INTERRUPT_WIRELESS_RX);
 
-	/* initialize some other stuff
-	 */
-        iptr = optr = 0;
+	// initialize some other stuff
 	X32_leds = 0;
 	demo_done = 0;
 
@@ -606,19 +508,14 @@ int main()
 		if (c == STARTING_BYTE)
 		{
 			decode();
-//			printf("\n\n");
-			printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
+			if (check_sum())
+			{
+//				printf("\n\n");
+				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
+			}
 		} 
-/*		
-		// print_state();
-                X32_leds = (X32_leds & 0xFC) | (X32_switches & 0x03 );
-		if (button == 1){
-			printf("You have pushed the button!!!\r\n");
-			button = 0;
-		}
-*/
-		// Delay according to the sending of the packages
-		delay_us(200);
+		// Delay 20 micro second = 50 Hz according to the sending of the packages
+		delay_us(20);
 	}
 
 	printf("Exit\r\n");
