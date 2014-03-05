@@ -130,7 +130,7 @@ CircularBuffer cb;
 
 // Globals
 char	c;
-int	demo_done;
+int	program_done;
 int	ae[4];
 int	s0, s1, s2, s3, s4, s5, timestamp;
 int	isr_qr_counter;
@@ -150,7 +150,10 @@ int 	check_sum();
 
 int 	startflag = 0;
 int	commflag = 1;
-BYTE 	mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
+BYTE 	prev_mode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
+
+#include "safe_mode.h"
+#include "manual_mode.h"
 
 /*------------------------------------------------------------------
  * Circular buffer initialization 
@@ -396,6 +399,9 @@ void decode(void)
 
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
+	// Safe the current mode to determine mode changes
+	prev_mode = mode;
+
 	// Take the value from the buffer and reset the elem
 	// buffer value to make sure it isn't read multiple times
 	mode 	= cbGet(&cb);
@@ -433,6 +439,25 @@ int check_sum(void)
 	}
 	else
 		return 1;
+}
+
+/*------------------------------------------------------------------
+ * Check the mode and reset parameters if mode has changed
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+void check_mode(void)
+{
+	if (mode != prev_mode)
+	{
+		lift 	= 0;
+		roll 	= 0;
+		pitch 	= 0;
+		yaw 	= 0;
+		pcontrol 	= 0;
+		p1control 	= 0;
+		p2control 	= 0;
+	}
 }
 
 /*------------------------------------------------------------------
@@ -481,7 +506,7 @@ int main()
 
 	// initialize some other stuff
 	X32_leds = 0;
-	demo_done = 0;
+	program_done = 0;
 
 	// clean the buffer
 	cbClean(&cb);
@@ -496,7 +521,7 @@ int main()
 	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	while (! demo_done) {
+	while (! program_done) {
 		// reset the commflag to check communication
 		commflag++;		
 
@@ -508,11 +533,13 @@ int main()
 			decode();
 			if (check_sum())
 			{
-				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-
+//				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
+				printf("\nmode: %x", mode); 
 				switch (mode)
 				{
 					case SAFE_MODE:
+						safe_mode();
+						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
 					case PANIC_MODE:
