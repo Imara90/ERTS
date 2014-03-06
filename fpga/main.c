@@ -82,6 +82,9 @@ int	iptr, optr;
 // mode, lift ,roll, pitch, yaw, checksum 
 #define nParams		0x06
 
+// mode, P, P1, P2, checksum
+#define nParams2	0x05
+
 // MODES LIST
 #define SAFE_MODE			0x00
 #define PANIC_MODE			0x01
@@ -89,7 +92,6 @@ int	iptr, optr;
 #define CALIBRATION_MODE		0x03
 #define YAW_CONTROL_MODE		0x04
 #define FULL_CONTROL_MODE		0x05
-#define P_CONTROL_MODE			0x06
 
 #define STARTING_BYTE			0x80
 
@@ -99,12 +101,41 @@ int	iptr, optr;
 #define ROLL		0x02
 #define PITCH		0x03
 #define YAW		0x04
-
-#define PCONTROL	0x01
-#define P1CONTROL	0x02
-#define P2CONTROL	0x03
+//#define PCONTROL	0x05
 
 #define CHECKSUM	0x05
+
+//RAMP-UP CHECK PARAMETERS
+#define SAFE_INCREMENT 50
+
+//BUTTERWORTH LOW PASS FILTER CONSTANTS
+//for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
+#define A0		0x3A1BCD40
+#define A1		0x3A9BCD40
+#define A2		0x3A1BCD40
+#define B0		1
+#define B1		0xBFF705E5
+#define B2		0x3F6EA798
+//filter temporary variables
+int   y0[6] = {0,0,0,0,0,0};
+int   y1[6] = {0,0,0,0,0,0};
+int   y2[6] = {0,0,0,0,0,0};
+int   x0[6] = {0,0,0,0,0,0};
+int   x1[6] = {0,0,0,0,0,0};
+int   x2[6] = {0,0,0,0,0,0};
+
+
+//DEFINE SIZE OF DATA LOGGING VARIABLES
+#define DLOGSIZE	5000 //around 5 seconds
+//data logging variables
+int   dl_time[DLOGSIZE];
+int	dl_s1[DLOGSIZE];
+int	dl_s2[DLOGSIZE];
+int	dl_s3[DLOGSIZE];
+int	dl_s4[DLOGSIZE];
+int	dl_s5[DLOGSIZE];
+int   dl_s6[DLOGSIZE];
+int   dlcount = 0;
 
 /*********************************************************************/
 
@@ -130,9 +161,11 @@ CircularBuffer cb;
 
 // Globals
 char	c;
-int	program_done;
+int	demo_done;
+int   prev_ae[4] = {0, 0, 0, 0};
 int	ae[4];
 int	s0, s1, s2, s3, s4, s5, timestamp;
+
 int	isr_qr_counter;
 int	isr_qr_time;
 int	button;
@@ -149,16 +182,11 @@ void 	check_start();
 int 	check_sum();
 
 int 	startflag = 0;
-int	commflag = 1;
-BYTE 	prev_mode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
-
-#include "safe_mode.h"
-#include "manual_mode.h"
+BYTE 	mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 
 /*------------------------------------------------------------------
- * Circular buffer initialization 
+ * Circular buffer initialization - By Imara Speek
  * Point start and end to the adress of the allocated vector of elements
- * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
 void cbInit(CircularBuffer *cb) {
@@ -168,8 +196,7 @@ void cbInit(CircularBuffer *cb) {
 
 
 /*------------------------------------------------------------------
- * Check if circular buffer is full - not used
- * By Imara Speek 1506374
+ * Check if circular buffer is full - By Imara Speek
  *------------------------------------------------------------------
  */ 
 int cbIsFull(CircularBuffer *cb) {
@@ -178,8 +205,7 @@ int cbIsFull(CircularBuffer *cb) {
 
 
 /*------------------------------------------------------------------
- * Check if circular buffer is empty - not used
- * By Imara Speek 1506374
+ * Check if circular buffer is empty - By Imara Speek
  *------------------------------------------------------------------
  */ 
 int cbIsEmpty(CircularBuffer *cb) {
@@ -187,8 +213,7 @@ int cbIsEmpty(CircularBuffer *cb) {
 }
 
 /*------------------------------------------------------------------
- * Clean the buffer 
- * By Imara Speek 1506374
+ * Clean the buffer - By Imara Speek
  *------------------------------------------------------------------
  */ 
 void cbClean(CircularBuffer *cb) {
@@ -197,10 +222,9 @@ void cbClean(CircularBuffer *cb) {
 
 
 /*------------------------------------------------------------------
- * Write an elemtype to buffer
+ * Write to buffer - By Imara Speek
  * Write an element, overwriting oldest element if buffer is full. App can
- * choose to avoid the overwrite by checking cbIsFull(). 
- * By Imara Speek 1506374
+ * choose to avoid the overwrite by checking cbIsFull().
  *------------------------------------------------------------------
  */ 
 void cbWrite(CircularBuffer *cb, ElemType *elem) {
@@ -214,9 +238,8 @@ void cbWrite(CircularBuffer *cb, ElemType *elem) {
 }
 
 /*------------------------------------------------------------------
- * Read from buffer and store in elem
+ * Read from buffer - By Imara Speek
  * Read oldest element. App must ensure !cbIsEmpty() first. 
- * By Imara Speek 1506374 
  *------------------------------------------------------------------  
  */
 void cbRead(CircularBuffer *cb, ElemType *elem) {
@@ -225,26 +248,112 @@ void cbRead(CircularBuffer *cb, ElemType *elem) {
 }
 
 /*------------------------------------------------------------------
- * get char from buffer 
+ * get from buffer - By Imara Speek
  * Read oldest element. App must ensure !cbIsEmpty() first. 
- * By Imara Speek 1506374
  *------------------------------------------------------------------  
  */
 BYTE cbGet(CircularBuffer *cb) {
 	BYTE c;	
 
 	c = cb->elems[cb->start].value;
-	// Whenever the starting byte is read, the package is decoded
-	// To make sure the same package isn't read twice, we overwrite
-	// the starting byte. The package will still decode because of c
-	// and it will not be recognized again. 
-	if (c == STARTING_BYTE)
-	{
-		cb->elems[cb->start].value = 0;	
-	}
 	cb->start = (cb->start + 1) % CB_SIZE;
 
 	return c;
+}
+
+/*------------------------------------------------------------------
+ * Fixed Point Multiplication
+ * Multiplies the values and then shift them right by 14 bits
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+int mult(int &a,int &b)
+{
+	int result;
+	result = a * b;
+	return (result >>14);
+}
+
+/*------------------------------------------------------------------
+ * 2nd Order Butterworth filter
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+void Butt2Filter()
+{
+	int i;
+	x0[0] = s0;
+	x0[1] = s1;
+	x0[2] = s2;
+	x0[3] = s3;
+	x0[4] = s4;
+	x0[5] = s5;
+	for (i=0; i<6; i++) {
+		y0[i] = mult(A0,x0[i]) + mult(A1,x1[i]) + mult(A2,x2[i]) - mult(B1,y1[i]) - mult(B2,y2[i])
+		x2[i] = x1[i];
+		x1[i] = x0[i];
+		y2[i] = y1[i];
+		y1[i] = y0[i];
+	}
+}
+
+/*------------------------------------------------------------------
+ * Data Logging Storage
+ * Store each parameter individually in arrays
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+void DataStorage(void)
+{
+	if (dl_count < DLOGSIZE) {
+		//stores time stamp
+		dl_time[dl_count] = timestamp;
+		// Stores desired variables (Change if needed)
+		// e.g filtered values
+		dl_s1[dl_count] = y0[0];
+		dl_s2[dl_count] = y0[1];
+		dl_s3[dl_count] = y0[2];
+		dl_s4[dl_count] = y0[3];
+		dl_s5[dl_count] = y0[4];
+		dl_s6[dl_count] = y0[5];
+		dl_count ++;
+	}
+	//to send back it is necessary to typecast to BYTE
+}
+
+/*------------------------------------------------------------------
+ * Ramp-Up prevention function
+ * Compares current - previous commanded speed and clip the current
+ * value if necessary (To avoid sudden changes -> motor ramp-up)
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+void CheckMotorRamp(void)
+{
+	int delta;
+	for (i = 0; i < 4; i++) {
+		delta = ae[i]-prev_ae[i];
+		if (abs(delta) > SAFE_INCREMENT)) {
+			if	(delta < 0)// Negative Increment
+			{
+				ae[i] = prev_ae - SAFE_INCREMENT;
+			}
+			else //POSITIVE INCREMENT
+			{
+				ae[i] = prev_ae + SAFE_INCREMENT;
+			}
+		}
+		prev_ae[i] = ae[i];
+	}
+}
+
+/*------------------------------------------------------------------
+ * isr_rs232_tx -- QR link tx interrupt handler
+ *------------------------------------------------------------------
+ */
+void isr_rs232_tx(void)
+{
+	
 }
 
 /*------------------------------------------------------------------
@@ -272,6 +381,9 @@ void isr_qr_link(void)
 	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2; 
 	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
+	
+	//Prints sensor and timestamp values
+	printf("s0 = %i s1 = %i s2 = %i s3 = %i s4 = %i s5 = %i \n",s0,s1,s2,s3,s4,s5);
 
 	// monitor presence of interrupts 
 	isr_qr_counter++;
@@ -289,7 +401,10 @@ void isr_qr_link(void)
 		}
 		ae[ae_index] &= 0x3ff;
 	}
-
+	
+	//CHECK FOR POSSIBLE RAMP-UP VALUES BEFORE SENDING TO THE MOTORS
+	CheckMotorRamp();
+	
 	// Send actuator values
 	// (Need to supply a continous stream, otherwise
 	// QR will go to safe mode, so just send every ms)
@@ -304,15 +419,11 @@ void isr_qr_link(void)
 }
 
 /*------------------------------------------------------------------
- * isr_rs232_rx -- rs232 rx interrupt handler 
- * By Imara Speek 1506374
+ * isr_rs232_rx -- rs232 rx interrupt handler - By Imara Speek
  *------------------------------------------------------------------
  */
 void isr_rs232_rx(void)
 {
-	// Reset the communication flag
-	commflag = 0;
-
 	// signal interrupt
 	toggle_led(3);
 
@@ -326,24 +437,55 @@ void isr_rs232_rx(void)
 			cb.start = (cb.start + 1) % CB_SIZE; /* full, overwrite */
 		}
 // TODO determine if we want it to overwrite		
+
+/*
+		fifo[iptr++] = X32_rs232_data;
+// DEBUG DEBUG
+//		printf("[%x]", X32_rs232_data);
+		if (iptr >= FIFOSIZE)
+			iptr = 0;
+*/
 	}
 
 }
 
+/*------------------------------------------------------------------
+ * getchar -- read char from rx fifo, return -1 if no char available
+ *------------------------------------------------------------------
+ */
+int 	getchar(void)
+{
+	BYTE	c;
+
+	if (optr == iptr)
+	{
+		return -1;
+	}	
+	c = fifo[optr++];
+	printf("[%x]", c);
+	if (optr >= FIFOSIZE)
+	{
+		optr = 0;
+	}	
+	return c;
+}
+
 
 /*------------------------------------------------------------------
- * isr_wireless_rx -- wireless rx interrupt handler - not used
+ * isr_wireless_rx -- wireless rx interrupt handler
  *------------------------------------------------------------------
  */
 void isr_wireless_rx(void)
 {
 	BYTE c;
 
-	// signal interrupt
+	/* signal interrupt
+	 */
 	toggle_led(4);
 
 
-	// may have received > 1 char before IRQ is serviced so loop
+	/* may have received > 1 char before IRQ is serviced so loop
+	 */
 	while (X32_wireless_char) {
 		fifo[iptr++] = X32_wireless_data;
 		if (iptr > FIFOSIZE)
@@ -383,6 +525,70 @@ void toggle_led(int i)
 	X32_leds = (X32_leds ^ (1 << i));
 }
 
+/*------------------------------------------------------------------
+ * process_key -- process command keys
+ *------------------------------------------------------------------
+ */
+void process_key(char c) 
+{
+	switch (c) {
+		case 'q':
+			ae[0] += 10;
+			break;
+		case 'a':
+			ae[0] -= 10;
+			if (ae[0] < 0) ae[0] = 0;
+			break;
+		case 'w':
+			ae[1] += 10;
+			break;
+		case 's':
+			ae[1] -= 10;
+			if (ae[1] < 0) ae[1] = 0;
+			break;
+		case 'e':
+			ae[2] += 10;
+			break;
+		case 'd':
+			ae[2] -= 10;
+			if (ae[2] < 0) ae[2] = 0;
+			break;
+		case 'r':
+			ae[3] += 10;
+			break;
+		case 'f':
+			ae[3] -= 10;
+			if (ae[3] < 0) ae[3] = 0;
+			break;
+		default:
+			demo_done = 1;
+	}
+}
+
+/*------------------------------------------------------------------
+ * print_state -- print all sensors and actuators
+ *------------------------------------------------------------------
+ */
+
+void print_state(void) 
+{
+	int i;
+	char text[100] , a;
+	printf("%3d %3d %3d %3d | ",ae[0],ae[1],ae[2],ae[3]);
+	printf("%3d %3d %3d %3d %3d %3d (%3d, %d)\r\n",
+		s0,s1,s2,s3,s4,s5,isr_qr_time, inst);
+        
+	sprintf(text, "%d %d %d %d \r\n",ae[0],ae[1],ae[2],ae[3]);
+    	i = 0;
+    	while( text[i] != 0) {
+       		delay_ms(1);
+		// if (X32_switches == 0x03)
+		if (X32_wireless_stat & 0x01 == 0x01)
+			X32_wireless_data = text[i];
+
+		i++;
+    	}
+}
 
 /*------------------------------------------------------------------
  * Decoding function with a higher execution level
@@ -397,28 +603,36 @@ void decode(void)
 	 * Whilst disabling all the interrupts CRITICAL SECTION
 	 */
 
-	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	// Safe the current mode to determine mode changes
-	prev_mode = mode;
-
-	// Take the value from the buffer and reset the elem
-	// buffer value to make sure it isn't read multiple times
-	mode 	= cbGet(&cb);
-	lift 	= cbGet(&cb);
-	roll 	= cbGet(&cb);
-	pitch 	= cbGet(&cb);
-	yaw 	= cbGet(&cb);
+	mode = getchar();
+	lift = getchar();
+	roll = getchar();
+	pitch = getchar();
+	yaw = getchar();
 /*
-	pcontrol 	= getchar();
-	p1control 	= getchar();
-	p2control 	= getchar();
+	pcontrol = getchar();
+	p1control = getchar();
+	p2control = getchar();
  */
-	checksum = cbGet(&cb);
+	checksum = getchar();
 
-	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+//	printf("\n we are decoding");
+
+	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
+/*------------------------------------------------------------------
+ * Print commands
+ * for DEBUGGING
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+
+void print_comm(void)
+{		
+	printf("\n[%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
+}
 
 /*------------------------------------------------------------------
  * Check the checksum and return error message is package is corrupted
@@ -428,13 +642,24 @@ void decode(void)
 int check_sum(void)
 {
 	BYTE sum;
+	/* Checksum before decoding the package
+	 */
 	sum = 0;
-
+	// DEBUG DEBUG DEBUG DEBUG
+//	printf("\nChecksum = %x", checksum);
+	
 	sum = mode + lift + roll + pitch + yaw; // + pcontrol + p1control + p2control;
 	sum = ~sum;
+//	printf("\nSum = %x", sum);
 
+//	printf("\n%x %x", checksum, sum);	
+/*
+	for (i = 0; i < CHECKSUM; i++) {
+		sum += fifo[i];
+	}
+*/
 	if (checksum != sum) {
-//		printf("\nInvalid Pkg");
+		printf("\nInvalid Pkg");
 		return 0;
 	}
 	else
@@ -442,27 +667,7 @@ int check_sum(void)
 }
 
 /*------------------------------------------------------------------
- * Check the mode and reset parameters if mode has changed
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */
-void check_mode(void)
-{
-	if (mode != prev_mode)
-	{
-		lift 	= 0;
-		roll 	= 0;
-		pitch 	= 0;
-		yaw 	= 0;
-		pcontrol 	= 0;
-		p1control 	= 0;
-		p2control 	= 0;
-	}
-}
-
-/*------------------------------------------------------------------
- * main 
- * By Imara Speek 1506374
+ * main -- do the test
  *------------------------------------------------------------------
  */
 int main() 
@@ -472,41 +677,55 @@ int main()
 	// Initialize the Circular buffer and elem to write from
 	ElemType elem;
 
-	// prepare QR rx interrupt handler
+	/* prepare QR rx interrupt handler
+	 */
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
         SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
  	
-	// timer interrupt
+	/* prepare timer interrupt to make sure the x32 can read fast enough
+	 * as the main calls are not fast enough
+	 */
 	// TODO find most optimal timing interval for this
         //X32_timer_per = 5 * CLOCKS_PER_MS;
         //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
         //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
         //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
-	// prepare button interrupt handler
+	/* prepare rs232 tx interrupt
+	 */
+	SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_TX, &isr_rs232_tx);
+	SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 15);
+	ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);
+	
+	/* prepare button interrupt handler
+	 */
         SET_INTERRUPT_VECTOR(INTERRUPT_BUTTONS, &isr_button);
         SET_INTERRUPT_PRIORITY(INTERRUPT_BUTTONS, 8);
 	button = 0;
         ENABLE_INTERRUPT(INTERRUPT_BUTTONS);	
 
-	// prepare rs232 rx interrupt and getchar handler
+	/* prepare rs232 rx interrupt and getchar handler
+	 */
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
 	while (X32_rs232_char) c = X32_rs232_data; // empty buffer
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
 
-        // prepare wireless rx interrupt and getchar handler
+        /* prepare wireless rx interrupt and getchar handler
+	 */
         SET_INTERRUPT_VECTOR(INTERRUPT_WIRELESS_RX, &isr_wireless_rx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_WIRELESS_RX, 19);
         while (X32_wireless_char) c = X32_wireless_data; // empty buffer
         ENABLE_INTERRUPT(INTERRUPT_WIRELESS_RX);
 
-	// initialize some other stuff
+	/* initialize some other stuff
+	 */
+        iptr = optr = 0;
 	X32_leds = 0;
-	program_done = 0;
+	demo_done = 0;
 
 	// clean the buffer
 	cbClean(&cb);
@@ -521,57 +740,38 @@ int main()
 	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	while (! program_done) {
-		// reset the commflag to check communication
-		commflag++;		
-
+	while (! demo_done) {
 		// See if there is a character in the buffer
-		// and check whether that is the starting byte		
+		// and check whether that is the starting byte
+// TODO Do we need to check if it is empty, no right?
+		
 		c = cbGet(&cb);
+		printf("[%x]", c);
 		if (c == STARTING_BYTE)
+		{
+//			decode();
+			printf("\n\n");
+
+		} 
+		
+/*		c = getchar();
+		if (c == STARTING_BYTE) 
 		{
 			decode();
 			if (check_sum())
 			{
-//				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-				printf("\nmode: %x", mode); 
-				switch (mode)
-				{
-					case SAFE_MODE:
-						safe_mode();
-						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
-						// safe
-						break;
-					case PANIC_MODE:
-						// panic
-						break;
-					case MANUAL_MODE:
-						check_mode();
-						manual_mode();
-						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
-						// manual
-						break;
-					case CALIBRATION_MODE:
-						// calibrate
-						break;
-					case YAW_CONTROL_MODE:
-						// yaw
-						break;
-					case FULL_CONTROL_MODE:
-						// full
-						break;
-					case P_CONTROL_MODE:
-						// p
-						break;
-					default :
-						// safe
-						break;
-				}			
+				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
 			}
+		}	
+		// print_state();
+                X32_leds = (X32_leds & 0xFC) | (X32_switches & 0x03 );
+		if (button == 1){
+			printf("You have pushed the button!!!\r\n");
+			button = 0;
 		}
-// TODO switch case in or out all the if statements?  
-		// Delay 20 micro second = 50 Hz according to the sending of the packages
-		delay_us(20);
+
+		delay_ms(200);
+*/
 	}
 
 	printf("Exit\r\n");

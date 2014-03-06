@@ -86,7 +86,7 @@ int main()
 		assert(result == 7);
 
 		
-		// 20 msec pause = 50 Hz
+		// 20 msec pause
 		usleep(20000);
 	}
 	close_rs232_port(fd_rs232);
