@@ -384,6 +384,7 @@ void isr_qr_link(void)
 	
 	//Prints sensor and timestamp values
 	printf("")
+	printf("s0 = %i s1 = %i s2 = %i s3 = %i s4 = %i s5 = %i \n",s0,s1,s2,s3,s4,s5);
 
 	// monitor presence of interrupts 
 	isr_qr_counter++;
