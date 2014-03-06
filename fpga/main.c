@@ -127,7 +127,7 @@ int   x2[6] = {0,0,0,0,0,0};
 
 
 //DEFINE SIZE OF DATA LOGGING VARIABLES
-#define DLOGSIZE	5000 //around 5 seconds
+#define DLOGSIZE	50000 
 //data logging variables
 int   dl_time[DLOGSIZE];
 int	dl_s1[DLOGSIZE];
@@ -234,19 +234,25 @@ void Butt2Filter()
  */
 void DataStorage(void)
 {
+	BYTE sum;
+	int i;
+	sum = 0;
 	if (dl_count < DLOGSIZE) {
+		//stores the starting bytes
+		dl[dl_count++] = 0x80;
+		dl[dl_count++] = 0x00;
 		//stores time stamp
-		dl_time[dl_count] = timestamp;
+		dl[dl_count++] = timestamp;
 		// Stores desired variables (Change if needed)
 		// e.g filtered values
-		dl_s1[dl_count] = y0[0];
-		dl_s2[dl_count] = y0[1];
-		dl_s3[dl_count] = y0[2];
-		dl_s4[dl_count] = y0[3];
-		dl_s5[dl_count] = y0[4];
-		dl_s6[dl_count] = y0[5];
-		dl_count ++;
+		for (i=0;i<6;i++){
+			dl[dl_count++] = x0[i];
+		}
+		sum = timestamp + x0[0] + x0[1] + x0[2] + x0[3] + x0[4] + x0[5];
+		sum = ~sum;
+		dl[dl_count++] = sum;
 	}
+	
 	//to send back it is necessary to typecast to BYTE
 }
 
@@ -394,15 +400,37 @@ void isr_button(void)
 void isr_qr_link(void)
 {
 	int	ae_index;
+	int     i, max[6],min[6];
 	
 	// record time
 	isr_qr_time = X32_us_clock;
         inst = X32_instruction_counter;
 
 	// get sensor and timestamp values
-	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2; 
-	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
+	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; x0[2] = X32_QR_s2; 
+	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
+	
+	//Butt2Filter();
+	
+	//Gets the maximum value
+	/*for (i=0;i<6;i++)
+	{
+		if (x0[i] > max[i])
+		{
+			max[i] = x0[i];
+		}
+		if (x0[i] < min[i])
+		{
+			min[i] = x0[i];
+		}
+	}*/
+		
+	/*printf("Unfiltered ... s0 = %i s1 = %i s2 = %i s3 = %i s4 = %i s5 = %i \n",s0,s1,s2,s3,s4,s5);
+	printf("filtered ..... s0 = %i s1 = %i s2 = %i s3 = %i s4 = %i s5 = %i \n",y0[1],y0[2],y0[3],y0[4],y0[5],y0[6]);
+   	printf("size = %i \n",sizeof(s0));*/
+	//printf("max = [%i][%i][%i][%i][%i][%i] \n",max[0],max[1],max[2],max[3],max[4],max[5]);
+
 
 	// monitor presence of interrupts 
 	isr_qr_counter++;
