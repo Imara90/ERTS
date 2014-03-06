@@ -107,6 +107,8 @@ int	iptr, optr;
 */
 #define CHECKSUM	0x05
 
+//RAMP-UP CHECK PARAMETERS
+#define SAFE_INCREMENT 50
 /*********************************************************************/
 
 // For defining the circular buffer
@@ -132,6 +134,7 @@ CircularBuffer cb;
 // Globals
 char	c;
 int	demo_done;
+int   prev_ae[4] = {0, 0, 0, 0};
 int	ae[4];
 int	s0, s1, s2, s3, s4, s5, timestamp;
 int	isr_qr_counter;
@@ -239,6 +242,32 @@ void isr_button(void)
 }
 
 /*------------------------------------------------------------------
+/*------------------------------------------------------------------
+ * Ramp-Up prevention function
+ * Compares current - previous commanded speed and clip the current
+ * value if necessary (To avoid sudden changes -> motor ramp-up)
+ *------------------------------------------------------------------
+ */
+void CheckMotorRamp(void)
+{
+	int delta;
+	for (i = 0; i < 4; i++) {
+		delta = ae[i]-prev_ae[i];
+		if (abs(delta) > SAFE_INCREMENT)) {
+			if	(delta < 0)// Negative Increment
+				ae[i] = prev_ae - SAFE_INCREMENT
+			}
+			else //POSITIVE INCREMENT
+			{
+				ae[i] = prev_ae + SAFE_INCREMENT
+			}
+		}
+		prev_ae[i] = ae[i];
+	}
+}
+
+
+/*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
  *------------------------------------------------------------------
  */
@@ -272,6 +301,10 @@ void isr_qr_link(void)
 		ae[ae_index] &= 0x3ff;
 	}
 
+	
+	//CHECK FOR POSSIBLE RAMP-UP VALUES BEFORE SENDING TO THE MOTORS
+	CheckMotorRamp();
+	
 	// Send actuator values
 	// (Need to supply a continous stream, otherwise
 	// QR will go to safe mode, so just send every ms)
