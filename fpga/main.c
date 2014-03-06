@@ -136,7 +136,7 @@ int	dl_s3[DLOGSIZE];
 int	dl_s4[DLOGSIZE];
 int	dl_s5[DLOGSIZE];
 int   dl_s6[DLOGSIZE];
-int   dlcount = 0;
+int   dl_count = 0;
 
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
@@ -196,7 +196,7 @@ BYTE 	prev_mode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, c
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-int mult(int &a,int &b)
+unsigned long mult(unsigned long a,unsigned long b)
 {
 	int result;
 	result = a * b;
@@ -218,7 +218,7 @@ void Butt2Filter()
 	x0[4] = s4;
 	x0[5] = s5;
 	for (i=0; i<6; i++) {
-		y0[i] = mult(A0,x0[i]) + mult(A1,x1[i]) + mult(A2,x2[i]) - mult(B1,y1[i]) - mult(B2,y2[i])
+		y0[i] = mult(A0,x0[i]) + mult(A1,x1[i]) + mult(A2,x2[i]) - mult(B1,y1[i]) - mult(B2,y2[i]);
 		x2[i] = x1[i];
 		x1[i] = x0[i];
 		y2[i] = y1[i];
@@ -259,17 +259,17 @@ void DataStorage(void)
  */
 void CheckMotorRamp(void)
 {
-	int delta;
+	int delta,i;
 	for (i = 0; i < 4; i++) {
 		delta = ae[i]-prev_ae[i];
-		if (abs(delta) > SAFE_INCREMENT)) {
-			if	(delta < 0)// Negative Increment
+		if (abs(delta) > SAFE_INCREMENT) {
+			if (delta < 0) // Negative Increment
 			{
-				ae[i] = prev_ae - SAFE_INCREMENT;
+				ae[i] = prev_ae[i] - SAFE_INCREMENT;
 			}
 			else //POSITIVE INCREMENT
 			{
-				ae[i] = prev_ae + SAFE_INCREMENT;
+				ae[i] = prev_ae[i] + SAFE_INCREMENT;
 			}
 		}
 		prev_ae[i] = ae[i];
@@ -283,7 +283,7 @@ void CheckMotorRamp(void)
  */
 void isr_rs232_tx(void)
 {
-	
+	//X32_rs232_data
 }
 
 /*------------------------------------------------------------------
