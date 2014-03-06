@@ -129,13 +129,7 @@ int   x2[6] = {0,0,0,0,0,0};
 //DEFINE SIZE OF DATA LOGGING VARIABLES
 #define DLOGSIZE	50000 
 //data logging variables
-int   dl_time[DLOGSIZE];
-int	dl_s1[DLOGSIZE];
-int	dl_s2[DLOGSIZE];
-int	dl_s3[DLOGSIZE];
-int	dl_s4[DLOGSIZE];
-int	dl_s5[DLOGSIZE];
-int   dl_s6[DLOGSIZE];
+int   dl[DLOGSIZE];
 int   dl_count = 0;
 
 //initialize previous state (To prevent ramp-up)
