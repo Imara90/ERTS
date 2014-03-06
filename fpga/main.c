@@ -101,7 +101,7 @@ int	iptr, optr;
 #define ROLL		0x02
 #define PITCH		0x03
 #define YAW		0x04
-#define PCONTROL	0x05
+//#define PCONTROL	0x05
 
 #define CHECKSUM	0x05
 
@@ -383,7 +383,6 @@ void isr_qr_link(void)
 	timestamp = X32_QR_timestamp;
 	
 	//Prints sensor and timestamp values
-	printf("")
 	printf("s0 = %i s1 = %i s2 = %i s3 = %i s4 = %i s5 = %i \n",s0,s1,s2,s3,s4,s5);
 
 	// monitor presence of interrupts 
