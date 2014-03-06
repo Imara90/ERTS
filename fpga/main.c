@@ -110,13 +110,23 @@ int	iptr, optr;
 
 //BUTTERWORTH LOW PASS FILTER CONSTANTS
 //for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
-
 #define A0		0x3A1BCD40
 #define A1		0x3A9BCD40
 #define A2		0x3A1BCD40
 #define B0		1
 #define B1		0xBFF705E5
 #define B2		0x3F6EA798
+//filter temporary variables
+int   y0[6] = {0,0,0,0,0,0};
+int   y1[6] = {0,0,0,0,0,0};
+int   y2[6] = {0,0,0,0,0,0};
+int   x0[6] = {0,0,0,0,0,0};
+int   x1[6] = {0,0,0,0,0,0};
+int   x2[6] = {0,0,0,0,0,0};
+
+
+//DEFINE SIZE OF DATA LOGGING VARIABLES
+#define DLOGSIZE	5000 //around 5 seconds
 //data logging variables
 int   dl_time[DLOGSIZE];
 int	dl_s1[DLOGSIZE];
@@ -126,16 +136,6 @@ int	dl_s4[DLOGSIZE];
 int	dl_s5[DLOGSIZE];
 int   dl_s6[DLOGSIZE];
 int   dlcount = 0;
-
-//DEFINE SIZE OF DATA LOGGING VARIABLES
-#define DLOGSIZE	5000 //around 5 seconds
-//filter parameters
-int   y0[6] = {0,0,0,0,0,0};
-int   y1[6] = {0,0,0,0,0,0};
-int   y2[6] = {0,0,0,0,0,0};
-int   x0[6] = {0,0,0,0,0,0};
-int   x1[6] = {0,0,0,0,0,0};
-int   x2[6] = {0,0,0,0,0,0};
 
 /*********************************************************************/
 
