@@ -37,7 +37,7 @@ int main()
 		return 0;
 	}
 	//Clears the Joystick buffer ...Comment if joystick is not connected
-	clear_js_buffer();
+	//clear_js_buffer();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
 											 (P,P1,P2,0 for Control Gains Mode)*/
@@ -50,7 +50,7 @@ int main()
 	while (key != 27) {
 		
 		//reads data from the joystick ...comment if joystick is not connected
-		read_js(jmap);
+		//read_js(jmap);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		if (key != -1) read_kb(keymap,key);

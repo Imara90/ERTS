@@ -144,7 +144,9 @@ int	commflag = 0;
 int 	comm_thres = 20;
 
 // Package bytes
-BYTE 	prev_mode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
+BYTE 	prevmode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
+//char 	prevmode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
+
 
 // TODO Put first three modes in one file, less function calling"
 #include "safe_mode.h"
@@ -396,7 +398,6 @@ void decode(void)
 	 */
 
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-
 	// Take the value from the buffer and reset the elem
 	// buffer value to make sure it isn't read multiple times
 	mode 	= cbGet(&cb);
@@ -436,33 +437,6 @@ int check_sum(void)
 		return 1;
 }
 
-/*------------------------------------------------------------------
- * Check the mode and reset parameters if mode has changed
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */
-void check_mode(void)
-{
-	// Cannot leave panic mode unless in the function itself and
-	// all engines have reached the correct RPM
-	if ((prev_mode == PANIC_MODE) && (mode != PANIC_MODE)) 	
-	{
-		printf("\nChange to Panic");
-		mode = PANIC_MODE;
-	}
-
-	// To make sure RPMs are not ramped up too fast
-	else if ((prev_mode == (SAFE_MODE || PANIC_MODE)) && (mode == MANUAL_MODE))
-	{
-		lift 	= 0;
-		roll 	= 0;
-		pitch 	= 0;
-		yaw 	= 0;
-		pcontrol 	= 0;
-		p1control 	= 0;
-		p2control 	= 0;
-	}
-}
 
 /*------------------------------------------------------------------
  * Reset control values
@@ -476,9 +450,24 @@ void reset_comm(void)
 	roll 	= 0;
 	pitch 	= 0;
 	yaw 	= 0;
-//	pcontrol 	= 0;
-//	p1control 	= 0;
-//	p2control 	= 0;
+}
+
+/*------------------------------------------------------------------
+ * Send to TX buffer
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+void send_tx(void)
+{
+	int i;
+	// Check if the tx is ready to send;
+	for (i = 0; i < DLOGSIZE; i++)
+	{	
+		if (X32_rs232_stat & 0x01)
+		{
+			X32_rs232_data = dl[i];
+		}
+	}	
 }
 
 
@@ -558,50 +547,41 @@ int main()
 			decode();
 			if (check_sum())
 			{
-				// If the engine values are not 0 or the prev mode is 
-/*				if (!((ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] == 0 
-					&& prev_mode == SAFE_MODE) 
-						|| (mode == PANIC_MODE && prev_mode != SAFE_MODE))
-				{
-					mode = prev_mode;
-				}
-*/
-//				DEBUG DEBUG Check if it works
-//				if (prev_mode == PANIC_MODE)
-//				{
-//					mode = PANIC_MODE;
-//				}
-				printf("\nmode: %x, previous mode %x", mode, prev_mode); 
+//				printf("\nmode: %x, previous mode %x", mode, prevmode); 
 				switch (mode)
 				{
 					case SAFE_MODE:
 						safe_mode();
+//						printf("\nSize int: %d, size char: %d, size unsigned char: %d, size short: %d, size byte: %d", sizeof(int), sizeof(char), sizeof(unsigned char), sizeof(short), sizeof(BYTE)); 
 						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
 					case PANIC_MODE:
-						if (prev_mode != SAFE_MODE)
-						{
+//						if (prev_mode != SAFE_MODE)
+//						{
 							panic_mode();
 							printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
 							// panic
-						}
-						else 
-						{
-							mode = prev_mode;
-						}							
+//						}
+//						else 
+//						{
+//							mode = prev_mode;
+//						}							
 						break;
 					case MANUAL_MODE:
-						if ((prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] == 0) || prev_mode == MANUAL_MODE)
-						{
+//						if ((prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] == 0)) || prev_mode == MANUAL_MODE)
+//						{
 							manual_mode();
-							printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+							printf("\nLift = %x", lift);
+//							printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+//printf("\nManual! [%d][%d][%d][%d][%d][%d]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+														
 							// manual
-						}						
-						else 
-						{
-							mode = prev_mode;
-						}
+//						}						
+//						else 
+//						{
+//							mode = prev_mode;
+//						}
 						break;
 					case CALIBRATION_MODE:
 						// calibrate
@@ -622,7 +602,14 @@ int main()
 			}
 		}
 		// Safe the current mode to determine mode changes
-		prev_mode = mode;
+		prevmode = mode;
+//		printf("\nmode: %x, previous mode %x", mode, prevmode); 
+
+		// Check button whether to send data to tx
+		if (button == 1)
+		{
+			send_tx();
+		}
 
 		// Delay 20 micro second = 50 Hz according to the sending of the packages
 		delay_us(20);
