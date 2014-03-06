@@ -546,7 +546,6 @@ int main()
 						// panic
 						break;
 					case MANUAL_MODE:
-						check_mode();
 						manual_mode();
 						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
 						// manual
