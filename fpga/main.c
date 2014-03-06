@@ -106,6 +106,41 @@ int	iptr, optr;
 
 #define CHECKSUM	0x05
 
+//RAMP-UP CHECK PARAMETERS
+#define SAFE_INCREMENT 50
+
+//BUTTERWORTH LOW PASS FILTER CONSTANTS
+//for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
+#define A0		0x3A1BCD40
+#define A1		0x3A9BCD40
+#define A2		0x3A1BCD40
+#define B0		1
+#define B1		0xBFF705E5
+#define B2		0x3F6EA798
+//filter temporary variables
+int   y0[6] = {0,0,0,0,0,0};
+int   y1[6] = {0,0,0,0,0,0};
+int   y2[6] = {0,0,0,0,0,0};
+int   x0[6] = {0,0,0,0,0,0};
+int   x1[6] = {0,0,0,0,0,0};
+int   x2[6] = {0,0,0,0,0,0};
+
+
+//DEFINE SIZE OF DATA LOGGING VARIABLES
+#define DLOGSIZE	5000 //around 5 seconds
+//data logging variables
+int   dl_time[DLOGSIZE];
+int	dl_s1[DLOGSIZE];
+int	dl_s2[DLOGSIZE];
+int	dl_s3[DLOGSIZE];
+int	dl_s4[DLOGSIZE];
+int	dl_s5[DLOGSIZE];
+int   dl_s6[DLOGSIZE];
+int   dlcount = 0;
+
+//initialize previous state (To prevent ramp-up)
+int   prev_ae[4] = {0, 0, 0, 0};
+
 /*********************************************************************/
 
 // For defining the circular buffer
@@ -154,6 +189,102 @@ BYTE 	prev_mode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, c
 
 #include "safe_mode.h"
 #include "manual_mode.h"
+
+/*------------------------------------------------------------------
+ * Fixed Point Multiplication
+ * Multiplies the values and then shift them right by 14 bits
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+int mult(int &a,int &b)
+{
+	int result;
+	result = a * b;
+	return (result >>14);
+}
+
+/*------------------------------------------------------------------
+ * 2nd Order Butterworth filter
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+void Butt2Filter()
+{
+	int i;
+	x0[0] = s0;
+	x0[1] = s1;
+	x0[2] = s2;
+	x0[3] = s3;
+	x0[4] = s4;
+	x0[5] = s5;
+	for (i=0; i<6; i++) {
+		y0[i] = mult(A0,x0[i]) + mult(A1,x1[i]) + mult(A2,x2[i]) - mult(B1,y1[i]) - mult(B2,y2[i])
+		x2[i] = x1[i];
+		x1[i] = x0[i];
+		y2[i] = y1[i];
+		y1[i] = y0[i];
+	}
+}
+
+/*------------------------------------------------------------------
+ * Data Logging Storage
+ * Store each parameter individually in arrays
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+void DataStorage(void)
+{
+	if (dl_count < DLOGSIZE) {
+		//stores time stamp
+		dl_time[dl_count] = timestamp;
+		// Stores desired variables (Change if needed)
+		// e.g filtered values
+		dl_s1[dl_count] = y0[0];
+		dl_s2[dl_count] = y0[1];
+		dl_s3[dl_count] = y0[2];
+		dl_s4[dl_count] = y0[3];
+		dl_s5[dl_count] = y0[4];
+		dl_s6[dl_count] = y0[5];
+		dl_count ++;
+	}
+	//to send back it is necessary to typecast to BYTE
+}
+
+/*------------------------------------------------------------------
+ * Ramp-Up prevention function
+ * Compares current - previous commanded speed and clip the current
+ * value if necessary (To avoid sudden changes -> motor ramp-up)
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+void CheckMotorRamp(void)
+{
+	int delta;
+	for (i = 0; i < 4; i++) {
+		delta = ae[i]-prev_ae[i];
+		if (abs(delta) > SAFE_INCREMENT)) {
+			if	(delta < 0)// Negative Increment
+			{
+				ae[i] = prev_ae - SAFE_INCREMENT;
+			}
+			else //POSITIVE INCREMENT
+			{
+				ae[i] = prev_ae + SAFE_INCREMENT;
+			}
+		}
+		prev_ae[i] = ae[i];
+	}
+}
+
+/*------------------------------------------------------------------
+ * isr_rs232_tx -- QR link tx interrupt handler
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+void isr_rs232_tx(void)
+{
+	
+}
 
 /*------------------------------------------------------------------
  * Circular buffer initialization 
