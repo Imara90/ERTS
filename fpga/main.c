@@ -16,13 +16,6 @@ TODO determine priorities
 TODO control values have to be send
 TODO ask for log that is saved during running
 TODO also want telemetry set and concurring protocol
-TODO change modes to enum
-TODO Send values to engines
-TODO determine the period for the timer interrupt
-TODO manual mode
-TODO panic mode
-TODO safe mode
-TODO check what the & bytes are for the led function in main
 
  *------------------------------------------------------------------
  */
@@ -73,11 +66,6 @@ TODO check what the & bytes are for the led function in main
 // BYTE and WORD sizes predefined
 #define BYTE unsigned char
 #define WORD unsigned short
-
-// RX FIFO
-#define FIFOSIZE 16
-char	fifo[FIFOSIZE]; 
-int	iptr, optr;
 
 // mode, lift ,roll, pitch, yaw, checksum 
 #define nParams		0x06
@@ -148,12 +136,20 @@ void 	print_comm();
 void 	check_start();
 int 	check_sum();
 
+// Indicater variables
 int 	startflag = 0;
-int	commflag = 1;
+int	commflag = 0;
+
+// If no rx IR has occured in 20 loops, go into panic_mode
+int 	comm_thres = 20;
+
+// Package bytes
 BYTE 	prev_mode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 
+// TODO Put first three modes in one file, less function calling"
 #include "safe_mode.h"
 #include "manual_mode.h"
+#include "panic_mode.h"
 
 /*------------------------------------------------------------------
  * Circular buffer initialization 
@@ -335,8 +331,10 @@ void isr_rs232_rx(void)
  * isr_wireless_rx -- wireless rx interrupt handler - not used
  *------------------------------------------------------------------
  */
+
 void isr_wireless_rx(void)
 {
+	/*
 	BYTE c;
 
 	// signal interrupt
@@ -349,7 +347,7 @@ void isr_wireless_rx(void)
 		if (iptr > FIFOSIZE)
 			iptr = 0;
 	}
-
+	*/
 }
 
 /*------------------------------------------------------------------
@@ -399,9 +397,6 @@ void decode(void)
 
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	// Safe the current mode to determine mode changes
-	prev_mode = mode;
-
 	// Take the value from the buffer and reset the elem
 	// buffer value to make sure it isn't read multiple times
 	mode 	= cbGet(&cb);
@@ -448,7 +443,16 @@ int check_sum(void)
  */
 void check_mode(void)
 {
-	if (mode != prev_mode)
+	// Cannot leave panic mode unless in the function itself and
+	// all engines have reached the correct RPM
+	if ((prev_mode == PANIC_MODE) && (mode != PANIC_MODE)) 	
+	{
+		printf("\nChange to Panic");
+		mode = PANIC_MODE;
+	}
+
+	// To make sure RPMs are not ramped up too fast
+	else if ((prev_mode == (SAFE_MODE || PANIC_MODE)) && (mode == MANUAL_MODE))
 	{
 		lift 	= 0;
 		roll 	= 0;
@@ -459,6 +463,24 @@ void check_mode(void)
 		p2control 	= 0;
 	}
 }
+
+/*------------------------------------------------------------------
+ * Reset control values
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+void reset_comm(void)
+{
+	// To make sure RPMs are not ramped up too fast
+	lift 	= 0;
+	roll 	= 0;
+	pitch 	= 0;
+	yaw 	= 0;
+//	pcontrol 	= 0;
+//	p1control 	= 0;
+//	p2control 	= 0;
+}
+
 
 /*------------------------------------------------------------------
  * main 
@@ -522,8 +544,11 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	while (! program_done) {
-		// reset the commflag to check communication
-		commflag++;		
+		// add to the commflag to check communication
+		if (commflag++ > comm_thres)
+		{
+			mode = PANIC_MODE;
+		}		
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
@@ -533,8 +558,20 @@ int main()
 			decode();
 			if (check_sum())
 			{
-//				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-				printf("\nmode: %x", mode); 
+				// If the engine values are not 0 or the prev mode is 
+/*				if (!((ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] == 0 
+					&& prev_mode == SAFE_MODE) 
+						|| (mode == PANIC_MODE && prev_mode != SAFE_MODE))
+				{
+					mode = prev_mode;
+				}
+*/
+//				DEBUG DEBUG Check if it works
+//				if (prev_mode == PANIC_MODE)
+//				{
+//					mode = PANIC_MODE;
+//				}
+				printf("\nmode: %x, previous mode %x", mode, prev_mode); 
 				switch (mode)
 				{
 					case SAFE_MODE:
@@ -543,13 +580,28 @@ int main()
 						// safe
 						break;
 					case PANIC_MODE:
-						// panic
+						if (prev_mode != SAFE_MODE)
+						{
+							panic_mode();
+							printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
+							// panic
+						}
+						else 
+						{
+							mode = prev_mode;
+						}							
 						break;
 					case MANUAL_MODE:
-						check_mode();
-						manual_mode();
-						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
-						// manual
+						if ((prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] == 0)) || prev_mode == MANUAL_MODE)
+						{
+							manual_mode();
+							printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+							// manual
+						}						
+						else 
+						{
+							mode = prev_mode;
+						}
 						break;
 					case CALIBRATION_MODE:
 						// calibrate
@@ -569,7 +621,9 @@ int main()
 				}			
 			}
 		}
-// TODO switch case in or out all the if statements?  
+		// Safe the current mode to determine mode changes
+		prev_mode = mode;
+
 		// Delay 20 micro second = 50 Hz according to the sending of the packages
 		delay_us(20);
 	}
