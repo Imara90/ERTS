@@ -186,6 +186,7 @@ BYTE	last_control_mode = 0;//VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
 #include "safe_mode.h"
 #include "manual_mode.h"
 #include "panic_mode.h"
+#include "calibration_mode.h"
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
  * Multiplies the values and then shift them right by 14 bits
