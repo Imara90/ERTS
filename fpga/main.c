@@ -205,7 +205,7 @@ unsigned int mult(unsigned int a,unsigned int b)
 
 
 /*------------------------------------------------------------------
- * 2nd Order Butterworth filter
+ * 1st Order Butterworth filter
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
