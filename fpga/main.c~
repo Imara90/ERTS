@@ -610,7 +610,6 @@ int check_sum(void)
  */
 int main() 
 {
-	int i;	
 	// Character to store bytes from buffer	
 	BYTE c;
 	// Initialize the Circular buffer and elem to write from

@@ -1,8 +1,6 @@
-/*Reads the input of the joystick
+/*All functions related to Keyboard reading
 * 27-02-2014(Created by Diogo Monteiro)
 
-Input: key_map: address of keyboard mapping array
-	
 
 Output: ESC button - 0 for off and 1 for on
 
@@ -11,7 +9,11 @@ Output: ESC button - 0 for off and 1 for on
 
 #include "Definitions.h"
 #include "Package.h"
-
+/*------------------------------------------------------------------
+ * Keyboard Reading
+ * Created by Diogo Monteiro
+ *------------------------------------------------------------------
+ */
 int read_kb(int *key_map,char c) {
 int i;
 
@@ -21,10 +23,10 @@ int i;
 			c=getchar();
 			switch (c){
 				case -1:
-					return 1;
+					return 1;//ESC
 					break;
 				case 91:
-					c=getchar();
+					c=getchar();//ARROWS
 					break;
 			}
 		}
@@ -57,11 +59,11 @@ int i;
 		case 'z'://LIFT DOWN
 			*(key_map+1) = TrimToMaxByte(*(key_map+1) - 2);;
 			break;
-		case 68://LEFT ARROW-ROLL UP
-			*(key_map+2) = TrimToMaxByte(*(key_map+2) + 2);;
-			break;
-		case 67://RIGHT ARROW-ROLL DOWN
+		case 68://LEFT ARROW-ROLL DOWN
 			*(key_map+2) = TrimToMaxByte(*(key_map+2) - 2);;
+			break;
+		case 67://RIGHT ARROW-ROLL UP
+			*(key_map+2) = TrimToMaxByte(*(key_map+2) + 2);;
 			break;
 		case 65://UP ARROW-PITCH UP
 			*(key_map+3) = TrimToMaxByte(*(key_map+3) + 2);;

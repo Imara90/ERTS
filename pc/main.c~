@@ -75,7 +75,7 @@ int main()
 
 		
 		//EVALUATES IF ABORTION REQUESTEQ
-		if ( abort == 1) keymap[0] = MODE_ABORT;
+		if ( abort == 1) keypmap[0] = MODE_ABORT;
 
 		//CREATES THE PACKAGE
 		SetPkgMode(&mPkg, keymap[0]);
