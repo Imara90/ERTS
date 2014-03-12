@@ -110,14 +110,19 @@ int	iptr, optr;
 #define SAFE_INCREMENT 50
 
 //BUTTERWORTH LOW PASS FILTER CONSTANTS
+//for 25Hz cut-off frequency and 1266.5 Hz sampling freq.
+//#define A0		969
+//#define A1		969
+//#define B0		16384
+//#define B1		-14444
 //for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
-#define A0		0x3A1BCD40
-#define A1		0x3A9BCD40
-#define A2		0x3A1BCD40
-#define B0		1
-#define B1		0xBFF705E5
-#define B2		0x3F6EA798
-//filter temporary variables
+#define A0		401
+#define A1		401
+#define B0		16384
+#define B1		-15580
+
+
+////filter temporary variables
 int   y0[6] = {0,0,0,0,0,0};
 int   y1[6] = {0,0,0,0,0,0};
 int   y2[6] = {0,0,0,0,0,0};
@@ -190,33 +195,28 @@ BYTE 	prev_mode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, c
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-unsigned long mult(unsigned long a,unsigned long b)
+unsigned int mult(unsigned int a,unsigned int b)
 {
-	int result;
+	unsigned int result;
 	result = a * b;
-	return (result >>14);
+	result = (result >> 14);
+	return result;
 }
+
 
 /*------------------------------------------------------------------
  * 2nd Order Butterworth filter
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
+
 void Butt2Filter()
 {
 	int i;
-	x0[0] = s0;
-	x0[1] = s1;
-	x0[2] = s2;
-	x0[3] = s3;
-	x0[4] = s4;
-	x0[5] = s5;
 	for (i=0; i<6; i++) {
-		y0[i] = mult(A0,x0[i]) + mult(A1,x1[i]) + mult(A2,x2[i]) - mult(B1,y1[i]) - mult(B2,y2[i]);
-		x2[i] = x1[i];
+		y0[i] = (mult(A0,x0[i]) + mult(A1,x1[i]) - mult(B1,y1[i]));
 		x1[i] = x0[i];
-		y2[i] = y1[i];
-		y1[i] = y0[i];
+		x1[i] = x0[i];
 	}
 }
 
@@ -405,7 +405,7 @@ void isr_qr_link(void)
 	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
 	
-	//Butt2Filter();
+	Butt2Filter();
 	
 	//Gets the maximum value
 	/*for (i=0;i<6;i++)

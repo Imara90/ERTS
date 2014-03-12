@@ -47,6 +47,8 @@ int main()
 	int i;
 	int result;
 	int key = 0;
+	BYTE ReadBuffer[1];
+	int buff_count = 0;
 	while (key != 27) {
 		
 		//reads data from the joystick ...comment if joystick is not connected
@@ -84,7 +86,8 @@ int main()
 		result = write(fd_rs232,mPkg.Pkg,7*sizeof(BYTE));
 		//Asserts in case of sending wrong number of bytes
 		assert(result == 7);
-
+		read (fd_rs232, ReadBuffer, sizeof ReadBuffer);
+		ReadArray[buff_count++] = ReadBuffer[0];
 		
 		// 20 msec pause = 50 Hz
 		usleep(20000);
