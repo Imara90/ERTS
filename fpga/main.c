@@ -131,7 +131,7 @@ typedef struct { BYTE value; } ElemType;
 
 // fixed size for the buffer, no dyanmic allocation is needed
 // actual size is minus one element because of the one slot open protocol 
-#define CB_SIZE (31 + 1)
+#define CB_SIZE (7 + 1)
  
 // Circular buffer object 
 typedef struct {
