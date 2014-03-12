@@ -94,6 +94,35 @@ TODO also want telemetry set and concurring protocol
 
 #define CHECKSUM	0x05
 
+//RAMP-UP CHECK PARAMETERS
+#define SAFE_INCREMENT 50
+
+//BUTTERWORTH LOW PASS FILTER CONSTANTS
+//for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
+#define A0 0x3A1BCD40
+#define A1 0x3A9BCD40
+#define A2 0x3A1BCD40
+#define B0 1
+#define B1 0xBFF705E5
+#define B2 0x3F6EA798
+//filter temporary variables
+int y0[6] = {0,0,0,0,0,0};
+int y1[6] = {0,0,0,0,0,0};
+int y2[6] = {0,0,0,0,0,0};
+int x0[6] = {0,0,0,0,0,0};
+int x1[6] = {0,0,0,0,0,0};
+int x2[6] = {0,0,0,0,0,0};
+
+
+//DEFINE SIZE OF DATA LOGGING VARIABLES
+#define DLOGSIZE 50000
+//data logging variables
+int dl[DLOGSIZE];
+int dl_count = 0;
+
+//initialize previous state (To prevent ramp-up)
+int prev_ae[4] = {0, 0, 0, 0};
+
 /*********************************************************************/
 
 // For defining the circular buffer
@@ -152,6 +181,98 @@ BYTE 	prevmode, mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, ch
 #include "safe_mode.h"
 #include "manual_mode.h"
 #include "panic_mode.h"
+
+/*------------------------------------------------------------------
+* Fixed Point Multiplication
+* Multiplies the values and then shift them right by 14 bits
+* By Daniel Lemus
+*------------------------------------------------------------------
+*/
+unsigned long mult(unsigned long a,unsigned long b)
+{
+int result;
+result = a * b;
+return (result >>14);
+}
+
+/*------------------------------------------------------------------
+* 2nd Order Butterworth filter
+* By Daniel Lemus
+*------------------------------------------------------------------
+*/
+void Butt2Filter()
+{
+int i;
+x0[0] = s0;
+x0[1] = s1;
+x0[2] = s2;
+x0[3] = s3;
+x0[4] = s4;
+x0[5] = s5;
+for (i=0; i<6; i++) {
+y0[i] = mult(A0,x0[i]) + mult(A1,x1[i]) + mult(A2,x2[i]) - mult(B1,y1[i]) - mult(B2,y2[i]);
+x2[i] = x1[i];
+x1[i] = x0[i];
+y2[i] = y1[i];
+y1[i] = y0[i];
+}
+}
+
+/*------------------------------------------------------------------
+* Data Logging Storage
+* Store each parameter individually in arrays
+* By Daniel Lemus
+*------------------------------------------------------------------
+*/
+void DataStorage(void)
+{
+	BYTE sum;
+	int i;
+	sum = 0;
+	if (dl_count < DLOGSIZE) {
+		//stores the starting bytes
+		dl[dl_count++] = 0x80;
+		dl[dl_count++] = 0x00;
+		//stores time stamp
+		dl[dl_count++] = timestamp;
+		// Stores desired variables (Change if needed)
+		// e.g filtered values
+		for (i=0;i<6;i++){
+			dl[dl_count++] = x0[i];
+		}
+	sum = timestamp + x0[0] + x0[1] + x0[2] + x0[3] + x0[4] + x0[5];
+	sum = ~sum;
+	dl[dl_count++] = sum;
+	}
+//to send back it is necessary to typecast to BYTE
+}
+
+/*------------------------------------------------------------------
+* Ramp-Up prevention function
+* Compares current - previous commanded speed and clip the current
+* value if necessary (To avoid sudden changes -> motor ramp-up)
+* By Daniel Lemus
+*------------------------------------------------------------------
+*/
+void CheckMotorRamp(void)
+{
+int delta,i;
+for (i = 0; i < 4; i++) {
+delta = ae[i]-prev_ae[i];
+if (abs(delta) > SAFE_INCREMENT) {
+if (delta < 0) // Negative Increment
+{
+ae[i] = prev_ae[i] - SAFE_INCREMENT;
+}
+else //POSITIVE INCREMENT
+{
+ae[i] = prev_ae[i] + SAFE_INCREMENT;
+}
+}
+prev_ae[i] = ae[i];
+}
+}
+
 
 /*------------------------------------------------------------------
  * Circular buffer initialization 
@@ -267,8 +388,12 @@ void isr_qr_link(void)
         inst = X32_instruction_counter;
 
 	// get sensor and timestamp values
-	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2; 
-	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
+//	s0 = X32_QR_s0; s1 = X32_QR_s1; s2 = X32_QR_s2; 
+//	s3 = X32_QR_s3; s4 = X32_QR_s4; s5 = X32_QR_s5;
+//	timestamp = X32_QR_timestamp;
+
+	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; x0[2] = X32_QR_s2;
+	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
 
 	// monitor presence of interrupts 
@@ -573,8 +698,8 @@ int main()
 //						if ((prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] == 0)) || prev_mode == MANUAL_MODE)
 //						{
 							manual_mode();
-							printf("\nLift = %x", lift);
-//							printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+//							printf("\nLift = %x", lift);
+							printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
 //printf("\nManual! [%d][%d][%d][%d][%d][%d]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
 														
 							// manual
