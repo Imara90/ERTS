@@ -16,13 +16,6 @@ TODO determine priorities
 TODO control values have to be send
 TODO ask for log that is saved during running
 TODO also want telemetry set and concurring protocol
-TODO change modes to enum
-TODO Send values to engines
-TODO determine the period for the timer interrupt
-TODO manual mode
-TODO panic mode
-TODO safe mode
-TODO check what the & bytes are for the led function in main
 
  *------------------------------------------------------------------
  */
@@ -74,11 +67,6 @@ TODO check what the & bytes are for the led function in main
 #define BYTE unsigned char
 #define WORD unsigned short
 
-// RX FIFO
-#define FIFOSIZE 16
-char	fifo[FIFOSIZE]; 
-int	iptr, optr;
-
 // mode, lift ,roll, pitch, yaw, checksum 
 #define nParams		0x06
 
@@ -100,9 +88,9 @@ int	iptr, optr;
 #define PITCH		0x03
 #define YAW		0x04
 
-#define PCONTROL	0x01
-#define P1CONTROL	0x02
-#define P2CONTROL	0x03
+#define PCONTROL	0x02
+#define P1CONTROL	0x03
+#define P2CONTROL	0x04
 
 #define CHECKSUM	0x05
 
@@ -182,16 +170,27 @@ void 	print_comm();
 void 	check_start();
 int 	check_sum();
 
+// Flags and communication variables
 int 	startflag = 0;
 int	commflag = 1;
+int 	commthres = 1000;
+
+// telemetry
+int 	stampinter = 0;
+
+BYTE 	package[nParams];
 BYTE 	sel_mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 BYTE 	prev_mode = 0;//VARIABLE TO SAVE PREVIOUS MODE
-BYTE  mode = 0;//ACTUAL OPERATING MODE
+BYTE	mode = 0;//ACTUAL OPERATING MODE
 BYTE	last_control_mode = 0;//VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
+
+// Own written functions
 #include "safe_mode.h"
 #include "manual_mode.h"
 #include "panic_mode.h"
 #include "calibration_mode.h"
+
+
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
  * Multiplies the values and then shift them right by 14 bits
@@ -274,16 +273,6 @@ void CheckMotorRamp(void)
 		}
 		prev_ae[i] = ae[i];
 	}
-}
-
-/*------------------------------------------------------------------
- * isr_rs232_tx -- QR link tx interrupt handler
- * By Daniel Lemus
- *------------------------------------------------------------------
- */
-void isr_rs232_tx(void)
-{
-	//X32_rs232_data
 }
 
 /*------------------------------------------------------------------
@@ -376,6 +365,22 @@ BYTE cbGet(CircularBuffer *cb) {
 	cb->start = (cb->start + 1) % CB_SIZE;
 
 	return c;
+}
+
+/*------------------------------------------------------------------
+ * isr_qr_timer -- QR timer interrupt handler
+ * Send the telemetry back less fast that while loop
+ * By Imara Speek - 1506374
+ *------------------------------------------------------------------
+ */
+void isr_qr_timer(void)
+{
+	int i;
+//	printf("\ntime: %d", X32_ms_clock);
+	for (i = 0; i < nParams; i++)
+	{
+
+	}
 }
 
 /*------------------------------------------------------------------
@@ -490,6 +495,7 @@ void isr_rs232_rx(void)
  */
 void isr_wireless_rx(void)
 {
+/*
 	BYTE c;
 
 	// signal interrupt
@@ -502,7 +508,7 @@ void isr_wireless_rx(void)
 		if (iptr > FIFOSIZE)
 			iptr = 0;
 	}
-
+*/
 }
 
 /*------------------------------------------------------------------
@@ -543,40 +549,45 @@ void toggle_led(int i)
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
-
 void decode(void)
 {	
 	/* Get the next character in the buffer after the starting byte
 	 * Whilst disabling all the interrupts CRITICAL SECTION
 	 */
+	int i;
 
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	// Safe the current mode to determine mode changes
-	prev_mode = mode;
+	prev_mode = package[0];
 
 	// Take the value from the buffer and reset the elem
 	// buffer value to make sure it isn't read multiple times
+/*
 	sel_mode 	= cbGet(&cb);
 	lift 	= cbGet(&cb);
 	roll 	= cbGet(&cb);
 	pitch 	= cbGet(&cb);
 	yaw 	= cbGet(&cb);
-
-	//For P_MODE the P gains must be taken from the second element in the array
-/*
-	skipfirstdata   = getchar(); //Should be zero
-	pcontrol 	= getchar();
-	p1control 	= getchar();
-	p2control 	= getchar();
- */
-	checksum = cbGet(&cb);
+*/
+	sel_mode = cbGet(&cb);
+	for (i = 1; i < nParams; i++)
+	{
+		package[i] = cbGet(&cb);
+	}
 
 	//MODE EVALUATION
-	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) {
+/*	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) {
 							mode=sel_mode;
 	}
 	else mode=prev_mode;
+*/
+
+	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) 
+	{
+							package[0] = sel_mode;
+	}
+	else package[0] = prev_mode;
 
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
@@ -590,13 +601,19 @@ void decode(void)
 int check_sum(void)
 {
 	BYTE sum;
-	sum = 0;
+	int i;
 
-	sum = sel_mode + lift + roll + pitch + yaw; // + pcontrol + p1control + p2control;
+	sum = sel_mode;
+
+	// independent of the package structure
+	for (i = 1; i < nParams; i++)
+	{
+		sum += package[i];
+	}	
 	sum = ~sum;
 
 	if (checksum != sum) {
-//		printf("\nInvalid Pkg");
+		printf("\nInvalid Pkg");
 		return 0;
 	}
 	else
@@ -624,12 +641,11 @@ int main()
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
  	
-	// timer interrupt
-	// TODO find most optimal timing interval for this
-        //X32_timer_per = 5 * CLOCKS_PER_MS;
-        //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
-        //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
-        //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
+	// timer interrupt - less high priority
+        X32_timer_per = 100 * CLOCKS_PER_MS;
+        SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 18);
+        ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	// prepare button interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_BUTTONS, &isr_button);
@@ -659,6 +675,11 @@ int main()
 	cbInit(&cb);
 	// Initialize value to write
 	elem.value = 0;
+	
+	for (i = 0; i < nParams; i++)
+	{
+		package[i] = 0;
+	}
 
 	// Print to indicate start
 	printf("Hello! \nMode, Parameter 1, Parameter 2, Parameter 3, Parameter 4, Checksum");
@@ -668,7 +689,10 @@ int main()
 
 	while (! program_done) {
 		// reset the commflag to check communication
-		commflag++;		
+		if (commflag++ > commthres)
+		{
+			package[MODE] = PANIC_MODE;
+		}		
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
@@ -679,21 +703,24 @@ int main()
 			if (check_sum())
 			{
 //				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-				printf("\nmode: %x", mode); 
-				switch (mode)
+//				printf("\nmode: %x", mode); 
+				switch (package[MODE])
 				{
 					case SAFE_MODE:
 						safe_mode();
-						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
+//						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
+						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
 					case PANIC_MODE:
-						panic_mode();						
+						panic_mode();	
+						printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);						
 						// panic
 						break;
 					case MANUAL_MODE:
 						manual_mode();
-						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+				//		printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// manual
 						break;
 					case CALIBRATION_MODE:
@@ -720,7 +747,6 @@ int main()
 				}			
 			}
 		}
-// TODO switch case in or out all the if statements?  
 		// Delay 20 micro second = 50 Hz according to the sending of the packages
 		delay_us(20);
 	}
