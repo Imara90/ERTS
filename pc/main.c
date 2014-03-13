@@ -53,16 +53,17 @@ int main()
 		
 		//reads data from the joystick ...comment if joystick is not connected
 		abort = read_js(jmap);
+		//printf("jmap[%x][%x][%x][%x]\n",jmap[0],jmap[1],jmap[2],jmap[3]);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		if (key != -1) abort = read_kb(keymap,key);
 		
 		switch (keymap[0]) {
-			case MODE_P: //CONTROL GAIN
-				data[0] = keymap[5];
-				data[1] = keymap[6];
-				data[2] = keymap[7];
-				data[3] = 0;
+			case MODE_P: //CONTROL GAINS, Starting from the second place in data array (First place is reserved for lift value)
+				data[0] = 0;				
+				data[1] = keymap[5];
+				data[2] = keymap[6];
+				data[3] = keymap[7];
 				break;
 				
 			default: //CONTROL MODES
@@ -72,7 +73,7 @@ int main()
 				data[3] = jmap[3]+keymap[4];
 				break;
 		}
-
+		//printf("data[%x][%x][%x][%x]\n",data[0],data[1],data[2],data[3]);
 		
 		//EVALUATES IF ABORTION REQUESTEQ
 		if ( abort == 1) keymap[0] = MODE_ABORT;

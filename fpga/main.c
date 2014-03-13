@@ -565,7 +565,10 @@ void decode(void)
 	roll 	= cbGet(&cb);
 	pitch 	= cbGet(&cb);
 	yaw 	= cbGet(&cb);
+
+	//For P_MODE the P gains must be taken from the second element in the array
 /*
+	skipfirstdata   = getchar(); //Should be zero
 	pcontrol 	= getchar();
 	p1control 	= getchar();
 	p2control 	= getchar();
