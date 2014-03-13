@@ -88,9 +88,9 @@ TODO also want telemetry set and concurring protocol
 #define PITCH		0x03
 #define YAW		0x04
 
-#define PCONTROL	0x01
-#define P1CONTROL	0x02
-#define P2CONTROL	0x03
+#define PCONTROL	0x02
+#define P1CONTROL	0x03
+#define P2CONTROL	0x04
 
 #define CHECKSUM	0x05
 
@@ -178,6 +178,7 @@ int 	commthres = 1000;
 // telemetry
 int 	stampinter = 0;
 
+BYTE 	package[nParams];
 BYTE 	sel_mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 BYTE 	prev_mode = 0;//VARIABLE TO SAVE PREVIOUS MODE
 BYTE	mode = 0;//ACTUAL OPERATING MODE
@@ -374,7 +375,12 @@ BYTE cbGet(CircularBuffer *cb) {
  */
 void isr_qr_timer(void)
 {
-	printf("\ntime: %d", X32_ms_clock);
+	int i;
+//	printf("\ntime: %d", X32_ms_clock);
+	for (i = 0; i < nParams; i++)
+	{
+
+	}
 }
 
 /*------------------------------------------------------------------
@@ -548,34 +554,40 @@ void decode(void)
 	/* Get the next character in the buffer after the starting byte
 	 * Whilst disabling all the interrupts CRITICAL SECTION
 	 */
+	int i;
 
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	// Safe the current mode to determine mode changes
-	prev_mode = mode;
+	prev_mode = package[0];
 
 	// Take the value from the buffer and reset the elem
 	// buffer value to make sure it isn't read multiple times
+/*
 	sel_mode 	= cbGet(&cb);
 	lift 	= cbGet(&cb);
 	roll 	= cbGet(&cb);
 	pitch 	= cbGet(&cb);
 	yaw 	= cbGet(&cb);
-
-	//For P_MODE the P gains must be taken from the second element in the array
-/*
-	skipfirstdata   = getchar(); //Should be zero
-	pcontrol 	= getchar();
-	p1control 	= getchar();
-	p2control 	= getchar();
- */
-	checksum = cbGet(&cb);
+*/
+	sel_mode = cbGet(&cb);
+	for (i = 1; i < nParams; i++)
+	{
+		package[i] = cbGet(&cb);
+	}
 
 	//MODE EVALUATION
-	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) {
+/*	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) {
 							mode=sel_mode;
 	}
 	else mode=prev_mode;
+*/
+
+	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) 
+	{
+							package[0] = sel_mode;
+	}
+	else package[0] = prev_mode;
 
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
@@ -589,13 +601,19 @@ void decode(void)
 int check_sum(void)
 {
 	BYTE sum;
-	sum = 0;
+	int i;
 
-	sum = sel_mode + lift + roll + pitch + yaw; // + pcontrol + p1control + p2control;
+	sum = sel_mode;
+
+	// independent of the package structure
+	for (i = 1; i < nParams; i++)
+	{
+		sum += package[i];
+	}	
 	sum = ~sum;
 
 	if (checksum != sum) {
-//		printf("\nInvalid Pkg");
+		printf("\nInvalid Pkg");
 		return 0;
 	}
 	else
@@ -657,6 +675,11 @@ int main()
 	cbInit(&cb);
 	// Initialize value to write
 	elem.value = 0;
+	
+	for (i = 0; i < nParams; i++)
+	{
+		package[i] = 0;
+	}
 
 	// Print to indicate start
 	printf("Hello! \nMode, Parameter 1, Parameter 2, Parameter 3, Parameter 4, Checksum");
@@ -668,7 +691,7 @@ int main()
 		// reset the commflag to check communication
 		if (commflag++ > commthres)
 		{
-			mode = PANIC_MODE;
+			package[MODE] = PANIC_MODE;
 		}		
 
 		// See if there is a character in the buffer
@@ -681,20 +704,23 @@ int main()
 			{
 //				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
 //				printf("\nmode: %x", mode); 
-				switch (mode)
+				switch (package[MODE])
 				{
 					case SAFE_MODE:
 						safe_mode();
 //						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
+						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
 					case PANIC_MODE:
-						panic_mode();						
+						panic_mode();	
+						printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);						
 						// panic
 						break;
 					case MANUAL_MODE:
 						manual_mode();
-//						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+				//		printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// manual
 						break;
 					case CALIBRATION_MODE:

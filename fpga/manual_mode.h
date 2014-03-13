@@ -16,39 +16,39 @@ for (i = 0; i < 4; i++)
 
 //ROLL
 	if(roll<=127) {
-		ae[3]=roll*ROLLPITCHYAW_CONVERSION;
+		ae[3]=package[ROLL]*ROLLPITCHYAW_CONVERSION;
 	}
 	else {
-		ae[1]=-(roll-255)*NEG_ROLLPITCHYAW_CONVERSION;
+		ae[1]=-(package[ROLL]-255)*NEG_ROLLPITCHYAW_CONVERSION;
 	}
 
 //PITCH
-if(pitch<=127) {
-		ae[0]=pitch*ROLLPITCHYAW_CONVERSION;
+if(package[PITCH]<=127) {
+		ae[0]=package[PITCH]*ROLLPITCHYAW_CONVERSION;
 	}
 	else {
-		ae[2]= -(pitch-255)*NEG_ROLLPITCHYAW_CONVERSION;
+		ae[2]= -(package[PITCH]-255)*NEG_ROLLPITCHYAW_CONVERSION;
 	}
 
 //YAW
-if(yaw<=127) {
-	ae[0]+=yaw*ROLLPITCHYAW_CONVERSION;
-	ae[2]+= yaw*ROLLPITCHYAW_CONVERSION;
+if(package[YAW]<=127) {
+	ae[0]+=package[YAW]*ROLLPITCHYAW_CONVERSION;
+	ae[2]+= package[YAW]*ROLLPITCHYAW_CONVERSION;
 }
 else {
-	ae[1]+=-(yaw-255)*NEG_ROLLPITCHYAW_CONVERSION;
-	ae[3]+=-(yaw-255)*NEG_ROLLPITCHYAW_CONVERSION;
+	ae[1]+=-(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+	ae[3]+=-(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;
 }
 //LIFT
 for(i = 0; i < 4; i++) {
 
-	if(lift<=75) {
+	if(package[LIFT]<=75) {
 			
-		ae[i]+=lift*LOW_LIFT_CONVERSION;
+		ae[i]+=package[LIFT]*LOW_LIFT_CONVERSION;
 	}
 	else {
 
-		ae[i]+=(lift-255)*HIGH_LIFT_CONVERSION+ENGINE_LIMIT;
+		ae[i]+=(package[LIFT]-255)*HIGH_LIFT_CONVERSION+ENGINE_LIMIT;
 	}
 
 	
