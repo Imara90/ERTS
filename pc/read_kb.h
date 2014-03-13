@@ -101,7 +101,7 @@ int i;
 			}
 			break;
 		default:
-			printf("\n CHARACTER NOT VALID\n");
+			printf("\n [%i] CHARACTER NOT VALID\n",c);
 			break;
 	}
 	c=-1;

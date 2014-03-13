@@ -140,6 +140,9 @@ int   dl_count = 0;
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
 
+//TestTelemetry Pkg
+int   tel_data[10] = {0x80,0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x00};
+
 /*********************************************************************/
 
 // For defining the circular buffer
@@ -283,7 +286,18 @@ void CheckMotorRamp(void)
  */
 void isr_rs232_tx(void)
 {
-	//X32_rs232_data
+	//X32_rs232_data = 0x80;
+	/*int i,sum;
+	//CheckSum Calculator
+	for (i=2;i<9;i++){
+		sum += tel_data[i];
+	}
+	sum = ~sum;
+	tel_data[9] = sum;
+	for (i=0;i<10;i++){
+		X32_rs232_data = tel_data[i];
+	}*/
+	
 }
 
 /*------------------------------------------------------------------
@@ -636,6 +650,11 @@ int main()
         SET_INTERRUPT_PRIORITY(INTERRUPT_BUTTONS, 8);
 	button = 0;
         ENABLE_INTERRUPT(INTERRUPT_BUTTONS);	
+	
+	// prepare rs232 tx interrupt handler
+        SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_TX, &isr_rs232_tx);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 15);
+	ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);
 
 	// prepare rs232 rx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);

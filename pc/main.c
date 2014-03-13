@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "Package.h"
 
 #include <unistd.h>  /* UNIX standard function definitions */
@@ -49,8 +50,16 @@ int main()
 	int result;
 	int abort = 0;
 	int key = 0;
-	BYTE ReadBuffer[1];
+	//telemetry variables
+	BYTE ReadBuffer;
  	int buff_count = 0;
+	bool first_byte = false;
+	bool second_byte = false;
+	bool read_data = false;
+	BYTE tel_data[20] = {0x80,0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x00,0,0,0,0,0,0,0,0,0,0};
+	int telcount = 0;
+	int datacount = 0;	
+	BYTE DataTel[8];
 	while (key != 'x') {
 		
 		//reads data from the joystick ...comment if joystick is not connected
@@ -94,8 +103,54 @@ int main()
 		//Asserts in case of sending wrong number of bytes
 		assert(result == 7);
 
-		read (fd_rs232, ReadBuffer, sizeof ReadBuffer);
- 		ReadArray[buff_count++] = ReadBuffer[0];
+//		read (fd_rs232, ReadBuffer, sizeof ReadBuffer);
+		//printf("\n\nReceivedTelemetryPkg: ");
+		//for (i = 0; i < 10; i++) {
+		ReadBuffer = tel_data[telcount];
+		telcount++;
+		if (telcount > 19){ 
+			telcount = 0;
+			printf("\n\n");
+			
+		}
+		//printf("[%x]",ReadBuffer);
+		//}
+
+//		printf("\n\n [%x]", ReadBuffer[0]);
+		
+		// CHECKING STARTING BYTES
+		if (ReadBuffer == 0x80){
+			first_byte = true;
+		}
+		second_byte = false;
+		if (ReadBuffer == 0x00 && first_byte == true){
+			second_byte = true;
+		}
+		
+		// STORING DATA
+		if(read_data && datacount < 8){
+			DataTel[datacount] = ReadBuffer;
+			printf("Reading Byte : %i",datacount);
+			datacount++;
+		}
+		
+		// PRINTING RECEIVED DATA
+		if (datacount == 8){
+			printf("\n\nReceived Data:");
+			for (i=0;i<8;i++) printf("[%x]",DataTel[i]);
+		}
+		
+		// 
+		if (first_byte == true && second_byte == true){
+			read_data = true;
+			first_byte = false;
+			second_byte = false;
+			printf("\n\n Starting Bytes Received...: ");
+			datacount = 0;
+		}
+
+		
+		
 		
 		// 20 msec pause = 50 Hz
 		usleep(20000);
