@@ -74,11 +74,6 @@ TODO check what the & bytes are for the led function in main
 #define BYTE unsigned char
 #define WORD unsigned short
 
-// RX FIFO
-#define FIFOSIZE 16
-char	fifo[FIFOSIZE]; 
-int	iptr, optr;
-
 // mode, lift ,roll, pitch, yaw, checksum 
 #define nParams		0x06
 
@@ -184,10 +179,14 @@ int 	check_sum();
 
 int 	startflag = 0;
 int	commflag = 1;
+int 	commthres = 1000;
+
 BYTE 	sel_mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 BYTE 	prev_mode = 0;//VARIABLE TO SAVE PREVIOUS MODE
-BYTE  mode = 0;//ACTUAL OPERATING MODE
+BYTE	mode = 0;//ACTUAL OPERATING MODE
 BYTE	last_control_mode = 0;//VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
+
+// Own written functions
 #include "safe_mode.h"
 #include "manual_mode.h"
 #include "panic_mode.h"
@@ -274,16 +273,6 @@ void CheckMotorRamp(void)
 		}
 		prev_ae[i] = ae[i];
 	}
-}
-
-/*------------------------------------------------------------------
- * isr_rs232_tx -- QR link tx interrupt handler
- * By Daniel Lemus
- *------------------------------------------------------------------
- */
-void isr_rs232_tx(void)
-{
-	//X32_rs232_data
 }
 
 /*------------------------------------------------------------------
@@ -490,6 +479,7 @@ void isr_rs232_rx(void)
  */
 void isr_wireless_rx(void)
 {
+/*
 	BYTE c;
 
 	// signal interrupt
@@ -502,7 +492,7 @@ void isr_wireless_rx(void)
 		if (iptr > FIFOSIZE)
 			iptr = 0;
 	}
-
+*/
 }
 
 /*------------------------------------------------------------------
@@ -543,7 +533,6 @@ void toggle_led(int i)
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
-
 void decode(void)
 {	
 	/* Get the next character in the buffer after the starting byte
@@ -668,7 +657,10 @@ int main()
 
 	while (! program_done) {
 		// reset the commflag to check communication
-		commflag++;		
+		if (commflag++ > commthres)
+		{
+			mode = PANIC_MODE;
+		}		
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
@@ -679,7 +671,7 @@ int main()
 			if (check_sum())
 			{
 //				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-				printf("\nmode: %x", mode); 
+//				printf("\nmode: %x", mode); 
 				switch (mode)
 				{
 					case SAFE_MODE:
@@ -720,7 +712,6 @@ int main()
 				}			
 			}
 		}
-// TODO switch case in or out all the if statements?  
 		// Delay 20 micro second = 50 Hz according to the sending of the packages
 		delay_us(20);
 	}
