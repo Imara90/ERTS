@@ -16,13 +16,6 @@ TODO determine priorities
 TODO control values have to be send
 TODO ask for log that is saved during running
 TODO also want telemetry set and concurring protocol
-TODO change modes to enum
-TODO Send values to engines
-TODO determine the period for the timer interrupt
-TODO manual mode
-TODO panic mode
-TODO safe mode
-TODO check what the & bytes are for the led function in main
 
  *------------------------------------------------------------------
  */
@@ -177,9 +170,13 @@ void 	print_comm();
 void 	check_start();
 int 	check_sum();
 
+// Flags and communication variables
 int 	startflag = 0;
 int	commflag = 1;
 int 	commthres = 1000;
+
+// telemetry
+int 	stampinter = 0;
 
 BYTE 	sel_mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
 BYTE 	prev_mode = 0;//VARIABLE TO SAVE PREVIOUS MODE
@@ -191,6 +188,8 @@ BYTE	last_control_mode = 0;//VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
 #include "manual_mode.h"
 #include "panic_mode.h"
 #include "calibration_mode.h"
+
+
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
  * Multiplies the values and then shift them right by 14 bits
@@ -365,6 +364,17 @@ BYTE cbGet(CircularBuffer *cb) {
 	cb->start = (cb->start + 1) % CB_SIZE;
 
 	return c;
+}
+
+/*------------------------------------------------------------------
+ * isr_qr_timer -- QR timer interrupt handler
+ * Send the telemetry back less fast that while loop
+ * By Imara Speek - 1506374
+ *------------------------------------------------------------------
+ */
+void isr_qr_timer(void)
+{
+	printf("\ntime: %d", X32_ms_clock);
 }
 
 /*------------------------------------------------------------------
@@ -613,12 +623,11 @@ int main()
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
  	
-	// timer interrupt
-	// TODO find most optimal timing interval for this
-        //X32_timer_per = 5 * CLOCKS_PER_MS;
-        //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
-        //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 21);
-        //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
+	// timer interrupt - less high priority
+        X32_timer_per = 100 * CLOCKS_PER_MS;
+        SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 18);
+        ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	// prepare button interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_BUTTONS, &isr_button);
@@ -676,7 +685,7 @@ int main()
 				{
 					case SAFE_MODE:
 						safe_mode();
-						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
+//						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
 					case PANIC_MODE:
@@ -685,7 +694,7 @@ int main()
 						break;
 					case MANUAL_MODE:
 						manual_mode();
-						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
+//						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
 						// manual
 						break;
 					case CALIBRATION_MODE:
