@@ -99,15 +99,15 @@ TODO also want telemetry set and concurring protocol
 
 //BUTTERWORTH LOW PASS FILTER CONSTANTS
 //for 25Hz cut-off frequency and 1266.5 Hz sampling freq.
-//#define A0		969
-//#define A1		969
-//#define B0		16384
-//#define B1		-14444
+#define A0		969
+#define A1		969
+#define B0		16384
+#define B1		-14444
 //for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
-#define A0		401
+/*#define A0		401
 #define A1		401
 #define B0		16384
-#define B1		-15580
+#define B1		-15580*/
 
 
 ////filter temporary variables
@@ -190,6 +190,11 @@ BYTE	last_control_mode = 0;//VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
 #include "panic_mode.h"
 #include "calibration_mode.h"
 
+// Time variables for integration
+int t0 = 0;
+int t1 = 0;
+int dt = 0;
+int integral[3] = {0,0,0};
 
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
@@ -197,11 +202,12 @@ BYTE	last_control_mode = 0;//VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-unsigned int mult(unsigned int a,unsigned int b)
+int mult(int a, int b)
 {
 	unsigned int result;
 	result = a * b;
 	result = (result >> 14);
+//	printf("\nresult(%i * %i) = %i,",a,b,result );
  	return result;
 }
 
@@ -210,12 +216,13 @@ unsigned int mult(unsigned int a,unsigned int b)
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-void Butt2Filter()
+void Butt2Filter(void)
 {
 	int i;
 	for (i=0; i<6; i++) {
 		y0[i] = (mult(A0,x0[i]) + mult(A1,x1[i]) - mult(B1,y1[i]));
  		x1[i] = x0[i];
+		y1[i] = y0[i];
 	}
 }
 
