@@ -102,12 +102,12 @@ TODO also want telemetry set and concurring protocol
 #define A0		969
 #define A1		969
 #define B0		16384
-#define B1		-14444
+#define B1		14444
 //for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
 /*#define A0		401
 #define A1		401
 #define B0		16384
-#define B1		-15580*/
+#define B1		15580*/
 
 
 ////filter temporary variables
@@ -220,7 +220,7 @@ void Butt2Filter(void)
 {
 	int i;
 	for (i=0; i<6; i++) {
-		y0[i] = (mult(A0,x0[i]) + mult(A1,x1[i]) - mult(B1,y1[i]));
+		y0[i] = (mult(A0,x0[i]) + mult(A1,x1[i]) + mult(B1,y1[i]));
  		x1[i] = x0[i];
 		y1[i] = y0[i];
 	}
@@ -731,6 +731,7 @@ int main()
 						// manual
 						break;
 					case CALIBRATION_MODE:
+						calibration_mode();
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:

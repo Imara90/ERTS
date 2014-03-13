@@ -19,14 +19,21 @@ void calibration_mode(void) {
 		for(i = 0; i < 6; i++) OFFSET_y0[i] = 0;
 	}
 		
-	for(i = 0; i < 6; i++) OFFSET_y0[i] += y0[i];
+	for(i = 0; i < 6; i++) 
+	{
+		OFFSET_y0[i] += y0[i];
+	}
 	calibration_counter++;
 
 	if (calibration_counter == 128) {
 
-		for(i = 0; i < 6; i++) OFFSET_y0[i] >>= 7;
+		for(i = 0; i < 6; i++) {
+			printf("[%i]",OFFSET_y0[i]);
+			OFFSET_y0[i] >>= 7;
+			printf("[%i]",OFFSET_y0[i]);
+		}
 		calibration_counter = 0;
-		mode = STANDBY_MODE;
+		package[MODE] = STANDBY_MODE;
 		printf("\n... sensor calibration complete. Press '0' to enter SAFE MODE!\n");
 	}
 
