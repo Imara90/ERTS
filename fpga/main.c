@@ -111,15 +111,15 @@ int	iptr, optr;
 
 //BUTTERWORTH LOW PASS FILTER CONSTANTS
 //for 25Hz cut-off frequency and 1266.5 Hz sampling freq.
-//#define A0		969
-//#define A1		969
-//#define B0		16384
-//#define B1		-14444
+#define A0		969
+#define A1		969
+#define B0		16384
+#define B1		-14444
 //for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
-#define A0		401
+/*#define A0		401
 #define A1		401
 #define B0		16384
-#define B1		-15580
+#define B1		-15580*/
 
 
 ////filter temporary variables
@@ -195,17 +195,26 @@ BYTE	last_control_mode = 0;//VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
 #include "manual_mode.h"
 #include "panic_mode.h"
 #include "calibration_mode.h"
+
+/*************************************************************************/
+// Time variables for integration
+int t0 = 0;
+int t1 = 0;
+int dt = 0;
+int integral[3] = {0,0,0};
+
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
  * Multiplies the values and then shift them right by 14 bits
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-unsigned int mult(unsigned int a,unsigned int b)
+int mult(int a,int b)
 {
 	unsigned int result;
 	result = a * b;
 	result = (result >> 14);
+	printf("\nresult(%i * %i) = %i,",a,b,result );
  	return result;
 }
 
@@ -214,12 +223,30 @@ unsigned int mult(unsigned int a,unsigned int b)
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-void Butt2Filter()
+void Butt2Filter(void)
 {
 	int i;
 	for (i=0; i<6; i++) {
 		y0[i] = (mult(A0,x0[i]) + mult(A1,x1[i]) - mult(B1,y1[i]));
  		x1[i] = x0[i];
+	}
+}
+
+/*------------------------------------------------------------------
+ * Numerical Integration
+ * By Daniel Lemus
+ *------------------------------------------------------------------
+ */
+void num_integral(void)
+{
+	int i;
+	
+	t0 = t1;
+	t1 = timestamp;
+	dt = t1 - t0;
+	
+	for (i=3;i<6;i++){
+		integral[i] += dt*y0[i];
 	}
 }
 
@@ -420,6 +447,7 @@ void isr_qr_link(void)
 	timestamp = X32_QR_timestamp;
 	
 	Butt2Filter();
+//	num_integral();
 	
 	//Gets the maximum value
 	/*for (i=0;i<6;i++)
@@ -433,10 +461,16 @@ void isr_qr_link(void)
 			min[i] = x0[i];
 		}
 	}*/
-		
-	/*printf("Unfiltered ... s0 = %i s1 = %i s2 = %i s3 = %i s4 = %i s5 = %i \n",s0,s1,s2,s3,s4,s5);
-	printf("filtered ..... s0 = %i s1 = %i s2 = %i s3 = %i s4 = %i s5 = %i \n",y0[1],y0[2],y0[3],y0[4],y0[5],y0[6]);
-   	printf("size = %i \n",sizeof(s0));*/
+	
+	printf("\n\n Unfiltered...\n");
+	for (i = 0; i<6; i++) {
+		printf(" s%i = %i",i,x0[i]);
+	}
+	printf("filtered.....\n");
+	for (i = 0; i<6; i++) {
+		printf(" s%i = %i",i,y0[i]);
+	}
+//   	printf("size = %i \n",sizeof(s0));
 	//printf("max = [%i][%i][%i][%i][%i][%i] \n",max[0],max[1],max[2],max[3],max[4],max[5]);
 
 
