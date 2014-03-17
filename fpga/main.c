@@ -382,12 +382,7 @@ BYTE cbGet(CircularBuffer *cb) {
  */
 void isr_qr_timer(void)
 {
-	int i;
-//	printf("\ntime: %d", X32_ms_clock);
-	for (i = 0; i < nParams; i++)
-	{
 
-	}
 }
 
 /*------------------------------------------------------------------
@@ -492,6 +487,18 @@ void isr_rs232_rx(void)
 		}
 // TODO determine if we want it to overwrite		
 	}
+
+}
+
+/*------------------------------------------------------------------
+ * isr_rs232_tx -- rs232 tx interrupt handler 
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+void isr_rs232_tx(void)
+{
+	// signal interrupt
+	toggle_led(4);
 
 }
 
@@ -649,10 +656,10 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
  	
 	// timer interrupt - less high priority
-        X32_timer_per = 100 * CLOCKS_PER_MS;
-        SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 18);
-        ENABLE_INTERRUPT(INTERRUPT_TIMER1);
+        //X32_timer_per = 100 * CLOCKS_PER_MS;
+        //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
+        //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 18);
+        //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	// prepare button interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_BUTTONS, &isr_button);
@@ -665,6 +672,11 @@ int main()
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
 	while (X32_rs232_char) c = X32_rs232_data; // empty buffer
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
+
+	// prepare rs232 tx interrupt and getchar handler
+        SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_TX, &isr_rs232_tx);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 15);
+        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);        
 
         // prepare wireless rx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_WIRELESS_RX, &isr_wireless_rx);
@@ -695,6 +707,11 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	while (! program_done) {
+		if (X32_rs232_stat & 0x01)
+		{
+			X32_rs232_data = 0x3f;
+		}
+		
 		// reset the commflag to check communication
 		if (commflag++ > commthres)
 		{
