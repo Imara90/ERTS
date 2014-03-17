@@ -37,11 +37,11 @@ int main()
 		return 0;
 	}
 	//Joystick buffer clearence and calibration of yaw axis
-	clear_js_buffer();
+	//clear_js_buffer();
 	js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
-											 (P,P1,P2,0 for Control Gains Mode)*/
+	 *(P,P1,P2,0 for Control Gains Mode)*/
 	int data[PARAM_LENGTH] = {0,0,0,0};
 	Package mPkg;
 	InitPkg(&mPkg,MODE_SAFE); //Intializes Package
@@ -51,10 +51,29 @@ int main()
 	int key = 0;
 	BYTE ReadBuffer[1];
  	int buff_count = 0;
+
+/*****************************************************************/
+	// To clean the rx buffer 
+	int 	nbrx, nbtx, ptx, prx, nv;
+	fd_set	rfdsin, rfdsout;
+
+	nbtx=nbrx=0; ptx=prx=0;
+
+	FD_SET(0, &rfdsin); // stdin
+	FD_SET(fd, &rfdsin); // rs232 rx
+
+/*****************************************************************/
+	
 	while (key != 'x') {
+
+		FD_ZERO(&rfdsin);
+		FD_ZERO(&rfdsout);
+	
+		if(nbtx==0) FD_SET(0, &rfdsin); else FD_SET(fd, &rfdsout);
+		if(nbrx==0) FD_SET(fd, &rfdsin); else FD_SET(1, &rfdsout);
 		
 		//reads data from the joystick ...comment if joystick is not connected
-		abort = read_js(jmap);
+		//abort = read_js(jmap);
 		//printf("jmap[%x][%x][%x][%x]\n",jmap[0],jmap[1],jmap[2],jmap[3]);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
@@ -93,6 +112,9 @@ int main()
 		result = write(fd_rs232,mPkg.Pkg,7*sizeof(BYTE));
 		//Asserts in case of sending wrong number of bytes
 		assert(result == 7);
+
+		nbtx = read (fd_rs232, ReadBuffer, sizeof(ReadBuffer));
+		printf("\nReadBuffer hex: %x char: %c ", ReadBuffer[0],ReadBuffer[0]); 
 
 	//	read (fd_rs232, ReadBuffer, sizeof ReadBuffer);
  	//	ReadArray[buff_count++] = ReadBuffer[0];

@@ -146,7 +146,7 @@ typedef struct {
 	// including extra element for one slot open protocol
 } CircularBuffer;
 
-CircularBuffer cb;
+CircularBuffer txcb, rxcb;
 
 /*********************************************************************/
 
@@ -375,19 +375,13 @@ BYTE cbGet(CircularBuffer *cb) {
 }
 
 /*------------------------------------------------------------------
- * isr_qr_timer -- QR timer interrupt handler
- * Send the telemetry back less fast that while loop
+ * isr_qr_timer -- QR timer interrupt handler - not used
  * By Imara Speek - 1506374
  *------------------------------------------------------------------
  */
 void isr_qr_timer(void)
 {
-	int i;
-//	printf("\ntime: %d", X32_ms_clock);
-	for (i = 0; i < nParams; i++)
-	{
 
-	}
 }
 
 /*------------------------------------------------------------------
@@ -484,38 +478,27 @@ void isr_rs232_rx(void)
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
 	{
-		cb.elems[cb.end].value = (BYTE)X32_rs232_data;
-		cb.end = (cb.end + 1) % CB_SIZE;
-		if (cb.end == cb.start)
+		rxcb.elems[rxcb.end].value = (BYTE)X32_rs232_data;
+		rxcb.end = (rxcb.end + 1) % CB_SIZE;
+		if (rxcb.end == rxcb.start)
 		{
-			cb.start = (cb.start + 1) % CB_SIZE; /* full, overwrite */
+			rxcb.start = (rxcb.start + 1) % CB_SIZE; /* full, overwrite */
 		}
 // TODO determine if we want it to overwrite		
 	}
 
 }
 
-
 /*------------------------------------------------------------------
- * isr_wireless_rx -- wireless rx interrupt handler - not used
+ * isr_rs232_tx -- rs232 tx interrupt handler 
+ * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
-void isr_wireless_rx(void)
+void isr_rs232_tx(void)
 {
-/*
-	BYTE c;
-
 	// signal interrupt
 	toggle_led(4);
 
-
-	// may have received > 1 char before IRQ is serviced so loop
-	while (X32_wireless_char) {
-		fifo[iptr++] = X32_wireless_data;
-		if (iptr > FIFOSIZE)
-			iptr = 0;
-	}
-*/
 }
 
 /*------------------------------------------------------------------
@@ -570,25 +553,11 @@ void decode(void)
 
 	// Take the value from the buffer and reset the elem
 	// buffer value to make sure it isn't read multiple times
-/*
-	sel_mode 	= cbGet(&cb);
-	lift 	= cbGet(&cb);
-	roll 	= cbGet(&cb);
-	pitch 	= cbGet(&cb);
-	yaw 	= cbGet(&cb);
-*/
-	sel_mode = cbGet(&cb);
+	sel_mode = cbGet(&rxcb);
 	for (i = 1; i < nParams; i++)
 	{
-		package[i] = cbGet(&cb);
+		package[i] = cbGet(&rxcb);
 	}
-
-	//MODE EVALUATION
-/*	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) {
-							mode=sel_mode;
-	}
-	else mode=prev_mode;
-*/
 
 	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) 
 	{
@@ -649,10 +618,10 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
  	
 	// timer interrupt - less high priority
-        X32_timer_per = 100 * CLOCKS_PER_MS;
-        SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 18);
-        ENABLE_INTERRUPT(INTERRUPT_TIMER1);
+        //X32_timer_per = 100 * CLOCKS_PER_MS;
+        //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
+        //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 18);
+        //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	// prepare button interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_BUTTONS, &isr_button);
@@ -666,20 +635,27 @@ int main()
 	while (X32_rs232_char) c = X32_rs232_data; // empty buffer
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
 
+	// prepare rs232 tx interrupt and getchar handler
+        SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_TX, &isr_rs232_tx);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 15);
+        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);        
+
         // prepare wireless rx interrupt and getchar handler
-        SET_INTERRUPT_VECTOR(INTERRUPT_WIRELESS_RX, &isr_wireless_rx);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_WIRELESS_RX, 19);
-        while (X32_wireless_char) c = X32_wireless_data; // empty buffer
-        ENABLE_INTERRUPT(INTERRUPT_WIRELESS_RX);
+        //SET_INTERRUPT_VECTOR(INTERRUPT_WIRELESS_RX, &isr_wireless_rx);
+        //SET_INTERRUPT_PRIORITY(INTERRUPT_WIRELESS_RX, 19);
+        //while (X32_wireless_char) c = X32_wireless_data; // empty buffer
+        //ENABLE_INTERRUPT(INTERRUPT_WIRELESS_RX);
 
 	// initialize some other stuff
 	X32_leds = 0;
 	program_done = 0;
 
 	// clean the buffer
-	cbClean(&cb);
+	cbClean(&rxcb);
+	cbClean(&txcb);
 	// initialize the buffer
-	cbInit(&cb);
+	cbInit(&rxcb);
+	cbInit(&txcb);
 	// Initialize value to write
 	elem.value = 0;
 	
@@ -694,7 +670,7 @@ int main()
 	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	while (! program_done) {
+	while (! program_done) {		
 		// reset the commflag to check communication
 		if (commflag++ > commthres)
 		{
@@ -703,14 +679,19 @@ int main()
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
-		c = cbGet(&cb);
+		c = cbGet(&rxcb);
 		if (c == STARTING_BYTE)
 		{
 			decode();
 			if (check_sum())
 			{
-//				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-//				printf("\nmode: %x", mode); 
+				// If the package is received correctly, send it back as telemetry
+				// TODO after debugging add a polling function				
+				if (X32_rs232_stat & 0x01)
+				{
+					X32_rs232_data = 0x3f;
+				}	
+
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
