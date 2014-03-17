@@ -77,7 +77,7 @@ int main()
 		//printf("jmap[%x][%x][%x][%x]\n",jmap[0],jmap[1],jmap[2],jmap[3]);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
-		if (key != -1) abort = read_kb(keymap,key);
+		if (key != -1) abort = read_kb(keymap,(char*)&key);
 		
 		switch (keymap[0]) {
 			case MODE_P: //CONTROL GAINS, Starting from the second place in data array (First place is reserved for lift value)
