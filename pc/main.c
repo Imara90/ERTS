@@ -37,7 +37,7 @@ int main()
 		return 0;
 	}
 	//Joystick buffer clearence and calibration of yaw axis
-	//clear_js_buffer();
+	clear_js_buffer();
 	js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
@@ -54,7 +54,7 @@ int main()
 	while (key != 'x') {
 		
 		//reads data from the joystick ...comment if joystick is not connected
-		//abort = read_js(jmap);
+		abort = read_js(jmap);
 		//printf("jmap[%x][%x][%x][%x]\n",jmap[0],jmap[1],jmap[2],jmap[3]);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
