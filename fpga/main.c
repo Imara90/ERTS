@@ -670,12 +670,7 @@ int main()
 	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	while (! program_done) {
-		if (X32_rs232_stat & 0x01)
-		{
-			X32_rs232_data = 0x3f;
-		}
-		
+	while (! program_done) {		
 		// reset the commflag to check communication
 		if (commflag++ > commthres)
 		{
@@ -690,8 +685,13 @@ int main()
 			decode();
 			if (check_sum())
 			{
-//				printf("\nYay! [%x][%x][%x][%x][%x][%x]\n", mode, lift, roll, pitch, yaw, checksum);
-//				printf("\nmode: %x", mode); 
+				// If the package is received correctly, send it back as telemetry
+				// TODO after debugging add a polling function				
+				if (X32_rs232_stat & 0x01)
+				{
+					X32_rs232_data = 0x3f;
+				}	
+
 				switch (package[MODE])
 				{
 					case SAFE_MODE:

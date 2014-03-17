@@ -41,7 +41,7 @@ int main()
 	js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
-											 (P,P1,P2,0 for Control Gains Mode)*/
+	 *(P,P1,P2,0 for Control Gains Mode)*/
 	int data[PARAM_LENGTH] = {0,0,0,0};
 	Package mPkg;
 	InitPkg(&mPkg,MODE_SAFE); //Intializes Package
@@ -113,7 +113,7 @@ int main()
 		//Asserts in case of sending wrong number of bytes
 		assert(result == 7);
 
-		read (fd_rs232, ReadBuffer, sizeof(ReadBuffer));
+		nbtx = read (fd_rs232, ReadBuffer, sizeof(ReadBuffer));
 		printf("\nReadBuffer hex: %x char: %c ", ReadBuffer[0],ReadBuffer[0]); 
 
 	//	read (fd_rs232, ReadBuffer, sizeof ReadBuffer);
