@@ -51,7 +51,26 @@ int main()
 	int key = 0;
 	BYTE ReadBuffer[1];
  	int buff_count = 0;
+
+/*****************************************************************/
+	// To clean the rx buffer 
+	int 	nbrx, nbtx, ptx, prx, nv;
+	fd_set	rfdsin, rfdsout;
+
+	nbtx=nbrx=0; ptx=prx=0;
+
+	FD_SET(0, &rfdsin); // stdin
+	FD_SET(fd, &rfdsin); // rs232 rx
+
+/*****************************************************************/
+	
 	while (key != 'x') {
+
+		FD_ZERO(&rfdsin);
+		FD_ZERO(&rfdsout);
+	
+		if(nbtx==0) FD_SET(0, &rfdsin); else FD_SET(fd, &rfdsout);
+		if(nbrx==0) FD_SET(fd, &rfdsin); else FD_SET(1, &rfdsout);
 		
 		//reads data from the joystick ...comment if joystick is not connected
 		//abort = read_js(jmap);
