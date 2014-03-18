@@ -469,6 +469,7 @@ void isr_qr_link(void)
  */
 void isr_rs232_rx(void)
 {
+//	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// Reset the communication flag
 	commflag = 0;
 
@@ -486,7 +487,7 @@ void isr_rs232_rx(void)
 		}
 // TODO determine if we want it to overwrite		
 	}
-
+//	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -582,13 +583,16 @@ int check_sum(void)
 	sum = sel_mode;
 
 	// independent of the package structure
-	for (i = 1; i < nParams; i++)
+	for (i = 1; i < (nParams - 1); i++)
 	{
 		sum += package[i];
+//		printf("package[%d] = %x ", i, package[i]);
 	}	
+//	printf("\n current sum = %x, inverted sum = %x", sum, ~sum);
 	sum = ~sum;
 
-	if (checksum != sum) {
+	if (package[CHECKSUM] != sum) {
+//		printf("\nInvalid Pkg, checksum = %x, sum = %x", package[CHECKSUM], sum);
 		printf("\nInvalid Pkg");
 		return 0;
 	}
@@ -675,7 +679,7 @@ int main()
 		if (commflag++ > commthres)
 		{
 			package[MODE] = PANIC_MODE;
-		}		
+		}	
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
@@ -683,14 +687,16 @@ int main()
 		if (c == STARTING_BYTE)
 		{
 			decode();
+//printf("\n [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 			if (check_sum())
 			{
 				// If the package is received correctly, send it back as telemetry
-				// TODO after debugging add a polling function				
+				// TODO after debugging add a polling function			
 				if (X32_rs232_stat & 0x01)
 				{
 					X32_rs232_data = 0x3f;
-				}	
+				}		
+
 
 				switch (package[MODE])
 				{
