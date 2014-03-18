@@ -14,24 +14,24 @@ Output: ESC button - 0 for off and 1 for on
  * Created by Diogo Monteiro
  *------------------------------------------------------------------
  */
-int read_kb(int *key_map,char c) {
+int read_kb(int *key_map,char* c) {
 int i;
 
 
 //Handle Arrows and ESC		
-		if(c==27){
-			c=getchar();
-			switch (c){
+		if(*c==27){
+			*c=getchar();
+			switch (*c){
 				case -1:
 					return 1;//ESC
 					break;
 				case 91:
-					c=getchar();//ARROWS
+					*c=getchar();//ARROWS
 					break;
 			}
 		}
 
-	switch (c){
+	switch (*c){
 		case '0'://SAFE MODE
 			*key_map= MODE_SAFE;
 			break;
@@ -101,10 +101,10 @@ int i;
 			}
 			break;
 		default:
-			printf("\n CHARACTER NOT VALID\n");
+			//printf("\n [%i] CHARACTER NOT VALID\n",c);
 			break;
 	}
-	c=-1;
+	*c=-1;
 
 return 0;
 
