@@ -550,7 +550,7 @@ void decode(void)
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	// Safe the current mode to determine mode changes
-	prev_mode = package[0];
+	prev_mode = package[MODE];
 
 	// Take the value from the buffer and reset the elem
 	// buffer value to make sure it isn't read multiple times
@@ -560,11 +560,11 @@ void decode(void)
 		package[i] = cbGet(&rxcb);
 	}
 
-	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) 
+	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0 && lift == 0)) && sel_mode != PANIC_MODE && ((sel_mode != FULL_CONTROL_MODE && sel_mode != YAW_CONTROL_MODE) || calibration_done == 1) && (sel_mode != CALIBRATION_MODE || calibration_counter == 0) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) )
 	{
-							package[0] = sel_mode;
+							package[MODE] = sel_mode;
 	}
-	else package[0] = prev_mode;
+	else package[MODE] = prev_mode;
 
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
@@ -702,7 +702,9 @@ int main()
 				{
 					case SAFE_MODE:
 						safe_mode();
-//						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
+						if (sel_mode == SAFE_MODE) calibration_counter = 0; //Sets that the user can enter again calibration mode
+						last_control_mode = 0; //Initialize last_control_mode variable
+//					printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);	
 						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
