@@ -9,7 +9,7 @@ Define DC offset of the sensors while QR is not moving
 //GLOBALS
 int OFFSET_y0[6] = {0, 0, 0, 0, 0, 0};
 int calibration_counter = 0;
-
+int calibration_done = 0;
 
 void calibration_mode(void) {
 
@@ -33,6 +33,7 @@ void calibration_mode(void) {
 			printf("[%i]",OFFSET_y0[i]);
 		}
 		calibration_counter = 0;
+		calibration_done++;
 		package[MODE] = STANDBY_MODE;
 		printf("\n... sensor calibration complete. Press '0' to enter SAFE MODE!\n");
 	}

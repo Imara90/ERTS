@@ -559,7 +559,7 @@ void decode(void)
 		package[i] = cbGet(&rxcb);
 	}
 
-	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) 
+	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE && package[LIFT] == 0) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) 
 	{
 							package[0] = sel_mode;
 	}
@@ -716,12 +716,24 @@ int main()
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
-						last_control_mode = YAW_CONTROL_MODE;						
-						// yaw
+						if (calibration_done != 0){
+							last_control_mode = YAW_CONTROL_MODE;						
+							// yaw
+						}
+						else{ 
+							printf("\n Sensors not calibrated. Press '0' to enter SAFE MODE!");
+							package[MODE] = STANDBY_MODE;
+						}  
 						break;
 					case FULL_CONTROL_MODE:
-						last_control_mode = FULL_CONTROL_MODE;						
-						// full
+						if (calibration_done != 0){
+							last_control_mode = FULL_CONTROL_MODE;						
+							// full
+						}
+						else{ 
+							printf("\n Sensors not calibrated. Press '0' to enter SAFE MODE!");
+							package[MODE] = STANDBY_MODE;
+						}  
 						break;
 					case P_CONTROL_MODE:
 						// p
