@@ -14,33 +14,33 @@
 #include "Definitions.h"
 
 
-WORD TrimToMaxWord(int value)
+int TrimToMaxLift(int value)
 {
-	if (value>INT16_MAX)
+    if (value>255)
 	{
-		printf("Clipping %i to %u",value,INT16_MAX);
-		value = INT16_MAX;
+        printf("\nClipping %i to %i",value,255);
+        value = 255;
 	}
-	else if (value<INT16_MIN)
+	else if (value<0)
 	{
-		printf("Clipping %i to %u",value,INT16_MIN);
-		value = INT16_MIN;
+        printf("\nClipping %i to %i",value,0);
+        value = 0;
 	}
-	return value;
+    return value;
 }
 int TrimToMaxByte(int value)
 {
-	if (value>INT8_MAX)
+    if (value>INT8_MAX)
 	{
-		printf("Clipping %i to %u",value,INT8_MAX);
-		value = INT8_MAX;
+        printf("\nClipping %i to %i",value,INT8_MAX);
+        value = INT8_MAX;
 	}
 	else if (value<INT8_MIN)
 	{
-		printf("Clipping %i to %u",value,INT8_MIN);
-		value = INT8_MIN;
+        printf("\nClipping %i to %i",value,INT8_MIN);
+        value = INT8_MIN;
 	}
-	return value;
+    return value;
 }
 
 typedef struct
@@ -96,10 +96,12 @@ int SetChksum(Package* mPkg)
 int SetPkgData(Package* mPkg, int* Data)
 {
 	int i;
-	mPkg->Pkg[DATA_POS] = (int)*Data; //No Clipping for the lift
+    *Data = TrimToMaxLift(*Data); //Clipping for the lift
+    mPkg->Pkg[DATA_POS] = (BYTE)*Data;
 	Data++;
 	for (i = 1; i < PARAM_LENGTH; i++) {
-		mPkg->Pkg[DATA_POS + i] = (BYTE)TrimToMaxByte((int)*Data);
+        *Data = TrimToMaxByte(*Data);
+        mPkg->Pkg[DATA_POS + i] = (BYTE)*Data;
 		Data++;
 	}
 	SetChksum(mPkg);

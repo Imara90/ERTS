@@ -38,7 +38,7 @@ int main()
 	}
 	//Joystick buffer clearence and calibration of yaw axis
 	//clear_js_buffer();
-	js_calibration();
+	//js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
 	 *(P,P1,P2,0 for Control Gains Mode)*/
@@ -49,14 +49,14 @@ int main()
 	int result;
 	int abort = 0;
 	int key = 0;
-	BYTE ReadBuffer[1];
+	BYTE ReadBuffer[6];
  	int buff_count = 0;
 
 /*****************************************************************/
 	// To clean the rx buffer 
 	int 	nbrx, nbtx, ptx, prx, nv;
 	fd_set	rfdsin, rfdsout;
-
+	BYTE* txbuffer = NULL;
 	nbtx=nbrx=0; ptx=prx=0;
 
 	FD_SET(0, &rfdsin); // stdin
@@ -66,12 +66,7 @@ int main()
 	
 	while (key != 'x') {
 
-		FD_ZERO(&rfdsin);
-		FD_ZERO(&rfdsout);
-	
-		if(nbtx==0) FD_SET(0, &rfdsin); else FD_SET(fd, &rfdsout);
-		if(nbrx==0) FD_SET(fd, &rfdsin); else FD_SET(1, &rfdsout);
-		
+				
 		//reads data from the joystick ...comment if joystick is not connected
 		//abort = read_js(jmap);
 		//printf("jmap[%x][%x][%x][%x]\n",jmap[0],jmap[1],jmap[2],jmap[3]);
@@ -103,24 +98,33 @@ int main()
 		SetPkgMode(&mPkg, keymap[0]);
 		SetPkgData(&mPkg, data);
 		//Prints the package
-		for (i = 0; i < PKGLEN; i++) {
+/*		for (i = 0; i < sizeof(mPkg.Pkg); i++) {
 			printf("[%x]",mPkg.Pkg[i]);
 		}
-		printf("\n");
+		printf("\n");*/
 		
 		//writes in the port
-		result = write(fd_rs232,mPkg.Pkg,7*sizeof(BYTE));
-		//Asserts in case of sending wrong number of bytes
-		assert(result == 7);
-
-		nbtx = read (fd_rs232, ReadBuffer, sizeof(ReadBuffer));
-		printf("\nReadBuffer hex: %x char: %c ", ReadBuffer[0],ReadBuffer[0]); 
-
-	//	read (fd_rs232, ReadBuffer, sizeof ReadBuffer);
- 	//	ReadArray[buff_count++] = ReadBuffer[0];
+		if (sizeof(mPkg.Pkg) == 7*sizeof(BYTE)){
+//		txbuffer = mPkg.Pkg;
+			nbtx = write(fd_rs232,mPkg.Pkg,sizeof(mPkg.Pkg));
+			//Asserts in case of sending wrong number of bytes
+//			assert(nbtx == 7);
+		}
+		
+		//reads from the port
+ 		nbrx = read (fd_rs232, ReadBuffer, 6*sizeof(BYTE));
+		if (nbrx > 0){
+//			printf("%c",ReadBuffer[0]);
+//			printf("\n ReadBuffer hex: %x char: %c ", ReadBuffer[0],ReadBuffer[0]);
+			printf("\n\n Read PKG: %i ",nbrx);
+			for (i = 0; i < nbrx; i++) {
+				printf("[%x]",ReadBuffer[i]);
+			}
+			printf("\n");
+		}
 		
 		// 20 msec pause = 50 Hz
-		usleep(20000);
+		usleep(10000);
 	}
 	close_rs232_port(fd_rs232);
 	printf("\n Port is closed \n");

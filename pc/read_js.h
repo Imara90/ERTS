@@ -90,7 +90,7 @@ int read_js(int *js_map) {
 	
 	}
 	else *(js_map+3)=0;
-	printf("\n\n YAW:%d axis[2]:%d neg: %d pos: %d \n",*(js_map+3),axis[2],neg_calibration_yaw,pos_calibration_yaw);
+//	printf("\n\n YAW:%d axis[2]:%d neg: %d pos: %d \n",*(js_map+3),axis[2],neg_calibration_yaw,pos_calibration_yaw);
 		
 	return j_abort;
 }
