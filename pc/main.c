@@ -16,10 +16,11 @@
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
 
-#include "read_js.h" //Diogo's Function
-#include "read_kb.h" // Diogo's keyboard
-#include "rs232.h" //Provides functions to open and close rs232 port
+#include "read_js.h" 	// Diogo's Function
+#include "read_kb.h" 	// Diogo's keyboard
+#include "rs232.h" 	// Provides functions to open and close rs232 port
 
+#define BYTE unsigned char
 
 int main()
 {
@@ -31,14 +32,15 @@ int main()
 	//Initializes the keymap from the keyboard
 	int jmap[4] = {0,0,0,0};
 	//Opens the port
-	int fd_rs232 = open_rs232_port();
-	if (fd_rs232 == 0) {
+//	int fd_RS232 = open_rs232_port();
+	rs232_open();
+	if (fd_RS232 == 0) {
 		printf("Error opening the port \n");
 		return 0;
 	}
 	//Joystick buffer clearence and calibration of yaw axis
 	//clear_js_buffer();
-	//js_calibration();
+//	js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
 	 *(P,P1,P2,0 for Control Gains Mode)*/
@@ -49,24 +51,31 @@ int main()
 	int result;
 	int abort = 0;
 	int key = 0;
-	BYTE ReadBuffer[6];
+	BYTE ReadBuffer[1];
+	BYTE readbuff;
  	int buff_count = 0;
-
+	int datai = 0;
+	int writting = 1; //ready to write
+	int writeflag = 1;
 /*****************************************************************/
 	// To clean the rx buffer 
 	int 	nbrx, nbtx, ptx, prx, nv;
-	fd_set	rfdsin, rfdsout;
-	BYTE* txbuffer = NULL;
+	BYTE 	bytetowrite;
+
 	nbtx=nbrx=0; ptx=prx=0;
-
-	FD_SET(0, &rfdsin); // stdin
-	FD_SET(fd, &rfdsin); // rs232 rx
-
+	int rwcounter = 0;
 /*****************************************************************/
-	
+	//DATA LOGGING 
+	FILE *DLf = fopen("DATALOGGING.txt", "w");
+	if (DLf == NULL)
+	{
+	    printf("Error opening file!\n");
+	    exit(1);
+	}
+
 	while (key != 'x') {
 
-				
+		
 		//reads data from the joystick ...comment if joystick is not connected
 		//abort = read_js(jmap);
 		//printf("jmap[%x][%x][%x][%x]\n",jmap[0],jmap[1],jmap[2],jmap[3]);
@@ -89,44 +98,66 @@ int main()
 				data[3] = jmap[3]+keymap[4];
 				break;
 		}
-		//printf("data[%x][%x][%x][%x]\n",data[0],data[1],data[2],data[3]);
 		
 		//EVALUATES IF ABORTION REQUESTEQ
-		if ( abort == 1) keymap[0] = MODE_ABORT;
+		if (abort == 1) keymap[0] = MODE_ABORT;
 
 		//CREATES THE PACKAGE
 		SetPkgMode(&mPkg, keymap[0]);
 		SetPkgData(&mPkg, data);
 		//Prints the package
-/*		for (i = 0; i < sizeof(mPkg.Pkg); i++) {
+		/*for (i = 0; i < PKGLEN; i++) {
 			printf("[%x]",mPkg.Pkg[i]);
 		}
-		printf("\n");*/
+		printf("\n"); */
 		
-		//writes in the port
-		if (sizeof(mPkg.Pkg) == 7*sizeof(BYTE)){
-//		txbuffer = mPkg.Pkg;
-			nbtx = write(fd_rs232,mPkg.Pkg,sizeof(mPkg.Pkg));
-			//Asserts in case of sending wrong number of bytes
-//			assert(nbtx == 7);
+		key = getchar();
+		if (key == 126){ //stops writting
+			writeflag = 0;
 		}
-		
-		//reads from the port
- 		nbrx = read (fd_rs232, ReadBuffer, 6*sizeof(BYTE));
-		if (nbrx > 0){
-//			printf("%c",ReadBuffer[0]);
-//			printf("\n ReadBuffer hex: %x char: %c ", ReadBuffer[0],ReadBuffer[0]);
-			printf("\n\n Read PKG: %i ",nbrx);
-			for (i = 0; i < nbrx; i++) {
-				printf("[%x]",ReadBuffer[i]);
+
+		// Checks for the Clear To Send
+		int s, ctsflag;
+    		ioctl(fd_RS232, TIOCMGET, &s);
+		ctsflag = s & TIOCM_CTS;
+		//WRITTING
+    		if (ctsflag =! 0 && writeflag == 1){
+			// Writes the pkg byte by byte. Makes sure that each byte is written
+			writting = 1;
+			while(writting == 1){
+				nbtx = write(fd_RS232, &(mPkg.Pkg[datai]), sizeof(BYTE));
+				if (nbtx == 1) {		
+					datai++;
+				}
+				if (datai >= PKGLEN){
+					datai = 0;
+					writting = 0;
+				}
 			}
-			printf("\n");
 		}
-		
-		// 20 msec pause = 50 Hz
-		usleep(10000);
+
+		//READING	
+		while (nbrx == 0){
+			nbrx = read(fd_RS232, &readbuff, sizeof(BYTE));
+		}
+		if (nbrx > 0)
+		{	
+			if (readbuff != 0x80 && readbuff != 0x11){
+			printf("\n\nRead %i: [%x] ",buff_count++, readbuff);
+			}
+			nbrx = 0;
+			//Writes the datalog in a Txt file
+			if (!writeflag){
+				fprintf(DLf, "%x\n", readbuff);
+			}
+			//printf("\nReadBuffer hex: %x char: %c ", readbuff, readbuff); 
+		}
+		//}
+		rwcounter ++;
+//		usleep(20000);
 	}
-	close_rs232_port(fd_rs232);
+	fclose(DLf);
+	rs232_close();
 	printf("\n Port is closed \n");
 	return 0;
 	
