@@ -12,7 +12,7 @@
 
 
 int flag = 0;
-int fd_RS232;
+//int fd_RS232;
 BYTE ReadBuffer[6];
 char pressed_key = -1;
 unsigned char  QRMode = MODE_SAFE; //Initializes QR Mode
@@ -84,7 +84,7 @@ void MainWindow::on_RunButt_clicked()
             //MsgBox(QString::number(pressed_key));
 
 //            usleep(100000);
-            printf("\n Key [%i]",pressed_key);
+            //printf("\n Key [%i]",pressed_key);
             read_kb(keymap,&pressed_key);
         }
 
@@ -143,7 +143,7 @@ void MainWindow::on_RunButt_clicked()
         assert(nbtx == 7);
 
         //reads from the port
-        nbrx = read (fd_RS232, ReadBuffer, 1*sizeof(BYTE));
+        nbrx = read(fd_RS232, ReadBuffer, 1*sizeof(BYTE));
 
         if (nbrx > 0){
             //DECODING PART HERE
@@ -163,7 +163,7 @@ void MainWindow::on_RunButt_clicked()
 
        // ui->PkgTxtBox->setText(QString::number(mPkg.ChkSum));
 
-//        usleep(1000);
+        usleep(10000);
 
         i++;
     }
@@ -246,7 +246,8 @@ void MainWindow::on_CommButt_clicked()
         ui->StatusLbl->setText("Clearing Joystick Buffer...");
         clear_js_buffer();
         ui->StatusLbl->setText("Opening Port...");
-        fd_RS232 = open_rs232_port();
+        //fd_RS232 = open_rs232_port();
+        rs232_open();
         if (fd_RS232 == 0)
         {
             ui->StatusLbl->setStyleSheet("QLabel { background-color : red}");
