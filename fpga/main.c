@@ -565,7 +565,8 @@ void decode(void)
 							package[MODE] = sel_mode;
 	}
 	else package[MODE] = prev_mode;
-
+	
+	
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
@@ -590,10 +591,11 @@ int check_sum(void)
 	}	
 //	printf("\n current sum = %x, inverted sum = %x", sum, ~sum);
 	sum = ~sum;
-
+	
+	
 	if (package[CHECKSUM] != sum) {
 //		printf("\nInvalid Pkg, checksum = %x, sum = %x", package[CHECKSUM], sum);
-		printf("\nInvalid Pkg");
+		//printf("\nInvalid Pkg");
 		return 0;
 	}
 	else
@@ -669,7 +671,7 @@ int main()
 	}
 
 	// Print to indicate start
-	printf("Hello! \nMode, Parameter 1, Parameter 2, Parameter 3, Parameter 4, Checksum");
+	//printf("Hello! \nMode, Parameter 1, Parameter 2, Parameter 3, Parameter 4, Checksum");
 
 	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
@@ -694,7 +696,10 @@ int main()
 				// TODO after debugging add a polling function			
 				if (X32_rs232_stat & 0x01)
 				{
-					X32_rs232_data = 0x3f;
+					X32_rs232_data = package[CHECKSUM];//package[txcount+1];
+			//		X32_rs232_data = //package[1];//package[txcount+1];
+		
+				//	delay_us(10);
 				}		
 
 
@@ -704,18 +709,18 @@ int main()
 						safe_mode();
 						if (sel_mode == SAFE_MODE) calibration_counter = 0; //Sets that the user can enter again calibration mode
 						last_control_mode = 0; //reset last_control_mode variable
-						printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
+						//printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
 					case PANIC_MODE:
 						panic_mode();	
-						printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);						
+						//printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);						
 						// panic
 						break;
 					case MANUAL_MODE:
 						manual_mode();
 				//		printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
-						printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
+						//printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// manual
 						break;
 					case CALIBRATION_MODE:
@@ -747,7 +752,7 @@ int main()
 		delay_us(20);
 	}
 
-	printf("Exit\r\n");
+	//printf("Exit\r\n");
 
         DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 
