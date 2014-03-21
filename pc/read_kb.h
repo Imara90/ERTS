@@ -54,10 +54,10 @@ int i;
 			*key_map= MODE_P;
 			break;
 		case 'a'://LIFT UP
-			*(key_map+1) = TrimToMaxByte(*(key_map+1) + 2);
+			*(key_map+1) = TrimToMaxLift(*(key_map+1) + 2);
 			break;
 		case 'z'://LIFT DOWN
-			*(key_map+1) = TrimToMaxByte(*(key_map+1) - 2);;
+			*(key_map+1) = TrimToMaxLift(*(key_map+1) - 2);;
 			break;
 		case 68://LEFT ARROW-ROLL DOWN
 			*(key_map+2) = TrimToMaxByte(*(key_map+2) - 2);;
@@ -104,7 +104,7 @@ int i;
 			//printf("\n [%i] CHARACTER NOT VALID\n",c);
 			break;
 	}
-	*c=-1;
+//	*c=-1;
 
 return 0;
 
