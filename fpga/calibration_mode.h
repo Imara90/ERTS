@@ -15,7 +15,7 @@ void calibration_mode(void) {
 
 	int i;
 	if (calibration_counter == 0) { 
-		printf("\nSensor calibration on process....wait...\n");
+		//printf("\nSensor calibration on process....wait...\n");
 		for(i = 0; i < 6; i++) OFFSET_y0[i] = 0;
 	}
 		
@@ -34,7 +34,7 @@ void calibration_mode(void) {
 		}
 		calibration_done = 1;
 		package[MODE] = SAFE_MODE;
-		printf("\n... sensor calibration complete. Moving to SAFE MODE!\n");
+		//printf("\n... sensor calibration complete. Moving to SAFE MODE!\n");
 	}
 
 }

@@ -109,10 +109,10 @@ int main()
 		SetPkgMode(&mPkg, keymap[0]);
 		SetPkgData(&mPkg, data);
 		//Prints the package
-		for (i = 0; i < PKGLEN; i++) {
+		/*for (i = 0; i < PKGLEN; i++) {
 			printf("[%x]",mPkg.Pkg[i]);
 		}
-		printf("\n");
+		printf("\n");*/
 		
 		//CHECKS KEYBOARD INPUT FOR WRITTING
 		if (key == 126){ //stops writting
@@ -121,7 +121,7 @@ int main()
 
 		//WRITTING
 		if (writeflag == 1){
-			printf("\nWriteloop");
+			//printf("\nWriteloop");
 			// Writes the pkg byte by byte. Makes sure that each byte is written
 			do{
 				
@@ -142,13 +142,13 @@ int main()
 
 		//READING
 		do{
-			printf("\nReadloop");
+			//printf("\nReadloop");
 			nbrx = read(fd_RS232, &readbuff, sizeof(BYTE));
 			//printf("\n [%i] %i nbrx = %i",writeflag,buff_count++,nbrx);
 			if (nbrx > 0)
 			{
 				//if (readbuff != 0x80 && readbuff != 0x11){
-				//printf("\n\nRead %i: [%x] Wrote[%x] ",buff_count++, readbuff,mPkg.Pkg[PKGLEN-1]);
+				printf("\n\nRead %i: [%x] Wrote[%x] ",buff_count++, readbuff,mPkg.Pkg[PKGLEN-1]);
 				//}
 		
 				//Writes the datalog in a Txt file
