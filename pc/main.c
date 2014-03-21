@@ -32,14 +32,13 @@ int main()
 	//Initializes the keymap from the keyboard
 	int jmap[4] = {0,0,0,0};
 	//Opens the port
-//	int fd_RS232 = open_rs232_port();
 	rs232_open();
 	if (fd_RS232 == 0) {
 		printf("Error opening the port \n");
 		return 0;
 	}
 	//Joystick buffer clearence and calibration of yaw axis
-	//clear_js_buffer();
+//	clear_js_buffer();
 //	js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
@@ -47,25 +46,29 @@ int main()
 	int data[PARAM_LENGTH] = {0,0,0,0};
 	Package mPkg;
 	InitPkg(&mPkg,MODE_SAFE); //Intializes Package
-	int i;
-	int result;
+	
+	//General Counter
+	int i; 
+	//AbortFlag
 	int abort = 0;
+	//Stores the pressed key char
 	int key = 0;
-	BYTE ReadBuffer[1];
+	//Stores the read byte
 	BYTE readbuff;
+	//Counts how many bytes have been read during the entire loop
  	int buff_count = 0;
+	//Count variable which loops over the sending package
 	int datai = 0;
-	int writting = 1; //ready to write
+	//Used to check whether the complete Pkg has been written
+	int Pkg_written = 0;
+	//Used to disable writting to the port
 	int writeflag = 1;
-/*****************************************************************/
-	// To clean the rx buffer 
-	int 	nbrx, nbtx, ptx, prx, nv;
-	BYTE 	bytetowrite;
 
-	nbtx=nbrx=0; ptx=prx=0;
-	int rwcounter = 0;
-/*****************************************************************/
-	//DATA LOGGING 
+	// Variables supervision for tx and rx number of sent/received bytes
+	int 	nbrx, nbtx;
+	nbtx=nbrx=0;
+
+	//DATA LOGGING FILE
 	FILE *DLf = fopen("DATALOGGING.txt", "w");
 	if (DLf == NULL)
 	{
@@ -77,7 +80,7 @@ int main()
 
 		
 		//reads data from the joystick ...comment if joystick is not connected
-		//abort = read_js(jmap);
+//		abort = read_js(jmap);
 		//printf("jmap[%x][%x][%x][%x]\n",jmap[0],jmap[1],jmap[2],jmap[3]);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
@@ -102,7 +105,7 @@ int main()
 		//EVALUATES IF ABORTION REQUESTEQ
 		if (abort == 1) keymap[0] = MODE_ABORT;
 
-		//CREATES THE PACKAGE
+		//SETS THE PACKAGE WITH THE DESIRED DATA
 		SetPkgMode(&mPkg, keymap[0]);
 		SetPkgData(&mPkg, data);
 		//Prints the package
@@ -111,50 +114,52 @@ int main()
 		}
 		printf("\n"); */
 		
+		//CHECKS KEYBOARD INPUT FOR WRITTING
 		key = getchar();
 		if (key == 126){ //stops writting
 			writeflag = 0;
 		}
 
-		// Checks for the Clear To Send
-		int s, ctsflag;
-    		ioctl(fd_RS232, TIOCMGET, &s);
-		ctsflag = s & TIOCM_CTS;
 		//WRITTING
-    		if (ctsflag =! 0 && writeflag == 1){
+		if (writeflag == 1){
 			// Writes the pkg byte by byte. Makes sure that each byte is written
-			writting = 1;
-			while(writting == 1){
+			do{
+				//printf("\nWriteloop");
 				nbtx = write(fd_RS232, &(mPkg.Pkg[datai]), sizeof(BYTE));
-				if (nbtx == 1) {		
+				if (nbtx == 1) { //a Byte was written	
 					datai++;
 				}
-				if (datai >= PKGLEN){
+				if (datai >= PKGLEN){ //The Pkg has not been completely written
 					datai = 0;
-					writting = 0;
+					Pkg_written = 1;
 				}
-			}
+				else {
+					Pkg_written = 0;
+				}
+			}while(Pkg_written == 0);
 		}
 
-		//READING	
-		while (nbrx == 0){
+
+		//READING
+		do{
+			//printf("\nReadloop");
 			nbrx = read(fd_RS232, &readbuff, sizeof(BYTE));
-		}
-		if (nbrx > 0)
-		{	
-			if (readbuff != 0x80 && readbuff != 0x11){
-			printf("\n\nRead %i: [%x] ",buff_count++, readbuff);
+			//printf("\n [%i] %i nbrx = %i",writeflag,buff_count++,nbrx);
+			if (nbrx > 0)
+			{
+				//if (readbuff != 0x80 && readbuff != 0x11){
+				printf("\n\nRead %i: [%x] Wrote[%x] ",buff_count++, readbuff,mPkg.Pkg[PKGLEN-1]);
+				//}
+		
+				//Writes the datalog in a Txt file
+				if (!writeflag){
+					fprintf(DLf, "%x\n", (BYTE)readbuff);
+					//printf("\n printing to file...%x ", (BYTE)readbuff);
+				}
+				//printf("\nReadBuffer hex: %x char: %c ", readbuff, readbuff);
 			}
-			nbrx = 0;
-			//Writes the datalog in a Txt file
-			if (!writeflag){
-				fprintf(DLf, "%x\n", readbuff);
-			}
-			//printf("\nReadBuffer hex: %x char: %c ", readbuff, readbuff); 
-		}
-		//}
-		rwcounter ++;
-//		usleep(20000);
+		} while (nbrx < 0);
+
 	}
 	fclose(DLf);
 	rs232_close();
