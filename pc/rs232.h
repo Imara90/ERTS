@@ -1,3 +1,4 @@
+
 //
 //  rs232.h
 //  
@@ -6,11 +7,12 @@
 //
 //
 
+
 #ifndef _rs232_h
 #define _rs232_h
 
-
 /*
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,11 +21,11 @@
 #include <errno.h>   // Error number definitions //
 #include <termios.h> // POSIX terminal control definitions 
 
-
-int open_rs232_port()
+int fd_RS232; // File descriptor for the port 
+int rs232_open()
 {
 	struct termios	tty;
-	int fd_RS232; // File descriptor for the port 
+
 	int result;
 	
 	fd_RS232 = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);
@@ -68,15 +70,15 @@ int open_rs232_port()
 	return fd_RS232;
 }
 
-void close_rs232_port(int fd_RS232)
+void rs232_close()
 {
 	close(fd_RS232);
 }
 
-
-
-
 */
+
+
+
 struct termios stdin_orig;  // Structure to save parameters
 
 void term_reset() {
@@ -315,5 +317,9 @@ int 	rs232_putchar(char c)
 	return result;
 }
 
+
+
 #endif
+
+
 

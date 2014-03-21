@@ -96,8 +96,8 @@ int SetChksum(Package* mPkg)
 int SetPkgData(Package* mPkg, int* Data)
 {
 	int i;
-    *Data = TrimToMaxLift(*Data); //Clipping for the lift
-    mPkg->Pkg[DATA_POS] = (BYTE)*Data;
+    	*Data = TrimToMaxLift(*Data); //Clipping for the lift
+    	mPkg->Pkg[DATA_POS] = (BYTE)*Data;
 	Data++;
 	for (i = 1; i < PARAM_LENGTH; i++) {
         *Data = TrimToMaxByte(*Data);
