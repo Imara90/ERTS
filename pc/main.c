@@ -148,7 +148,14 @@ int main()
 			if (nbrx > 0)
 			{
 				//if (readbuff != 0x80 && readbuff != 0x11){
-				printf("\n\nRead %i: [%x] Wrote[%x] ",buff_count++, readbuff,mPkg.Pkg[PKGLEN-1]);
+				printf("\nBytes [%i]\n",nbrx);
+				if (buff_count % 6 == 0){
+					printf("\nWrote[%x]\n Read %i: ",mPkg.Pkg[PKGLEN-1],buff_count);
+				}
+				else{
+					printf("[%x]",readbuff);
+				}
+				buff_count++;
 				//}
 		
 				//Writes the datalog in a Txt file
