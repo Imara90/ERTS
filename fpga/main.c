@@ -120,6 +120,19 @@ int   x1[6] = {0,0,0,0,0,0};
 int   x2[6] = {0,0,0,0,0,0};
 
 
+//KALMAN FILTER CONSTANTS
+#define P2PHI   8192 //0.5 * 2¹⁴
+#define C1      7 // 2⁷ = 123
+#define C2      10 // 2¹⁰ = 1023
+
+//KALMAN FILTER GLOBAL VARIABLES
+int   sp = 0;
+int   sphi = 0;
+int   sq = 0;
+int   stheta = 0;
+int   p_b = 0;
+int   q_b = 0;
+
 //DEFINE SIZE OF DATA LOGGING VARIABLES
 #define DLOGSIZE	50000 
 //data logging variables
@@ -219,16 +232,31 @@ long 	polltime = 0;
 
 
 BYTE 	package[nParams];
-BYTE 	sel_mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
+BYTE 	sel_mode, roll, pitch, yaw, lift, checksum;
 BYTE 	prev_mode = 0;//VARIABLE TO SAVE PREVIOUS MODE
 BYTE	mode = 0;//ACTUAL OPERATING MODE
 BYTE	last_control_mode = 0;//VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
+
+//GLOBALS FOR CONTROL MODES
+long int Z = 0;//LIFT FORCE
+long int L = 0;//ROLL MOMENTUM
+long int M = 0;//PICTH MOMENTU
+long int N = 0;//YAW MOMENTUM
+int phi = 0; //ROLL ANGLE
+int theta = 0; //PITCH ANGLE
+int p = 0; //ROLL RATE
+int q = 0; //PITCH RATE
+int r = 0; //YAW RATE
+long int ww[4] = {0, 0, 0, 0};
 
 // Own written functions
 #include "safe_mode.h"
 #include "manual_mode.h"
 #include "panic_mode.h"
 #include "calibration_mode.h"
+#include "p_control_mode.h"
+#include "yaw_control_mode.h"
+#include "full_control_mode.h"
 
 // Time variables for integration
 int t0 = 0;
@@ -265,6 +293,35 @@ void Butt2Filter(void)
 		y1[i] = y0[i];
 	}
 }
+
+/*------------------------------------------------------------------
+ * Kalman Filter
+ * By Diogo Monteiro (21-03-2014)
+ *------------------------------------------------------------------
+ */
+void KalmanFilter(void)
+{
+        
+    //Kalman for p, phi    
+    sphi = y0[1] - OFFSET_y0[1]; //TODO CONFIRM SENSOR SIGNALS 
+    sp = y0[3] - OFFSET_y0[3];
+    
+    p = sp - p_b;
+    phi = phi + mult(p,P2PHI);
+    phi = phi - ((phi - sphi) >> C1);
+    p_b = p_b + ((phi - sphi) >> C2);
+ 
+    //Kalman for q, theta
+    stheta = y0[0] - OFFSET_y0[0]; //TODO CONFIRM SENSOR SIGNALS    
+    sq = y0[4] - OFFSET_y0[4];
+    
+    q = sq - q_b;
+    theta = theta + mult(q,P2PHI);
+    theta = theta - ((theta - stheta) >> C1);
+    q_b = q_b + ((theta - stheta) >> C2);
+
+}
+
 
 /*------------------------------------------------------------------
  * Ramp-Up prevention function
@@ -463,7 +520,12 @@ void isr_qr_link(void)
 	timestamp = X32_QR_timestamp;
 	
 	Butt2Filter();
-	
+	KalmanFilter();
+
+    //Yaw Rate
+    r = y0[5] - OFFSET_y0[5];
+
+
 	//Gets the maximum value
 	/*for (i=0;i<6;i++)
 	{
@@ -954,7 +1016,8 @@ int main()
 						// full
 						break;
 					case P_CONTROL_MODE:
-						// p
+                        p_control_mode();						
+                        // p
 						break;
 					case ABORT_MODE:
 						program_done++;
