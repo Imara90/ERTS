@@ -150,6 +150,25 @@ CircularBuffer txcb, rxcb;
 
 /*********************************************************************/
 
+/*********************************************************************/
+// TODO have to modify this in onder to have good code
+
+// fixed size for the buffer, no dyanmic allocation is needed
+// actual size is minus one element because of the one slot open protocol 
+#define CBDATA_SIZE (50000 + 1)
+ 
+// Circular buffer object 
+typedef struct {
+	int         	start;  	/* index of oldest element              */
+	int	       	end;    	/* index at which to write new element  */
+	ElemType 	elems[CBDATA_SIZE]; /* vector of elements                   */
+	// including extra element for one slot open protocol
+} CircularDataBuffer;
+
+CircularDataBuffer dscb;
+
+/*********************************************************************/
+
 // Globals
 char	c;
 int	program_done;
@@ -292,6 +311,10 @@ void cbInit(CircularBuffer *cb) {
     cb->start = 0;
     cb->end   = 0;
 }
+void dscbInit(CircularDataBuffer *cb) {
+    cb->start = 0;
+    cb->end   = 0;
+}
 
 
 /*------------------------------------------------------------------
@@ -321,6 +344,9 @@ int cbIsEmpty(CircularBuffer *cb) {
 void cbClean(CircularBuffer *cb) {
 	memset(cb->elems, 0, sizeof(ElemType) * CB_SIZE); 	
 }
+void dscbClean(CircularDataBuffer *cb) {
+	memset(cb->elems, 0, sizeof(ElemType) * CBDATA_SIZE); 	
+}
 
 
 /*------------------------------------------------------------------
@@ -339,11 +365,20 @@ void cbWrite(CircularBuffer *cb, ElemType *elem) {
 	}
 // TODO determine if we want it to overwrite
 }
+void dscbWrite(CircularDataBuffer *cb, ElemType *elem) {
+    cb->elems[cb->end] = *elem;
+    cb->end = (cb->end + 1) % CBDATA_SIZE;
+    if (cb->end == cb->start)
+	{        
+		cb->start = (cb->start + 1) % CBDATA_SIZE; /* full, overwrite */
+	}
+// TODO determine if we want it to overwrite
+}
 
 /*------------------------------------------------------------------
  * Read from buffer and store in elem
  * Read oldest element. App must ensure !cbIsEmpty() first. 
- * By Imara Speek 1506374 
+ * By Imara Speek 1506374 - not used
  *------------------------------------------------------------------  
  */
 void cbRead(CircularBuffer *cb, ElemType *elem) {
@@ -370,6 +405,19 @@ BYTE cbGet(CircularBuffer *cb) {
 		cb->elems[cb->start].value = 0;	
 	}
 	cb->start = (cb->start + 1) % CB_SIZE;
+
+	return c;
+}
+
+BYTE dscbGet(CircularDataBuffer *cb) {
+	BYTE c;	
+
+	c = cb->elems[cb->start].value;
+	// Whenever the starting byte is read, the package is decoded
+	// To make sure the same package isn't read twice, we overwrite
+	// the starting byte. The package will still decode because of c
+	// and it will not be recognized again. 
+	cb->start = (cb->start + 1) % CBDATA_SIZE;
 
 	return c;
 }
@@ -744,8 +792,6 @@ int main()
 				}			
 			}
 		}
-		// Delay 20 micro second = 50 Hz according to the sending of the packages
-		// delay_us(20);
 	}
 
 	//printf("Exit\r\n");
