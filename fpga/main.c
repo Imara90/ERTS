@@ -643,6 +643,9 @@ int check_sum(void)
 		return 1;
 }
 
+#define storenosensor 12
+#define storeall 24
+
 /*------------------------------------------------------------------
  * Data Logging Storage
  * Store each parameter individually in arrays
@@ -653,12 +656,12 @@ void store_data(void)
 {
 	BYTE sum;
 	int i, j;
-	BYTE storing[12];
+	BYTE storing[storenosensor];
 	sum = 0;
 	
 	// determine the checksum for the send package
 	sum = X32_ms_clock + package[MODE] + package[LIFT] + package[ROLL] + 				package[PITCH] + package[YAW] + ae[0] + ae[1] + ae[2] + ae[3]; /* + 
-				 x[0] + x[1] + x[2] + x[3] + x[4] + x[5]; */
+				 x0[0] + x0[1] + x0[2] + x0[3] + x0[4] + x0[5]; */
 	sum = ~sum;
 
 	// TODO find a way to save P values if the mode has changed
@@ -678,10 +681,36 @@ void store_data(void)
 	storing[j++] = ae[1];
 	storing[j++] = ae[2];
 	storing[j++] = ae[3];
+/*
+	storing[j++] = x0[0] >> 8;
+	storing[j++] = x0[0];
+	storing[j++] = x0[1] >> 8;
+	storing[j++] = x0[1];
+	storing[j++] = x0[2] >> 8;
+	storing[j++] = x0[2];
+	storing[j++] = x0[3] >> 8;
+	storing[j++] = x0[3];
+	storing[j++] = x0[4] >> 8;
+	storing[j++] = x0[4];
+	storing[j++] = x0[5] >> 8;
+	storing[j++] = x0[5];
+	storing[j++] = y0[0];
+	storing[j++] = y0[1];
+	storing[j++] = y0[2];
+	storing[j++] = y0[3];
+	storing[j++] = y0[4];
+	storing[j++] = y0[5];
+*/
 	storing[j++] = sum;
 
 	for (i = 0; i < 12; i++)
 	{
+		// make sure only starting byte can be 0x80
+		if ((i != 0) && (storing[i] == 0x80))
+		{
+			// if the value is -128, correct it to -127
+			storing[i] = 0x81;
+		}
 		dscb.elems[dscb.end].value = storing[i];
 		//printf(" %x, ", storing[i]);
 		dscb.end = (dscb.end + 1) % CBDATA_SIZE;
@@ -691,7 +720,6 @@ void store_data(void)
 		}
 	}
 	
-	//to send back it is necessary to typecast to BYTE
 }
 
 /*------------------------------------------------------------------
@@ -785,7 +813,6 @@ int main()
 	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
 	testcbInit(&testcb, 7);
 	testcb.elems = testelems;
-
 	testcbClean(&testcb);
 
 	// Initialize value to write
@@ -828,7 +855,7 @@ int main()
 			{
 				//store_data();
 				// Check if data is ready to be sent, and send	
-	
+/*	
 				if (X32_rs232_stat & 0x01)
 				{
 					//X32_rs232_data = package[CHECKSUM];//package[txcount+1];
@@ -840,7 +867,7 @@ int main()
 						testcb.start = (testcb.start + 1) % testcb.size;
 					}				
 				}		
-
+*/
 
 				switch (package[MODE])
 				{
