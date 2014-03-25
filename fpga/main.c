@@ -53,7 +53,6 @@ TODO also want telemetry set and concurring protocol
 #define X32_rs232_data		peripherals[PERIPHERAL_PRIMARY_DATA]
 #define X32_rs232_stat		peripherals[PERIPHERAL_PRIMARY_STATUS]
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
-#define X32_rs232_txready	(X32_rs232_stat & 0x01)
 
 #define X32_wireless_data	peripherals[PERIPHERAL_WIRELESS_DATA]
 #define X32_wireless_stat	peripherals[PERIPHERAL_WIRELESS_STATUS]
@@ -160,7 +159,6 @@ int	isr_qr_counter;
 int	isr_qr_time;
 int	button;
 int	inst;
-int 	i;
 
 void	toggle_led(int);
 void	delay_ms(int);
@@ -171,7 +169,6 @@ void	decode();
 void 	print_comm();
 void 	check_start();
 int 	check_sum();
-void 	poll_txbuffer();
 
 // Flags and communication variables
 int 	startflag = 0;
@@ -198,23 +195,6 @@ int t0 = 0;
 int t1 = 0;
 int dt = 0;
 int integral[3] = {0,0,0};
-
-// Variable for telemetry
-BYTE txtest[2] = {0x3f, 0x31};
-BYTE pkgtest[nParams] = {0x31, 0x32, 0x33, 0x34, 0x35, 0x36};
-BYTE pkgtelemetry[nParams];
-int txcount = 0;
-int pollcount = 1;
-int txthresh = 500;
-
-int countcount = 0;
-
-int storethresh = 100;
-int storecount = 0;
-int datasend = 0;
-
-// flag
-int store_data = 0;
 
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
@@ -252,7 +232,6 @@ void Butt2Filter(void)
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-/*
 void DataStorage(void)
 {
 	BYTE sum;
@@ -276,7 +255,6 @@ void DataStorage(void)
 	
 	//to send back it is necessary to typecast to BYTE
 }
-*/
 
 /*------------------------------------------------------------------
  * Ramp-Up prevention function
@@ -387,13 +365,12 @@ BYTE cbGet(CircularBuffer *cb) {
 	// To make sure the same package isn't read twice, we overwrite
 	// the starting byte. The package will still decode because of c
 	// and it will not be recognized again. 
-	//if (c == STARTING_BYTE)
-	//{
-	//	cb->elems[cb->start].value = 0;	
-	//}
+	if (c == STARTING_BYTE)
+	{
+		cb->elems[cb->start].value = 0;	
+	}
 	cb->start = (cb->start + 1) % CB_SIZE;
 
-	//printf(" %x ", c);
 	return c;
 }
 
@@ -413,14 +390,7 @@ void isr_qr_timer(void)
  */
 void isr_button(void)
 {
-	switch (X32_button) { 
-		case 0x01: 
-			button = 1;
-			break;
-		case 0x08:
-			button = 2;
-			break;
-	}
+	button = 1;
 }
 
 /*------------------------------------------------------------------
@@ -499,12 +469,12 @@ void isr_qr_link(void)
  */
 void isr_rs232_rx(void)
 {
-	// signal interrupt
-	toggle_led(3);
-
-	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+//	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// Reset the communication flag
 	commflag = 0;
+
+	// signal interrupt
+	toggle_led(3);
 
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
@@ -517,7 +487,7 @@ void isr_rs232_rx(void)
 		}
 // TODO determine if we want it to overwrite		
 	}
-	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+//	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -528,21 +498,8 @@ void isr_rs232_rx(void)
 void isr_rs232_tx(void)
 {
 	// signal interrupt
-	toggle_led(5);
+	toggle_led(4);
 
-/*
-	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-	// everytime a byte is sent, tx interrupt is again called untill
-	// the tx buffer is empty
-	//printf("\n start = %d, end = %d", txcb.start, txcb.end);
-	if (X32_rs232_txready && !cbIsEmpty(&txcb))
-	{
-		
-	//printf("\n in tx if start = %d, end = %d", txcb.start, txcb.end);
-		X32_rs232_data = cbGet(&txcb);
-	}
-	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-*/
 }
 
 /*------------------------------------------------------------------
@@ -593,22 +550,23 @@ void decode(void)
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	// Safe the current mode to determine mode changes
-	prev_mode = package[0];
+	prev_mode = package[MODE];
 
 	// Take the value from the buffer and reset the elem
 	// buffer value to make sure it isn't read multiple times
-	pkgtelemetry[MODE] = sel_mode = cbGet(&rxcb);
+	sel_mode = cbGet(&rxcb);
 	for (i = 1; i < nParams; i++)
 	{
-		pkgtelemetry[i] = package[i] = cbGet(&rxcb);
+		package[i] = cbGet(&rxcb);
 	}
 
-	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] 	== 0) && sel_mode != PANIC_MODE) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) 
+	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] == 0 && package[LIFT] == 0)) && sel_mode != PANIC_MODE && ((sel_mode != FULL_CONTROL_MODE && sel_mode != YAW_CONTROL_MODE) || calibration_done == 1) && (sel_mode != CALIBRATION_MODE || calibration_counter == 0) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) 
 	{
-							package[0] = sel_mode;
+							package[MODE] = sel_mode;
 	}
-	else package[0] = prev_mode;
-
+	else package[MODE] = prev_mode;
+	
+	
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
@@ -633,7 +591,8 @@ int check_sum(void)
 	}	
 //	printf("\n current sum = %x, inverted sum = %x", sum, ~sum);
 	sum = ~sum;
-
+	
+	
 	if (package[CHECKSUM] != sum) {
 //		printf("\nInvalid Pkg, checksum = %x, sum = %x", package[CHECKSUM], sum);
 		//printf("\nInvalid Pkg");
@@ -643,127 +602,6 @@ int check_sum(void)
 		return 1;
 }
 
-/*------------------------------------------------------------------
- * Buffer the telemetry using a polling function
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */
-void poll_txbuffer(void)
-{
-	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-			
-		//cbClean(&txcb);
-		// TODO write to the tx buffer all parameters and send the first
-		// this will initiate the tx interrupt where the other bytes will be sent 
-		// when the tx interrupt is allowed to 
-/*
-		for (i = 0; i < nParams; i++)
-		{	
-			//txcb.elems[txcb.end].value = package[i];
-			txcb.elems[txcb.end].value = pkgtelemetry[i];
-			//txcb.elems[txcb.end].value = pkgtest[i];
-			//printf("%x", txcb.elems[txcb.end].value);
-			//printf("%x", pkgtelemetry[i]);
-			txcb.end = (txcb.end + 1) % CB_SIZE;
-			//if (txcb.end == txcb.start)
-			//{
-			//	txcb.start = (txcb.start + 1) % CB_SIZE; // full, overwrite 
-			//}	
-		}
-
-		//printf("\n");
-		ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
-		if (X32_rs232_txready && !cbIsEmpty(&txcb))
-		{
-			// initiate the package that is to be send 
-			// with the starting byte
-			txcb.elems[txcb.end].value = STARTING_BYTE;
-			txcb.end = (txcb.end + 1) % CB_SIZE;
-			//X32_rs232_data = STARTING_BYTE;
-			X32_rs232_data = cbGet(&txcb);
-			//printf("\n in if start = %d, end = %d", txcb.start, txcb.end);
-			//X32_rs232_data = cbGet(&txcb);
-		}
-		// TODO check for the checksum
-*/
-		
-	//for (i = 0; i < nParams; i++)
-	//{
-//	do{
-		if(X32_rs232_stat & 0x01){
-
-			X32_rs232_data = pkgtelemetry[txcount];
-			txcount++;
-		}
-//	}while(txcount % 2 != 0);
-	txcount = txcount % 6;
-	//}
-	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
-}
-
-/*------------------------------------------------------------------
- * Data Logging Storage
- * Store each parameter individually in arrays
- * By Daniel Lemus
- *------------------------------------------------------------------
- */
-void DataStorage(void)
-{
-	BYTE sum;
-	int i;
-
-	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-	sum = 0;
-	if (dl_count < DLOGSIZE - 10) {
-		/*
-		//stores the starting bytes
-		dl[dl_count++] = 0x05;
-		dl[dl_count++] = 0x00;
-		//stores time stamp
-		//dl[dl_count++] = timestamp;
-		dl[dl_count++] = 5;
-		// Stores desired variables (Change if needed)
-		// e.g filtered values
-		for (i=0;i<6;i++){
-			dl[dl_count++] = x0[i];
-		}
-		sum = timestamp + x0[0] + x0[1] + x0[2] + x0[3] + x0[4] + x0[5];
-		sum = ~sum;
-		dl[dl_count++] = sum;
-		*/
-		dl[dl_count++] =  STARTING_BYTE;
-		dl[dl_count++] =  0x00;
-		for (i = 0; i < nParams; i++)
-		{
-			dl[dl_count++] =  pkgtest[i];
-		}
-	}
-	else dl_count = 0;
-
-	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-	//to send back it is necessary to typecast to BYTE
-}
-
-/*------------------------------------------------------------------
- * send the stored data
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */
-void send_datastore(void)
-{
-	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-
-		for (dl_count = 0; dl_count < DLOGSIZE; dl_count++)
-		{	
-			// wait untill the tx is ready to send
-			while (!X32_rs232_txready){;}		
-	
-			X32_rs232_data = dl[dl_count];
-			//printf("%x ", dl[dl_count]);
-
-		}
-	ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
-}
 
 /*------------------------------------------------------------------
  * main 
@@ -780,7 +618,7 @@ int main()
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 14);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
@@ -799,13 +637,13 @@ int main()
 
 	// prepare rs232 rx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 13);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
 	while (X32_rs232_char) c = X32_rs232_data; // empty buffer
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_RX);
 
 	// prepare rs232 tx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_TX, &isr_rs232_tx);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 12);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 15);
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);        
 
         // prepare wireless rx interrupt and getchar handler
@@ -826,8 +664,6 @@ int main()
 	cbInit(&txcb);
 	// Initialize value to write
 	elem.value = 0;
-	
-	storecount = 0;
 	
 	for (i = 0; i < nParams; i++)
 	{
@@ -853,34 +689,38 @@ int main()
 		if (c == STARTING_BYTE)
 		{
 			decode();
+//printf("\n [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 			if (check_sum())
 			{
-				poll_txbuffer();
-				/*if (X32_rs232_stat & 0x01)
+				// If the package is received correctly, send it back as telemetry
+				// TODO after debugging add a polling function			
+				if (X32_rs232_stat & 0x01)
 				{
 					X32_rs232_data = package[CHECKSUM];//package[txcount+1];
-				}*/		
-				/*if (storecount++ > storethresh)
-				{		
-					DataStorage();
-				}*/
+			//		X32_rs232_data = //package[1];//package[txcount+1];
+		
+				//	delay_us(10);
+				}		
+
+
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
 						safe_mode();
-//					printf("\nSafe! [%x][%x][%x][%x][%x][%x]   \n", pkgtelemetry[MODE], pkgtelemetry[LIFT], pkgtelemetry[ROLL], pkgtelemetry[PITCH], pkgtelemetry[YAW], pkgtelemetry[CHECKSUM]);
-//					printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
+						if (sel_mode == SAFE_MODE) calibration_counter = 0; //Sets that the user can enter again calibration mode
+						last_control_mode = 0; //reset last_control_mode variable
+						//printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
 					case PANIC_MODE:
 						panic_mode();	
-		//				printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);						
+						//printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);						
 						// panic
 						break;
 					case MANUAL_MODE:
 						manual_mode();
 				//		printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
-	//					printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
+						//printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// manual
 						break;
 					case CALIBRATION_MODE:
@@ -909,35 +749,8 @@ int main()
 			}
 		}
 		// Delay 20 micro second = 50 Hz according to the sending of the packages
-		// start the logging, reset the counter
-		if (button == 2)
-		{
-			// Clean the array
-			memset(dl, 0, DLOGSIZE); 
-			
-			// Start to store data
-			store_data = 1;	
-			//	printf("You pushed Btn 2, the datastore is reset");
-	
-			// start storing at the first elelement of the array
-			dl_count = 0;
-			// clear button
-			button = 0;
-		}
-
-		if (button == 1)
-		{
-			//printf("You pushed Btn 1, the program is done, starting to send...\r\n");
-			program_done = 1;		
-			button = 0;
-			datasend = 1;
-		}
-		
-		//printf("\nLoop");
+		delay_us(20);
 	}
-
-	send_datastore();
-
 
 	//printf("Exit\r\n");
 
