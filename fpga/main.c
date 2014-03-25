@@ -689,11 +689,9 @@ int main()
 		if (c == STARTING_BYTE)
 		{
 			decode();
-//printf("\n [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
-			if (check_sum())
+		if (check_sum())
 			{
-				// If the package is received correctly, send it back as telemetry
-				// TODO after debugging add a polling function			
+				// Check if data is ready to be sent, and send		
 				if (X32_rs232_stat & 0x01)
 				{
 					X32_rs232_data = package[CHECKSUM];//package[txcount+1];
@@ -707,20 +705,17 @@ int main()
 				{
 					case SAFE_MODE:
 						safe_mode();
+// TODO isn't this better in the safe mode function?
 						if (sel_mode == SAFE_MODE) calibration_counter = 0; //Sets that the user can enter again calibration mode
 						last_control_mode = 0; //reset last_control_mode variable
-						//printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
 					case PANIC_MODE:
 						panic_mode();	
-						//printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);						
 						// panic
 						break;
 					case MANUAL_MODE:
 						manual_mode();
-				//		printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
-						//printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// manual
 						break;
 					case CALIBRATION_MODE:
@@ -740,6 +735,7 @@ int main()
 						break;
 					case ABORT_MODE:
 						program_done++;
+// TODO, doesn't it has to change into panic mode? Maybe abort mode is not the right word
 						for (i=0; i < 4; i++) ae[i]=0;
 						break;					
 					default :
@@ -749,7 +745,7 @@ int main()
 			}
 		}
 		// Delay 20 micro second = 50 Hz according to the sending of the packages
-		delay_us(20);
+		// delay_us(20);
 	}
 
 	//printf("Exit\r\n");
