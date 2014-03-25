@@ -116,6 +116,7 @@ int main()
 		
 		//CHECKS KEYBOARD INPUT FOR WRITTING
 		if (key == 126){ //stops writting
+			printf("\nLogging to filee..");
 			writeflag = 0;
 		}
 

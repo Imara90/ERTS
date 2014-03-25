@@ -53,6 +53,7 @@ TODO also want telemetry set and concurring protocol
 #define X32_rs232_data		peripherals[PERIPHERAL_PRIMARY_DATA]
 #define X32_rs232_stat		peripherals[PERIPHERAL_PRIMARY_STATUS]
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
+#define X32_rs232_txready	(X32_rs232_stat & 0x01)
 
 #define X32_wireless_data	peripherals[PERIPHERAL_WIRELESS_DATA]
 #define X32_wireless_stat	peripherals[PERIPHERAL_WIRELESS_STATUS]
@@ -124,6 +125,7 @@ int   x2[6] = {0,0,0,0,0,0};
 //data logging variables
 int   dl[DLOGSIZE];
 int   dl_count = 0;
+//#define LogParams	
 
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
@@ -147,6 +149,41 @@ typedef struct {
 } CircularBuffer;
 
 CircularBuffer txcb, rxcb;
+
+/*********************************************************************/
+
+/*********************************************************************/
+// TODO have to modify this in onder to have good code
+
+// fixed size for the buffer, no dyanmic allocation is needed
+// actual size is minus one element because of the one slot open protocol 
+#define CBDATA_SIZE (50000 + 1)
+ 
+// Circular buffer object 
+typedef struct {
+	int         	start;  	/* index of oldest element              */
+	int	       	end;    	/* index at which to write new element  */
+	ElemType 	elems[CBDATA_SIZE]; /* vector of elements                   */
+	// including extra element for one slot open protocol
+} CircularDataBuffer;
+
+CircularDataBuffer dscb;
+
+/*********************************************************************/
+
+/*********************************************************************/
+// actual size is minus one element because of the one slot open protocol 
+ 
+// Circular buffer object 
+typedef struct {
+	int		size; 		/* maximum number of elements */
+	int         	start;  	/* index of oldest element              */
+	int	       	end;    	/* index at which to write new element  */
+	BYTE	 	*elems;		/* vector of elements                   */
+	// including extra element for one slot open protocol
+} CBuffer;
+
+CBuffer testcb;
 
 /*********************************************************************/
 
@@ -176,7 +213,10 @@ int	commflag = 1;
 int 	commthres = 1000;
 
 // telemetry
-int 	stampinter = 0;
+int	polltell = 1;
+int 	pollthres = 15;
+long 	polltime = 0;
+
 
 BYTE 	package[nParams];
 BYTE 	sel_mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
@@ -227,36 +267,6 @@ void Butt2Filter(void)
 }
 
 /*------------------------------------------------------------------
- * Data Logging Storage
- * Store each parameter individually in arrays
- * By Daniel Lemus
- *------------------------------------------------------------------
- */
-void DataStorage(void)
-{
-	BYTE sum;
-	int i;
-	sum = 0;
-	if (dl_count < DLOGSIZE) {
-		//stores the starting bytes
-		dl[dl_count++] = 0x80;
-		dl[dl_count++] = 0x00;
-		//stores time stamp
-		dl[dl_count++] = timestamp;
-		// Stores desired variables (Change if needed)
-		// e.g filtered values
-		for (i=0;i<6;i++){
-			dl[dl_count++] = x0[i];
-		}
-		sum = timestamp + x0[0] + x0[1] + x0[2] + x0[3] + x0[4] + x0[5];
-		sum = ~sum;
-		dl[dl_count++] = sum;
-	}
-	
-	//to send back it is necessary to typecast to BYTE
-}
-
-/*------------------------------------------------------------------
  * Ramp-Up prevention function
  * Compares current - previous commanded speed and clip the current
  * value if necessary (To avoid sudden changes -> motor ramp-up)
@@ -292,7 +302,16 @@ void cbInit(CircularBuffer *cb) {
     cb->start = 0;
     cb->end   = 0;
 }
+void dscbInit(CircularDataBuffer *cb) {
+    cb->start = 0;
+    cb->end   = 0;
+}
 
+void testcbInit(CBuffer *cb, int size) {
+	cb->size  = size + 1;
+	cb->start = 0;
+	cb->end   = 0;
+}
 
 /*------------------------------------------------------------------
  * Check if circular buffer is full - not used
@@ -312,6 +331,9 @@ int cbIsFull(CircularBuffer *cb) {
 int cbIsEmpty(CircularBuffer *cb) {
     return cb->end == cb->start;
 }
+int testcbIsEmpty(CBuffer *cb) {
+    return cb->end == cb->start;
+}
 
 /*------------------------------------------------------------------
  * Clean the buffer 
@@ -320,6 +342,13 @@ int cbIsEmpty(CircularBuffer *cb) {
  */ 
 void cbClean(CircularBuffer *cb) {
 	memset(cb->elems, 0, sizeof(ElemType) * CB_SIZE); 	
+}
+void dscbClean(CircularDataBuffer *cb) {
+	memset(cb->elems, 0, sizeof(ElemType) * CBDATA_SIZE); 	
+}
+
+void testcbClean(CBuffer *cb) {
+	memset(cb->elems, 0, sizeof(ElemType) * cb->size); 	
 }
 
 
@@ -339,11 +368,20 @@ void cbWrite(CircularBuffer *cb, ElemType *elem) {
 	}
 // TODO determine if we want it to overwrite
 }
+void dscbWrite(CircularDataBuffer *cb, ElemType *elem) {
+    cb->elems[cb->end] = *elem;
+    cb->end = (cb->end + 1) % CBDATA_SIZE;
+    if (cb->end == cb->start)
+	{        
+		cb->start = (cb->start + 1) % CBDATA_SIZE; /* full, overwrite */
+	}
+// TODO determine if we want it to overwrite
+}
 
 /*------------------------------------------------------------------
  * Read from buffer and store in elem
  * Read oldest element. App must ensure !cbIsEmpty() first. 
- * By Imara Speek 1506374 
+ * By Imara Speek 1506374 - not used
  *------------------------------------------------------------------  
  */
 void cbRead(CircularBuffer *cb, ElemType *elem) {
@@ -370,6 +408,19 @@ BYTE cbGet(CircularBuffer *cb) {
 		cb->elems[cb->start].value = 0;	
 	}
 	cb->start = (cb->start + 1) % CB_SIZE;
+
+	return c;
+}
+
+BYTE dscbGet(CircularDataBuffer *cb) {
+	BYTE c;	
+
+	c = cb->elems[cb->start].value;
+	// Whenever the starting byte is read, the package is decoded
+	// To make sure the same package isn't read twice, we overwrite
+	// the starting byte. The package will still decode because of c
+	// and it will not be recognized again. 
+	cb->start = (cb->start + 1) % CBDATA_SIZE;
 
 	return c;
 }
@@ -469,7 +520,6 @@ void isr_qr_link(void)
  */
 void isr_rs232_rx(void)
 {
-//	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// Reset the communication flag
 	commflag = 0;
 
@@ -484,10 +534,8 @@ void isr_rs232_rx(void)
 		if (rxcb.end == rxcb.start)
 		{
 			rxcb.start = (rxcb.start + 1) % CB_SIZE; /* full, overwrite */
-		}
-// TODO determine if we want it to overwrite		
+		}	
 	}
-//	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -587,21 +635,168 @@ int check_sum(void)
 	for (i = 1; i < (nParams - 1); i++)
 	{
 		sum += package[i];
-//		printf("package[%d] = %x ", i, package[i]);
 	}	
-//	printf("\n current sum = %x, inverted sum = %x", sum, ~sum);
 	sum = ~sum;
 	
 	
 	if (package[CHECKSUM] != sum) {
-//		printf("\nInvalid Pkg, checksum = %x, sum = %x", package[CHECKSUM], sum);
-		//printf("\nInvalid Pkg");
 		return 0;
 	}
 	else
 		return 1;
 }
 
+#define storenosensor 12
+#define storeall 24
+
+/*------------------------------------------------------------------
+ * Data Logging Storage
+ * Store each parameter individually in arrays
+ * by Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+void store_data(void)
+{
+	BYTE sum;
+	int i, j;
+	BYTE storing[storenosensor];
+	sum = 0;
+	
+	// determine the checksum for the send package
+	sum = X32_ms_clock + package[MODE] + package[LIFT] + package[ROLL] + 				package[PITCH] + package[YAW] + ae[0] + ae[1] + ae[2] + ae[3]; /* + 
+				 x0[0] + x0[1] + x0[2] + x0[3] + x0[4] + x0[5]; */
+	sum = ~sum;
+
+	// TODO find a way to save P values if the mode has changed
+	
+	j = 0;
+	storing[j++] = 0x80;
+	// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
+	storing[j++] = X32_ms_clock >> 8;
+	storing[j++] = X32_ms_clock;
+	storing[j++] = package[MODE];
+	storing[j++] = package[LIFT];
+	storing[j++] = package[ROLL];
+	storing[j++] = package[YAW];
+	storing[j++] = package[PITCH];
+	storing[j++] = ae[0];
+	storing[j++] = ae[1];
+	storing[j++] = ae[2];
+	storing[j++] = ae[3];
+/*
+	storing[j++] = x0[0] >> 8;
+	storing[j++] = x0[0];
+	storing[j++] = x0[1] >> 8;
+	storing[j++] = x0[1];
+	storing[j++] = x0[2] >> 8;
+	storing[j++] = x0[2];
+	storing[j++] = x0[3] >> 8;
+	storing[j++] = x0[3];
+	storing[j++] = x0[4] >> 8;
+	storing[j++] = x0[4];
+	storing[j++] = x0[5] >> 8;
+	storing[j++] = x0[5];
+	storing[j++] = y0[0];
+	storing[j++] = y0[1];
+	storing[j++] = y0[2];
+	storing[j++] = y0[3];
+	storing[j++] = y0[4];
+	storing[j++] = y0[5];
+*/
+	storing[j++] = sum;
+
+	for (i = 0; i < 12; i++)
+	{
+		// make sure only starting byte can be 0x80
+		if ((i != 0) && (storing[i] == 0x80))
+		{
+			// if the value is -128, correct it to -127
+			storing[i] = 0x81;
+		}
+		dscb.elems[dscb.end].value = storing[i];
+		//printf(" %x, ", storing[i]);
+		dscb.end = (dscb.end + 1) % CBDATA_SIZE;
+		if (dscb.end == dscb.start)
+		{
+			dscb.start = (dscb.start + 1) % CBDATA_SIZE; // full, overwrite 
+		}
+	}
+	
+}
+
+/*------------------------------------------------------------------
+ * Data sending of log
+ * Store each parameter individually in arrays
+ * by Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+void send_data(void)
+{
+	// send data from the data log untill it is empty
+	while (dscb.end != dscb.start)
+	{
+
+		if (X32_rs232_txready)
+		{
+			X32_rs232_data = dscb.elems[dscb.start].value;
+			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
+		}	
+	}
+
+}
+
+/*------------------------------------------------------------------
+ * Send the telemetry at 10 Hz max 
+ * by Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+void send_telemetry(void)
+{
+	BYTE telem[nParams];
+	int j, i, sum;
+	sum = 0;
+
+	// Checks if more than or 100 ms have passed since the last 
+	// telemetry
+	if (X32_ms_clock - polltime >= 100)
+	{
+		j = 0;
+		telem[j++] = STARTING_BYTE;
+		telem[j++] = X32_ms_clock >> 8;
+		telem[j++] = package[MODE];
+		telem[j++] = package[LIFT];
+		telem[j++] = package[ROLL];
+		telem[j++] = package[PITCH];
+		telem[j++] = package[YAW];
+
+		// calculate the checksum, dont include starting byte
+		for (i = 1; i < j ; i++)
+		{
+			sum += telem[i];
+		}
+		sum = ~sum;
+		telem[j++] = sum;
+
+		// send the data
+		for (i = 0; i < j; i++)
+		{
+			// wait untill tx is ready to send
+			while ( !X32_rs232_txready ) ;
+
+			X32_rs232_data = telem[i];
+			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
+		}
+/*
+		if (X32_rs232_txready)
+		{
+			X32_rs232_data = X32_ms_clock;
+			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
+		}
+*/	
+		polltime = X32_ms_clock;
+	}
+	
+}
 
 /*------------------------------------------------------------------
  * main 
@@ -615,6 +810,8 @@ int main()
 	BYTE c;
 	// Initialize the Circular buffer and elem to write from
 	ElemType elem;
+
+	BYTE testelems[8];
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -659,15 +856,35 @@ int main()
 	// clean the buffer
 	cbClean(&rxcb);
 	cbClean(&txcb);
+	dscbClean(&dscb);
 	// initialize the buffer
 	cbInit(&rxcb);
 	cbInit(&txcb);
+	dscbInit(&dscb);
+
+
+	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
+	testcbInit(&testcb, 7);
+	testcb.elems = testelems;
+	testcbClean(&testcb);
+
 	// Initialize value to write
-	elem.value = 0;
+	//elem.value = 0;
+
 	
 	for (i = 0; i < nParams; i++)
 	{
 		package[i] = 0;
+
+		// DEBUG DEBUG DEBUG
+/*
+		testcb.elems[testcb.end] = i;
+		testcb.end = (testcb.end + 1) % testcb.size;
+		if (testcb.end == testcb.start)
+		{
+			testcb.start = (testcb.start + 1) % testcb.size; // full, overwrite 
+		}
+*/
 	}
 
 	// Print to indicate start
@@ -689,38 +906,39 @@ int main()
 		if (c == STARTING_BYTE)
 		{
 			decode();
-//printf("\n [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 			if (check_sum())
 			{
-				// If the package is received correctly, send it back as telemetry
-				// TODO after debugging add a polling function			
+				//store_data();
+				// Check if data is ready to be sent, and send	
+/*	
 				if (X32_rs232_stat & 0x01)
 				{
-					X32_rs232_data = package[CHECKSUM];//package[txcount+1];
-			//		X32_rs232_data = //package[1];//package[txcount+1];
-		
-				//	delay_us(10);
+					//X32_rs232_data = package[CHECKSUM];//package[txcount+1];
+					//X32_rs232_data =  sizeof(X32_ms_clock);
+					//X32_rs232_data = sizeof(BYTE);
+					if(!testcbIsEmpty(&testcb))
+					{
+						X32_rs232_data = testcb.elems[testcb.start];
+						testcb.start = (testcb.start + 1) % testcb.size;
+					}				
 				}		
-
+*/
 
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
 						safe_mode();
+// TODO isn't this better in the safe mode function?
 						if (sel_mode == SAFE_MODE) calibration_counter = 0; //Sets that the user can enter again calibration mode
 						last_control_mode = 0; //reset last_control_mode variable
-						//printf("\nSafe! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// safe
 						break;
 					case PANIC_MODE:
 						panic_mode();	
-						//printf("\nPanic! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);						
 						// panic
 						break;
 					case MANUAL_MODE:
 						manual_mode();
-				//		printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", mode, lift, roll, pitch, yaw, checksum, ae[0], ae[1], ae[2], ae[3]);
-						//printf("\nManual! [%x][%x][%x][%x][%x][%x]   engines: [%d][%d][%d][%d]\n", package[MODE], package[LIFT], package[ROLL], package[PITCH], package[YAW], package[CHECKSUM], ae[0], ae[1], ae[2], ae[3]);	
 						// manual
 						break;
 					case CALIBRATION_MODE:
@@ -740,19 +958,25 @@ int main()
 						break;
 					case ABORT_MODE:
 						program_done++;
+// TODO, doesn't it has to change into panic mode? Maybe abort mode is not the right word
+// if this needs to be done, it has to be done as in the panic mode, with care, not force
 						for (i=0; i < 4; i++) ae[i]=0;
 						break;					
 					default :
 						// safe
 						break;
-				}			
+				}
+				
+				// if the package was correct, store the correct data
+				store_data();
+				// sends the telemetry at 10Hz
+				send_telemetry();			
 			}
 		}
-		// Delay 20 micro second = 50 Hz according to the sending of the packages
-		delay_us(20);
 	}
 
-	//printf("Exit\r\n");
+	// send the data log to the pc
+	send_data();	
 
         DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 
