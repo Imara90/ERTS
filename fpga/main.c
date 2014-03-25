@@ -213,7 +213,9 @@ int	commflag = 1;
 int 	commthres = 1000;
 
 // telemetry
-int 	stampinter = 0;
+int	polltell = 1;
+int 	pollthres = 50;
+
 
 BYTE 	package[nParams];
 BYTE 	sel_mode, roll, pitch, yaw, lift, pcontrol, p1control, p2control, checksum;
@@ -665,7 +667,6 @@ void store_data(void)
 	sum = ~sum;
 
 	// TODO find a way to save P values if the mode has changed
-	// TODO check how we can send the timestamp
 	
 	j = 0;
 	storing[j++] = 0x80;
@@ -741,6 +742,24 @@ void send_data(void)
 		}	
 	}
 
+}
+
+/*------------------------------------------------------------------
+ * Send the telemetry at 10 Hz max 
+ * by Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+void send_telemetry(void)
+{
+	if (polltell++ > pollthres)
+	{
+		if (X32_rs232_txready)
+		{
+			X32_rs232_data = X32_ms_clock >> 8;
+			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
+		}	
+		polltell = 0;
+	}
 }
 
 /*------------------------------------------------------------------
@@ -913,7 +932,8 @@ int main()
 				}
 				
 				// if the package was correct, store the correct data
-				store_data();			
+				store_data();
+				send_telemetry();			
 			}
 		}
 	}
