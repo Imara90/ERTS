@@ -171,6 +171,22 @@ CircularDataBuffer dscb;
 
 /*********************************************************************/
 
+/*********************************************************************/
+// actual size is minus one element because of the one slot open protocol 
+ 
+// Circular buffer object 
+typedef struct {
+	int		size; 		/* maximum number of elements */
+	int         	start;  	/* index of oldest element              */
+	int	       	end;    	/* index at which to write new element  */
+	BYTE	 	*elems;		/* vector of elements                   */
+	// including extra element for one slot open protocol
+} CBuffer;
+
+CBuffer testcb;
+
+/*********************************************************************/
+
 // Globals
 char	c;
 int	program_done;
@@ -288,6 +304,11 @@ void dscbInit(CircularDataBuffer *cb) {
     cb->end   = 0;
 }
 
+void testcbInit(CBuffer *cb, int size) {
+	cb->size  = size + 1;
+	cb->start = 0;
+	cb->end   = 0;
+}
 
 /*------------------------------------------------------------------
  * Check if circular buffer is full - not used
@@ -307,6 +328,9 @@ int cbIsFull(CircularBuffer *cb) {
 int cbIsEmpty(CircularBuffer *cb) {
     return cb->end == cb->start;
 }
+int testcbIsEmpty(CBuffer *cb) {
+    return cb->end == cb->start;
+}
 
 /*------------------------------------------------------------------
  * Clean the buffer 
@@ -318,6 +342,10 @@ void cbClean(CircularBuffer *cb) {
 }
 void dscbClean(CircularDataBuffer *cb) {
 	memset(cb->elems, 0, sizeof(ElemType) * CBDATA_SIZE); 	
+}
+
+void testcbClean(CBuffer *cb) {
+	memset(cb->elems, 0, sizeof(ElemType) * cb->size); 	
 }
 
 
@@ -489,7 +517,6 @@ void isr_qr_link(void)
  */
 void isr_rs232_rx(void)
 {
-//	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// Reset the communication flag
 	commflag = 0;
 
@@ -504,10 +531,8 @@ void isr_rs232_rx(void)
 		if (rxcb.end == rxcb.start)
 		{
 			rxcb.start = (rxcb.start + 1) % CB_SIZE; /* full, overwrite */
-		}
-// TODO determine if we want it to overwrite		
+		}	
 	}
-//	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -607,15 +632,11 @@ int check_sum(void)
 	for (i = 1; i < (nParams - 1); i++)
 	{
 		sum += package[i];
-//		printf("package[%d] = %x ", i, package[i]);
 	}	
-//	printf("\n current sum = %x, inverted sum = %x", sum, ~sum);
 	sum = ~sum;
 	
 	
 	if (package[CHECKSUM] != sum) {
-//		printf("\nInvalid Pkg, checksum = %x, sum = %x", package[CHECKSUM], sum);
-		//printf("\nInvalid Pkg");
 		return 0;
 	}
 	else
@@ -635,6 +656,7 @@ void store_data(void)
 	BYTE storing[12];
 	sum = 0;
 	
+	// determine the checksum for the send package
 	sum = X32_ms_clock + package[MODE] + package[LIFT] + package[ROLL] + 				package[PITCH] + package[YAW] + ae[0] + ae[1] + ae[2] + ae[3]; /* + 
 				 x[0] + x[1] + x[2] + x[3] + x[4] + x[5]; */
 	sum = ~sum;
@@ -706,6 +728,10 @@ int main()
 	// Initialize the Circular buffer and elem to write from
 	ElemType elem;
 
+	BYTE testelems[8];
+	//ElemType testtype;
+	
+
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
         SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
@@ -754,12 +780,29 @@ int main()
 	cbInit(&rxcb);
 	cbInit(&txcb);
 	dscbInit(&dscb);
+
+
+	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
+	testcbInit(&testcb, 7);
+	testcb.elems = testelems;
+
+	testcbClean(&testcb);
+
 	// Initialize value to write
-	elem.value = 0;
+	//elem.value = 0;
+
 	
 	for (i = 0; i < nParams; i++)
 	{
 		package[i] = 0;
+
+		// DEBUG DEBUG DEBUG
+		testcb.elems[testcb.end] = i;
+		testcb.end = (testcb.end + 1) % testcb.size;
+		if (testcb.end == testcb.start)
+		{
+			testcb.start = (testcb.start + 1) % testcb.size; // full, overwrite 
+		}
 	}
 
 	// Print to indicate start
@@ -784,12 +827,18 @@ int main()
 			if (check_sum())
 			{
 				//store_data();
-				// Check if data is ready to be sent, and send		
+				// Check if data is ready to be sent, and send	
+	
 				if (X32_rs232_stat & 0x01)
 				{
 					//X32_rs232_data = package[CHECKSUM];//package[txcount+1];
 					//X32_rs232_data =  sizeof(X32_ms_clock);
-					X32_rs232_data = sizeof(BYTE);
+					//X32_rs232_data = sizeof(BYTE);
+					if(!testcbIsEmpty(&testcb))
+					{
+						X32_rs232_data = testcb.elems[testcb.start];
+						testcb.start = (testcb.start + 1) % testcb.size;
+					}				
 				}		
 
 
@@ -828,6 +877,7 @@ int main()
 					case ABORT_MODE:
 						program_done++;
 // TODO, doesn't it has to change into panic mode? Maybe abort mode is not the right word
+// if this needs to be done, it has to be done as in the panic mode, with care, not force
 						for (i=0; i < 4; i++) ae[i]=0;
 						break;					
 					default :
@@ -843,8 +893,6 @@ int main()
 
 	// send the data log to the pc
 	send_data();	
-
-	//printf("Exit\r\n");
 
         DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 
