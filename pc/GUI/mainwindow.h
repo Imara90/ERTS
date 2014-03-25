@@ -40,6 +40,9 @@ public:
         case MODE_P:
             return QString("P MODE");
             break;
+        case MODE_ABORT:
+            return QString("ABORT MODE");
+            break;
         default:
             return QString("SAFE MODE");
             break;
@@ -57,11 +60,11 @@ public:
 private slots:
     void on_RunButt_clicked();
 
-    void on_pushButton_2_clicked();
-
     void on_CommButt_clicked();
 
     void keyPressEvent(QKeyEvent* Key);
+
+    void on_SaveDL_clicked();
 
 private:
     Ui::MainWindow *ui;

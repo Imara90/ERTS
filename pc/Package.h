@@ -54,7 +54,7 @@ typedef struct
 int SetPkgMode(Package* mPkg, BYTE mMode)
 {
 	//Check the mode
-	if ((mMode < 0) || (mMode > 9)) {
+    if (mMode > 9) {
 		mPkg->Pkg[MODE_POS] = MODE_SAFE;
 		return 1;
 	}

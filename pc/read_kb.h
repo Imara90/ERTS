@@ -16,8 +16,6 @@ Output: ESC button - 0 for off and 1 for on
  */
 int read_kb(int *key_map,char* c) {
 int i;
-
-
 //Handle Arrows and ESC		
 		if(*c==27){
 			*c=getchar();
@@ -32,26 +30,29 @@ int i;
 		}
 
 	switch (*c){
-		case '0'://SAFE MODE
+		case 48://SAFE MODE (key '0')
 			*key_map= MODE_SAFE;
 			break;
-		case '1'://PANIC MODE
+		case 49://PANIC MODE (key '1')
 			*key_map= MODE_PANIC;
 			break;
-		case '2'://MANUAL MODE
+		case 50://MANUAL MODE (key '2')
 			*key_map= MODE_MANUAL;
 			break;
-		case '3'://CALIBRATION MODE
+		case 51://CALIBRATION MODE (key '3')
 			*key_map= MODE_CALIBRATION;
 			break;
-		case '4'://YAW CONTROL MODE
+		case 52://YAW CONTROL MODE (key '4')
 			*key_map= MODE_YAW_CONTROL;
 			break;
-		case '5':// FULL CONTROL MODE	
+		case 53:// FULL CONTROL MODE (key '5')
 			*key_map= MODE_FULL_CONTROL;
 			break;
-		case '6':// P GAIN MODE
+		case 54:// P GAIN MODE (key '6')
 			*key_map= MODE_P;
+			break;
+		case 126://Del
+			*key_map= MODE_ABORT;
 			break;
 		case 'a'://LIFT UP
 			*(key_map+1) = TrimToMaxLift(*(key_map+1) + 2);
