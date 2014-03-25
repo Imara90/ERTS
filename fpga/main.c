@@ -752,15 +752,47 @@ void send_data(void)
  */
 void send_telemetry(void)
 {
-	//if (polltell++ > pollthres)
+	BYTE telem[nParams];
+	int j, i, sum;
+	sum = 0;
+
+	// Checks if more than or 100 ms have passed since the last 
+	// telemetry
 	if (X32_ms_clock - polltime >= 100)
 	{
+		j = 0;
+		telem[j++] = STARTING_BYTE;
+		telem[j++] = X32_ms_clock >> 8;
+		telem[j++] = package[MODE];
+		telem[j++] = package[LIFT];
+		telem[j++] = package[ROLL];
+		telem[j++] = package[PITCH];
+		telem[j++] = package[YAW];
+
+		// calculate the checksum, dont include starting byte
+		for (i = 1; i < j ; i++)
+		{
+			sum += telem[i];
+		}
+		sum = ~sum;
+		telem[j++] = sum;
+
+		// send the data
+		for (i = 0; i < j; i++)
+		{
+			// wait untill tx is ready to send
+			while ( !X32_rs232_txready ) ;
+
+			X32_rs232_data = telem[i];
+			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
+		}
+/*
 		if (X32_rs232_txready)
 		{
 			X32_rs232_data = X32_ms_clock;
 			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
-		}	
-		//polltell = 0;
+		}
+*/	
 		polltime = X32_ms_clock;
 	}
 	
@@ -845,12 +877,14 @@ int main()
 		package[i] = 0;
 
 		// DEBUG DEBUG DEBUG
+/*
 		testcb.elems[testcb.end] = i;
 		testcb.end = (testcb.end + 1) % testcb.size;
 		if (testcb.end == testcb.start)
 		{
 			testcb.start = (testcb.start + 1) % testcb.size; // full, overwrite 
 		}
+*/
 	}
 
 	// Print to indicate start
@@ -935,6 +969,7 @@ int main()
 				
 				// if the package was correct, store the correct data
 				store_data();
+				// sends the telemetry at 10Hz
 				send_telemetry();			
 			}
 		}
