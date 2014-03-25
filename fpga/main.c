@@ -124,6 +124,7 @@ int   x2[6] = {0,0,0,0,0,0};
 //data logging variables
 int   dl[DLOGSIZE];
 int   dl_count = 0;
+//#define LogParams	
 
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
@@ -243,36 +244,6 @@ void Butt2Filter(void)
  		x1[i] = x0[i];
 		y1[i] = y0[i];
 	}
-}
-
-/*------------------------------------------------------------------
- * Data Logging Storage
- * Store each parameter individually in arrays
- * By Daniel Lemus
- *------------------------------------------------------------------
- */
-void DataStorage(void)
-{
-	BYTE sum;
-	int i;
-	sum = 0;
-	if (dl_count < DLOGSIZE) {
-		//stores the starting bytes
-		dl[dl_count++] = 0x80;
-		dl[dl_count++] = 0x00;
-		//stores time stamp
-		dl[dl_count++] = timestamp;
-		// Stores desired variables (Change if needed)
-		// e.g filtered values
-		for (i=0;i<6;i++){
-			dl[dl_count++] = x0[i];
-		}
-		sum = timestamp + x0[0] + x0[1] + x0[2] + x0[3] + x0[4] + x0[5];
-		sum = ~sum;
-		dl[dl_count++] = sum;
-	}
-	
-	//to send back it is necessary to typecast to BYTE
 }
 
 /*------------------------------------------------------------------
@@ -650,6 +621,54 @@ int check_sum(void)
 		return 1;
 }
 
+/*------------------------------------------------------------------
+ * Data Logging Storage
+ * Store each parameter individually in arrays
+ * 
+ *------------------------------------------------------------------
+ */
+void store_data(void)
+{
+	BYTE sum;
+	int i;
+	sum = 0;
+	
+	sum = X32_ms_clock + package[MODE] + package[LIFT] + package[ROLL] + 				package[PITCH] + package[YAW] + ae[0] + ae[1] + ae[2] + ae[3] + 
+				 x[0] + x[1] + x[2] + x[3] + x[4] + x[5];
+	sum = ~sum;
+
+	// TODO find a way to save P values if the mode has changed
+	BYTE storing[18] = {0x80, X32_ms_clock, package[MODE], package[LIFT], package[ROLL], 
+				package[PITCH], package[YAW], ae[0], ae[1], ae[2], ae[3], 
+				x[0], x[1], x[2], x[3], x[4], x[5], sum};
+
+	for (i = 0; i < 18; i++)
+	{
+		dscb.elems[dscb.end].value = storing[i];
+		dscb.end = (dscb.end + 1) % CBDATA_SIZE;
+		if (dscb.end == dscb.start)
+		{
+			dscb.start = (dscb.start + 1) % CBDATA_SIZE; /* full, overwrite */
+		}
+	}
+/*
+		//stores the starting bytes
+		dl[dl_count++] = 0x80;
+		dl[dl_count++] = 0x00;
+		//stores time stamp
+		dl[dl_count++] = timestamp;
+		// Stores desired variables (Change if needed)
+		// e.g filtered values
+		for (i=0;i<6;i++){
+			dl[dl_count++] = x0[i];
+		}
+		sum = timestamp + x0[0] + x0[1] + x0[2] + x0[3] + x0[4] + x0[5];
+		sum = ~sum;
+		dl[dl_count++] = sum;
+*/
+	
+	//to send back it is necessary to typecast to BYTE
+}
 
 /*------------------------------------------------------------------
  * main 
@@ -739,7 +758,7 @@ int main()
 		if (c == STARTING_BYTE)
 		{
 			decode();
-		if (check_sum())
+			if (check_sum())
 			{
 				// Check if data is ready to be sent, and send		
 				if (X32_rs232_stat & 0x01)
