@@ -214,7 +214,8 @@ int 	commthres = 1000;
 
 // telemetry
 int	polltell = 1;
-int 	pollthres = 50;
+int 	pollthres = 15;
+long 	polltime = 0;
 
 
 BYTE 	package[nParams];
@@ -751,15 +752,18 @@ void send_data(void)
  */
 void send_telemetry(void)
 {
-	if (polltell++ > pollthres)
+	//if (polltell++ > pollthres)
+	if (X32_ms_clock - polltime >= 100)
 	{
 		if (X32_rs232_txready)
 		{
-			X32_rs232_data = X32_ms_clock >> 8;
+			X32_rs232_data = X32_ms_clock;
 			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
 		}	
-		polltell = 0;
+		//polltell = 0;
+		polltime = X32_ms_clock;
 	}
+	
 }
 
 /*------------------------------------------------------------------
@@ -776,8 +780,6 @@ int main()
 	ElemType elem;
 
 	BYTE testelems[8];
-	//ElemType testtype;
-	
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
