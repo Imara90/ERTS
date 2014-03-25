@@ -707,9 +707,11 @@ int main()
 	// clean the buffer
 	cbClean(&rxcb);
 	cbClean(&txcb);
+	dscbClean(&dscb);
 	// initialize the buffer
 	cbInit(&rxcb);
 	cbInit(&txcb);
+	dscbInit(&dscb);
 	// Initialize value to write
 	elem.value = 0;
 	
