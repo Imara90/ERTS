@@ -21,6 +21,65 @@
 #include "rs232.h" 	// Provides functions to open and close rs232 port
 
 #define BYTE unsigned char
+#define FALSE 	0
+#define TRUE 	1
+
+#define START_BYTE 0x80
+#define TELPKGLEN     6 //EXPECTED TELEMETRY PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define TELPKGCHKSUM  TELPKGLEN - 1
+
+#define START_BYTE 0x80
+#define DLPKGLEN     6 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define DLPKGCHKSUM  DLPKGLEN - 1
+
+
+
+int TeleDecode(int* TelPkg/*, int* Output*/){
+	
+	int i;
+	int sum = 0;
+	int ChkSum = TelPkg[TELPKGCHKSUM];
+	//CHECKSUM CHECK
+	for(i = 0; i < TELPKGCHKSUM ; i++)
+	{
+		sum += TelPkg[i];
+	}
+	sum = (BYTE)~sum;
+//	printf("[%x][%x]",,ChkSum);
+	if (ChkSum == sum)
+	{
+		//DECODING PART
+	}
+	else
+	{
+		return FALSE;
+	}	
+	return TRUE;
+}
+
+int DLDecode(int* DLPkg/*, int* Output*/){
+	
+	int i;
+	int sum = 0;
+	int ChkSum = DLPkg[DLPKGCHKSUM];
+	//CHECKSUM CHECK
+	for(i = 0; i < DLPKGCHKSUM ; i++)
+	{
+		sum += DLPkg[i];
+	}
+	sum = (BYTE)~sum;
+//	printf("[%x][%x]",,ChkSum);
+	if (ChkSum == sum)
+	{
+		//DECODING PART
+	}
+	else
+	{
+		return FALSE;
+	}	
+	return TRUE;
+}
+
 
 int main()
 {
@@ -69,21 +128,48 @@ int main()
 	nbtx=nbrx=0;
 
 	//DATA LOGGING FILE
-	FILE *DLf = fopen("DATALOGGING.txt", "w");
-	if (DLf == NULL)
+	int DLData[TELPKGLEN];
+	for(i = 0; i < TELPKGLEN; i++){
+		DLData[i] = 0;
+	}
+	int dltimeout = 0;
+	//Used to request data logging
+	int DLreq = 0;
+	FILE *DLfile = fopen("DATALOGGING.txt", "w");
+	if (DLfile == NULL)
 	{
 	    printf("Error opening file!\n");
 	    exit(1);
 	}
 
-	while (key != 43) {
+	//TELEMETRY
+	int TeleData[TELPKGLEN];
+	int datacount  = 0;
+	int ChkSumOK = FALSE;
+	//Initializes telemetry array
+	for(i = 0; i < TELPKGLEN; i++){
+		TeleData[i] = 0;
+	}
+	int DisplayArray[7];// Contains the current mode along with the 6 sensors values
+	//Initializes display array
+	for(i = 0; i < 7; i++){
+		DisplayArray[i] = 0;
+	}
+	FILE *TeleFile = fopen("Telemetry.txt", "w");
+	if (TeleFile == NULL)
+	{
+	    printf("Error opening file!\n");
+	    exit(1);
+	}
+	
+	while (key != 43) {// + key
 
 		
 		//reads data from the joystick ...comment if joystick is not connected
 //		abort = read_js(jmap);
-		//printf("jmap[%x][%x][%x][%x]\n",jmap[0],jmap[1],jmap[2],jmap[3]);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
+		//printf("key %i\n",key);
 		if (key != -1) abort = read_kb(keymap,(char*)&key);
 		
 		switch (keymap[0]) {
@@ -102,7 +188,7 @@ int main()
 				break;
 		}
 		
-		//EVALUATES IF ABORTION REQUESTEQ
+		//EVALUATES IF ABORTION REQUESTED
 		if (abort == 1) keymap[0] = MODE_ABORT;
 
 		//SETS THE PACKAGE WITH THE DESIRED DATA
@@ -114,53 +200,110 @@ int main()
 		}
 		printf("\n");*/
 		
-		//CHECKS KEYBOARD INPUT FOR WRITTING
-		if (key == 126){ //stops writting
-			writeflag = 0;
+		//CHECKS KEYBOARD INPUT FOR DATALOGGING
+		if (key == 126){ //Data Logging requested
+			DLreq = 1;
+			datacount = 0; // Resets the counter (Reading new data)
 		}
 
-		//WRITTING
+		
 		if (writeflag == 1){
-			//printf("\nWriteloop");
-			// Writes the pkg byte by byte. Makes sure that each byte is written
+			//WRITTING
+			//Writes the pkg byte by byte. Makes sure that each byte is written
 			do{
-				
 				nbtx = write(fd_RS232, &(mPkg.Pkg[datai]), sizeof(BYTE));
 				if (nbtx == 1) { //a Byte has been written	
 					datai++;
 				}
-				if (datai >= PKGLEN){ //The Pkg has not been completely written
+				if (datai >= PKGLEN){ //The Pkg has been completely written
 					datai = 0;
 					Pkg_written = 1;
 				}
-				else {
+				else {//The Pkg has NOT been completely written
 					Pkg_written = 0;
 				}
 			}while(Pkg_written == 0);
 		}
-
-
-		//READING
+		//READING 
+		//Makes sure everything is read from the RX line
 		do{
-			//printf("\nReadloop");
 			nbrx = read(fd_RS232, &readbuff, sizeof(BYTE));
 			//printf("\n [%i] %i nbrx = %i",writeflag,buff_count++,nbrx);
 			if (nbrx > 0)
 			{
-				//if (readbuff != 0x80 && readbuff != 0x11){
-				printf("\n\nRead %i: [%x] Wrote[%x] ",buff_count++, readbuff,mPkg.Pkg[PKGLEN-1]);
-				//}
-		
-				//Writes the datalog in a Txt file
-				if (!writeflag){
-					fprintf(DLf, "%x\n", (BYTE)readbuff);
-					//printf("\n printing to file...%x ", (BYTE)readbuff);
+				// CHECKING FOR STARTING BYTE
+				if (readbuff == START_BYTE)
+				{
+					datacount = 0; //Reset the data counter. Starts over!!
 				}
-				//printf("\nReadBuffer hex: %x char: %c ", readbuff, readbuff);
+				// STORING THE DATA. Starts over if a starting BYTE is found!!!
+				if (readbuff != START_BYTE)
+				{
+					TeleData[datacount] = readbuff;
+					datacount++;
+				}
+				// NORMAL OPERATION
+				if (DLreq == 0){ 
+					// TELEMETRY DECODING. Only If the store data has the expected size
+					if (datacount == TELPKGLEN) //Complete Pkg Received
+					{
+						//Prints the stored package
+						for (i = 0; i < TELPKGLEN; i++) {
+							printf("[%x]",TeleData[i]);
+						}
+				
+						// DECODING. Checksum proof and stores decoded values in new array DispData
+						//ChkSumOK = decode(TeleData,&DispData);
+						ChkSumOK = TeleDecode(TeleData);
+						printf(" Chksum OK = %i \n",ChkSumOK);
+						//Saves data only if the pkg is complete
+						if (ChkSumOK){
+							//Writes the telemetry in a Txt file
+							for (i = 0; i < TELPKGLEN; i++) {
+								fprintf(TeleFile, "%x ", TeleData[i]);
+							}
+							fprintf(TeleFile,"\n");
+						}
+					}
+				}
+				else //DATA LOG REQUESTED Shuts writting down and only reads
+				{
+					// DATA LOGGING DECODING. Only If the stored data has the expected size
+					if (datacount == DLPKGLEN) //Complete Pkg Received
+					{
+						printf("DL ");
+						//Prints the stored package
+						for (i = 0; i < DLPKGLEN; i++) {
+							printf("[%x]",TeleData[i]);
+						}
+						//DECODING. Checksum proof and stores decoded values in new array DispData
+						//ChkSumOK = decode(TeleData,&DispData);
+						ChkSumOK = DLDecode(TeleData);
+						printf(" Chksum OK = %i \n",ChkSumOK);
+						//Saves data only if the pkg is complete
+						if (ChkSumOK){
+							//Writes the datalog in a Txt file
+							for (i = 0; i < DLPKGLEN; i++) {
+								fprintf(DLfile, "%x ", TeleData[i]);
+							}
+							fprintf(DLfile,"\n");
+						}
+					}
+					writeflag == 0;
+				}
+				//dltimeout = 0;
 			}
-		} while (nbrx < 0);
+		} while (nbrx > 0);
+
+		/*if( (dltimeout++ > 2000) && writeflag == 0){
+			printf("Data Login Downloaded...");
+			break;
+		}*/
+		
+		
 	}
-	fclose(DLf);
+	fclose(DLfile);
+	fclose(TeleFile);
 	rs232_close();
 	printf("\n Port is closed \n");
 	return 0;

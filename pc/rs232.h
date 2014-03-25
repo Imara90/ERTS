@@ -77,7 +77,19 @@ void rs232_close()
 
 */
 
+/*------------------------------------------------------------
+ * Simple terminal in C
+ *
+ * Arjan J.C. van Gemund (+ few mods by Mark Dufour)
+ *------------------------------------------------------------
+ */
+//#define	FALSE		0
+//#define	TRUE		1
 
+#include <stdio.h>
+#include <termios.h>
+#include <unistd.h>
+#include <string.h>
 
 struct termios stdin_orig;  // Structure to save parameters
 
@@ -117,19 +129,7 @@ void keyboard_nonblocking() {
 
 
 
-/*------------------------------------------------------------
- * Simple terminal in C
- * 
- * Arjan J.C. van Gemund (+ few mods by Mark Dufour)
- *------------------------------------------------------------
- */
-#define	FALSE		0
-#define	TRUE		1
 
-#include <stdio.h>
-#include <termios.h>
-#include <unistd.h>
-#include <string.h>
 
 /*------------------------------------------------------------
  * console I/O
@@ -206,7 +206,7 @@ int	term_getchar()
 int serial_device = 1;
 int fd_RS232;
 
-int rs232_open(void)
+void rs232_open(void)
 {
   	char 		*name;
   	int 		result;  
@@ -268,7 +268,7 @@ int rs232_open(void)
 }
 
 
-int 	rs232_close(void)
+void 	rs232_close(void)
 {
   	int 	result;
 
