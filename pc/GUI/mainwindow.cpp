@@ -17,7 +17,67 @@ BYTE ReadBuffer[6];
 char pressed_key = -1;
 unsigned char  QRMode = MODE_SAFE; //Initializes QR Mode
 
-void DecodeTelemetry();
+//#define FALSE 	0
+//#define TRUE 	1
+
+#define START_BYTE 0x80
+#define TELPKGLEN     6 //EXPECTED TELEMETRY PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define TELPKGCHKSUM  TELPKGLEN - 1
+
+#define START_BYTE 0x80
+#define DLPKGLEN     6 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define DLPKGCHKSUM  DLPKGLEN - 1
+
+//Flag to trigger data logging
+bool DataLogkey = false;
+
+
+int TeleDecode(int* TelPkg/*, int* Output*/){
+
+    int i;
+    int sum = 0;
+    int ChkSum = TelPkg[TELPKGCHKSUM];
+    //CHECKSUM CHECK
+    for(i = 0; i < TELPKGCHKSUM ; i++)
+    {
+        sum += TelPkg[i];
+    }
+    sum = (BYTE)~sum;
+//	printf("[%x][%x]",,ChkSum);
+    if (ChkSum == sum)
+    {
+        //DECODING PART
+    }
+    else
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+int DLDecode(int* DLPkg/*, int* Output*/){
+
+    int i;
+    int sum = 0;
+    int ChkSum = DLPkg[DLPKGCHKSUM];
+    //CHECKSUM CHECK
+    for(i = 0; i < DLPKGCHKSUM ; i++)
+    {
+        sum += DLPkg[i];
+    }
+    sum = (BYTE)~sum;
+//	printf("[%x][%x]",,ChkSum);
+    if (ChkSum == sum)
+    {
+        //DECODING PART
+    }
+    else
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -47,54 +107,123 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_RunButt_clicked()
 {
+
+
+    //----------------------------------- VARIABLES INITIALIZATION-------------------------------//
+    //Initializes the keymap from the keyboard
+    int keymap[8] = {MODE_SAFE,0,0,0,0,0,0,0};
+    //Initializes the keymap from the keyboard
+    int jmap[4] = {0,0,0,0};
+    //Joystick buffer clearence and calibration of yaw axis
+//	clear_js_buffer();
+//	js_calibration();
+
+    /*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
+     *(P,P1,P2,0 for Control Gains Mode)*/
+    int data[PARAM_LENGTH] = {0,0,0,0};
+    Package mPkg;
+    InitPkg(&mPkg,MODE_SAFE); //Intializes Package
+
+    //General Counter
+    int i;
+    //AbortFlag
+    int abort = 0;
+    //Stores the read byte
+    BYTE readbuff;
+    //Count variable which loops over the sending package
+    int datai = 0;
+    //Used to check whether the complete Pkg has been written
+    int Pkg_written = 0;
+    //Used to disable writting to the port
+    int writeflag = 1;
+    //Used to loop over the read Pkg
+    int datacount  = 0;
+    // Variables supervision for tx and rx number of sent/received bytes
+    int 	nbrx, nbtx;
+    nbtx=nbrx=0;
+
+    //--------------------------DATA LOGGING FILE----------------------------------------------------//
+    int DLData[TELPKGLEN];
+    // Intializes DataLogging Pkg
+    for(i = 0; i < TELPKGLEN; i++){
+        DLData[i] = 0;
+    }
+    //Used to request data logging
+    int DLreq = 0;
+    FILE *DLfile = fopen("DATALOGGING.txt", "w");
+    if (DLfile == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+
+    //-------------------------------TELEMETRY-----------------------------------------------------------//
+    int TeleData[TELPKGLEN];
+    int ChkSumOK = FALSE;
+    //Initializes telemetry array
+    for(i = 0; i < TELPKGLEN; i++){
+        TeleData[i] = 0;
+    }
+    int DisplayArray[7];// Contains the current mode along with the 6 sensors values
+    //Initializes display array
+    for(i = 0; i < 7; i++){
+        DisplayArray[i] = 0;
+    }
+    //Stores Telemetry Data
+    FILE *TeleFile = fopen("Telemetry.txt", "w");
+    if (TeleFile == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+    //------------------------------------GUI PARAMETERS----------------------
     //RUN OR STOP DATA TRANSFER
     ui->label_5->setFocus();
-    int i = 0;
+
     if (ui->RunButt->text() == "Run"){
-        //Start sending data
+        //Start communication
         ui->StatusLbl->setText("Running...");
         ui->StatusLbl->setStyleSheet("QLabel { background-color : orange}");
         ui->RunButt->setText("Stop");
-//        fd_rs232 = open_rs232_port();
+        ui->CommButt->setEnabled(false);
+        ui->SaveDL->setEnabled(true);
         flag = 0;
     }
     else
     {
-        //Stops sending data
+        // Closes the Files
+        fclose(DLfile);
+        fclose(TeleFile);
+        //Stops communication
         ui->StatusLbl->setText("Stopped");
         ui->StatusLbl->setStyleSheet("QLabel { background-color : white}");
         ui->RunButt->setText("Run");
+        ui->CommButt->setEnabled(true);
+        ui->SaveDL->setEnabled(false);
         flag = 1;
     }
 
-    //PACKAGE
-    int keymap[8] = {MODE_SAFE,0,0,0,0,0,0,0}; //initializes keyboard input
-    int jmap[4] = {0,0,0,0}; //initializes joystick input
-    int data[PARAM_LENGTH] = {0,0,0,0}; //initializes Package data
-    Package mPkg;
-    InitPkg(&mPkg,QRMode); //Initializes Package
-
-    int nbtx,nbrx;
     while(flag == 0)
     {
         QCoreApplication::processEvents(); //Prevents for GUI Freezing
-        read_js(jmap);
 
+        //reads data from the joystick ...comment if joystick is not connected
+        //abort = read_js(jmap);
+        //CHECKS KEYBOARD INPUT FOR DATALOGGING
+        if (DataLogkey == true){ //Data Logging requested
+            pressed_key = 126;
+            DLreq = 1;
+            datacount = 0; // Resets the counter (Reading new data)
+        }
+        //KEYBOARD MAP
         if (pressed_key != -1) {
-            //MsgBox(QString::number(pressed_key));
-
-//            usleep(100000);
-            //printf("\n Key [%i]",pressed_key);
+            //Creates the keyboard map based on the pressed key
             read_kb(keymap,&pressed_key);
         }
-
-        //CREATES THE PACKAGE
-        SetPkgMode(&mPkg,QRMode);
-
-
+        //EVALUATES IF ABORTION REQUESTED
+        if (abort == 1) keymap[0] = MODE_ABORT;
         QRMode = keymap[0];
         ui->ModeSel->setText(GetMode(QRMode));
-
         switch (QRMode) {
             case MODE_P:
 
@@ -103,6 +232,7 @@ void MainWindow::on_RunButt_clicked()
                 data[3] = keymap[7];
                 data[0] = 0;
                 //SETS THE PACKAGE
+                SetPkgMode(&mPkg,QRMode);
                 SetPkgData(&mPkg,data);
                 ui->P->display(data[1]);
                 ui->P1->display(data[2]);
@@ -114,11 +244,8 @@ void MainWindow::on_RunButt_clicked()
                 data[1] = jmap[1]+keymap[2];
                 data[2] = jmap[2]+keymap[3];
                 data[3] = jmap[3]+keymap[4];
-//                printf("\n\n ");
-//                for (i = 0; i < 4; i++) {
-//                    printf("[%x]",data[i]);
-//                }
                 //SETS THE PACKAGE
+                SetPkgMode(&mPkg,QRMode);
                 SetPkgData(&mPkg,data);
                 //Update MODE_PSent Info in GUI
                 ui->Lift->display(data[0]);
@@ -128,115 +255,110 @@ void MainWindow::on_RunButt_clicked()
                 break;
         }
 
-
-        //Prints the package
-//        for (i = 0; i < PKGLEN; i++) {
-//            printf("[%x]",(BYTE)data[i]);
-//        }
-//        printf("\n");
-
-        //SEND PACKAGE HERE
-        //writes in the port
-
-        nbtx = write(fd_RS232,mPkg.Pkg,7*sizeof(BYTE));
-        //Asserts in case of sending wrong number of bytes
-        assert(nbtx == 7);
-
-        //reads from the port
-        nbrx = read(fd_RS232, ReadBuffer, 1*sizeof(BYTE));
-
-        if (nbrx > 0){
-            //DECODING PART HERE
-
-//            printf("\n\n Read PKG: [%i] bytes",nbrx);
-//            for (i = 0; i < nbrx; i++) {
-//                printf("[%x]",ReadBuffer[i]);
-//            }
-//            printf("\n");
-            ui->Tel1->display(ReadBuffer[0]);
-            ui->Tel2->display(ReadBuffer[1]);
-            ui->Tel3->display(ReadBuffer[2]);
-            ui->Tel4->display(ReadBuffer[3]);
-            ui->Tel5->display(ReadBuffer[4]);
-            ui->Tel6->display(ReadBuffer[5]);
+        if (writeflag == 1){
+            //WRITTING
+            //Writes the pkg byte by byte. Makes sure that each byte is written
+            do{
+                nbtx = write(fd_RS232, &(mPkg.Pkg[datai]), sizeof(BYTE));
+                if (nbtx == 1) { //a Byte has been written
+                    datai++;
+                }
+                if (datai >= PKGLEN){ //The Pkg has been completely written
+                    datai = 0;
+                    Pkg_written = 1;
+                }
+                else {//The Pkg has NOT been completely written
+                    Pkg_written = 0;
+                }
+            }while(Pkg_written == 0);
         }
+        //READING
+        //Makes sure everything is read from the RX line
+        do{
+            nbrx = read(fd_RS232, &readbuff, sizeof(BYTE));
+            //printf("\n [%i] %i nbrx = %i",writeflag,buff_count++,nbrx);
+            if (nbrx > 0)
+            {
+                // CHECKING FOR STARTING BYTE
+                if (readbuff == START_BYTE)
+                {
+                    datacount = 0; //Reset the data counter. Starts over!!
+                }
+                // STORING THE DATA. Starts over if a starting BYTE is found!!!
+                if (readbuff != START_BYTE)
+                {
+                    TeleData[datacount] = readbuff;
+                    datacount++;
+                }
+                // NORMAL OPERATION
+                if (DLreq == 0){
+                    // TELEMETRY DECODING. Only If the store data has the expected size
+                    if (datacount == TELPKGLEN) //Complete Pkg Received
+                    {
+                        //Prints the stored package
+                        /*for (i = 0; i < TELPKGLEN; i++) {
+                            printf("[%x]",TeleData[i]);
+                        }*/
 
-       // ui->PkgTxtBox->setText(QString::number(mPkg.ChkSum));
+                        //DISPLAYS THE DATA IN THE GUI
+                        ui->Tel1->display(TeleData[0]);
+                        ui->Tel2->display(TeleData[1]);
+                        ui->Tel3->display(TeleData[2]);
+                        ui->Tel4->display(TeleData[3]);
+                        ui->Tel5->display(TeleData[4]);
+                        ui->Tel6->display(TeleData[5]);
 
-        usleep(10000);
 
-        i++;
+                        // DECODING. Checksum proof and stores decoded values in new array DispData
+                        //ChkSumOK = decode(TeleData,&DispData);
+                        ChkSumOK = TeleDecode(TeleData);
+                        //printf(" Chksum OK = %i \n",ChkSumOK);
+                        //Saves data only if the pkg is complete
+                        if (ChkSumOK){
+                            //Writes the telemetry in a Txt file
+                            for (i = 0; i < TELPKGLEN; i++) {
+                                fprintf(TeleFile, "%x ", TeleData[i]);
+                            }
+                            fprintf(TeleFile,"\n");
+                        }
+                    }
+                }
+                else //DATA LOG REQUESTED Shuts writting down and only reads
+                {
+                    // DATA LOGGING DECODING. Only If the stored data has the expected size
+                    if (datacount == DLPKGLEN) //Complete Pkg Received
+                    {
+                        /*printf("DL ");
+                        //Prints the stored package
+                        for (i = 0; i < DLPKGLEN; i++) {
+                            printf("[%x]",TeleData[i]);
+                        }*/
+                        //DECODING. Checksum proof and stores decoded values in new array DispData
+                        //ChkSumOK = decode(TeleData,&DispData);
+                        ChkSumOK = DLDecode(TeleData);
+                        //printf(" Chksum OK = %i \n",ChkSumOK);
+                        //Saves data only if the pkg is complete
+                        if (ChkSumOK){
+                            //Writes the datalog in a Txt file
+                            for (i = 0; i < DLPKGLEN; i++) {
+                                fprintf(DLfile, "%x ", TeleData[i]);
+                            }
+                            fprintf(DLfile,"\n");
+                        }
+                    }
+                    writeflag == 0; //Disables writting
+                }
+                //dltimeout = 0;
+            }
+        } while (nbrx > 0);
+        pressed_key = -1;
     }
-
+    DataLogkey = false;
 //    MsgBox("Test");
 }
 
-void DecodeTelemetry(){
-//    if (ReadBuffer == 0x80){
-//        first_byte = true;
-//    }
-//    second_byte = false;
-//    if (first_byte == true && ReadBuffer == 0x00){
-//        second_byte = true;
-//    }
-
-//    // STORING DATA
-//    if(read_data && datacount < 8){
-//        DataTel[datacount] = ReadBuffer;
-//        printf("Reading Byte : %i",datacount);
-//        datacount++;
-//    }
-
-//    // PRINTING RECEIVED DATA
-//    if (datacount == 8){
-//        printf("\n\nReceived Data:");
-//        for (i=0;i<8;i++) printf("[%x]",DataTel[i]);
-//    }
-
-//    //
-//    if (first_byte == true && second_byte == true){
-//        read_data = true;
-//        first_byte = false;
-//        second_byte = false;
-//        printf("\n\n Starting Bytes Received...: ");
-//        datacount = 0;
-//    }
-}
-
-void MainWindow::on_pushButton_2_clicked()
-{
-    ui->label_5->setFocus();
-    if (flag == 0) {
-        flag = 1;
-    }
-    else
-    {
-        flag = 0;
-
-    }
-}
 
 
-//QString getStringFromUnsignedChar(unsigned char *str)
-//{
-
-//    QString s;
-//    QString result = "";
-////    int rev = strlen(str);
-
-//    // Print String in Reverse order....
-//    for ( int i = 0; i<7; i++)
-//        {
-//           s = QString("%1").arg(str[i],0,16);
-
-//           if(s == "0"){
-//              s="00";
-//             }
-//         result.append(s);
-
-//         }
-//   return result;
-//}
 
 void MainWindow::on_CommButt_clicked()
 {
@@ -244,7 +366,7 @@ void MainWindow::on_CommButt_clicked()
     if (ui->CommButt->text() == "Connect"){
         //OPEN HERE COM PORT
         ui->StatusLbl->setText("Clearing Joystick Buffer...");
-        clear_js_buffer();
+        //clear_js_buffer();
         ui->StatusLbl->setText("Opening Port...");
         //fd_RS232 = open_rs232_port();
         rs232_open();
@@ -327,7 +449,6 @@ void MainWindow::keyPressEvent(QKeyEvent* Key)
             break;
         case Qt::Key_O:
             pressed_key = 111;
-//
             break;
         case Qt::Key_L:
             pressed_key = 108;
@@ -347,6 +468,9 @@ void MainWindow::keyPressEvent(QKeyEvent* Key)
         case Qt::Key_Left:
             pressed_key = 68;
             break;
+        case Qt::Key_Delete:
+            pressed_key = 126;
+            break;
     }
     ui->StatusLbl->setText(QString::number(pressed_key));
 
@@ -357,4 +481,9 @@ void MainWindow::keyPressEvent(QKeyEvent* Key)
 ////    ui->StatusLbl->setText(pressed_key);//QString::number(pressed_key));
 ////    ui->StatusLbl->setText(QString::fromStdString(mKey));//QString::number(pressed_key));
 //    ui->StatusLbl->setText(QString::fromAscii(mKey));//QString::number(pressed_key));
+}
+
+void MainWindow::on_SaveDL_clicked()
+{
+    DataLogkey = true;
 }

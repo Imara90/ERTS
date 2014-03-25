@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'mainwindow.h'
 **
-** Created: Mon Mar 17 20:27:56 2014
+** Created: Tue Mar 25 20:09:35 2014
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.1)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -33,17 +33,16 @@ static const uint qt_meta_data_MainWindow[] = {
  // slots: signature, parameters, type, tag, flags
       12,   11,   11,   11, 0x08,
       33,   11,   11,   11, 0x08,
-      59,   11,   11,   11, 0x08,
-      85,   81,   11,   11, 0x08,
+      59,   55,   11,   11, 0x08,
+      85,   11,   11,   11, 0x08,
 
        0        // eod
 };
 
 static const char qt_meta_stringdata_MainWindow[] = {
     "MainWindow\0\0on_RunButt_clicked()\0"
-    "on_pushButton_2_clicked()\0"
     "on_CommButt_clicked()\0Key\0"
-    "keyPressEvent(QKeyEvent*)\0"
+    "keyPressEvent(QKeyEvent*)\0on_SaveDL_clicked()\0"
 };
 
 void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
@@ -53,9 +52,9 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         MainWindow *_t = static_cast<MainWindow *>(_o);
         switch (_id) {
         case 0: _t->on_RunButt_clicked(); break;
-        case 1: _t->on_pushButton_2_clicked(); break;
-        case 2: _t->on_CommButt_clicked(); break;
-        case 3: _t->keyPressEvent((*reinterpret_cast< QKeyEvent*(*)>(_a[1]))); break;
+        case 1: _t->on_CommButt_clicked(); break;
+        case 2: _t->keyPressEvent((*reinterpret_cast< QKeyEvent*(*)>(_a[1]))); break;
+        case 3: _t->on_SaveDL_clicked(); break;
         default: ;
         }
     }
