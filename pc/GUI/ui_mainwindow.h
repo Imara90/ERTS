@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created: Wed Mar 19 23:19:07 2014
+** Created: Tue Mar 25 19:42:12 2014
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -75,11 +75,10 @@ public:
     QLCDNumber *Tel3;
     QLCDNumber *Tel5;
     QLCDNumber *Tel6;
-    QSplitter *splitter_3;
     QSplitter *splitter_2;
     QPushButton *CommButt;
     QPushButton *RunButt;
-    QPushButton *pushButton_2;
+    QPushButton *SaveDL;
     QPushButton *Abort;
     QMenuBar *menuBar;
     QToolBar *mainToolBar;
@@ -330,13 +329,16 @@ public:
         TelLay->addWidget(Tel6);
 
         splitter->addWidget(layoutWidget1);
-        splitter_3 = new QSplitter(centralWidget);
-        splitter_3->setObjectName(QString::fromUtf8("splitter_3"));
-        splitter_3->setGeometry(QRect(580, 30, 181, 241));
-        splitter_3->setOrientation(Qt::Vertical);
-        splitter_2 = new QSplitter(splitter_3);
+        splitter_2 = new QSplitter(centralWidget);
         splitter_2->setObjectName(QString::fromUtf8("splitter_2"));
+        splitter_2->setGeometry(QRect(580, 30, 221, 401));
+        QSizePolicy sizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        sizePolicy.setHorizontalStretch(0);
+        sizePolicy.setVerticalStretch(0);
+        sizePolicy.setHeightForWidth(splitter_2->sizePolicy().hasHeightForWidth());
+        splitter_2->setSizePolicy(sizePolicy);
         splitter_2->setOrientation(Qt::Vertical);
+        splitter_2->setHandleWidth(25);
         CommButt = new QPushButton(splitter_2);
         CommButt->setObjectName(QString::fromUtf8("CommButt"));
         splitter_2->addWidget(CommButt);
@@ -344,14 +346,9 @@ public:
         RunButt->setObjectName(QString::fromUtf8("RunButt"));
         RunButt->setEnabled(false);
         splitter_2->addWidget(RunButt);
-        pushButton_2 = new QPushButton(splitter_2);
-        pushButton_2->setObjectName(QString::fromUtf8("pushButton_2"));
-        pushButton_2->setEnabled(false);
-        splitter_2->addWidget(pushButton_2);
-        splitter_3->addWidget(splitter_2);
-        Abort = new QPushButton(splitter_3);
-        Abort->setObjectName(QString::fromUtf8("Abort"));
-        Abort->setEnabled(false);
+        SaveDL = new QPushButton(splitter_2);
+        SaveDL->setObjectName(QString::fromUtf8("SaveDL"));
+        SaveDL->setEnabled(false);
         QPalette palette;
         QBrush brush(QColor(0, 0, 0, 255));
         brush.setStyle(Qt::SolidPattern);
@@ -414,8 +411,59 @@ public:
         palette.setBrush(QPalette::Disabled, QPalette::AlternateBase, brush1);
         palette.setBrush(QPalette::Disabled, QPalette::ToolTipBase, brush7);
         palette.setBrush(QPalette::Disabled, QPalette::ToolTipText, brush);
-        Abort->setPalette(palette);
-        splitter_3->addWidget(Abort);
+        SaveDL->setPalette(palette);
+        splitter_2->addWidget(SaveDL);
+        Abort = new QPushButton(splitter_2);
+        Abort->setObjectName(QString::fromUtf8("Abort"));
+        Abort->setEnabled(false);
+        QPalette palette1;
+        palette1.setBrush(QPalette::Active, QPalette::WindowText, brush);
+        palette1.setBrush(QPalette::Active, QPalette::Button, brush1);
+        palette1.setBrush(QPalette::Active, QPalette::Light, brush2);
+        palette1.setBrush(QPalette::Active, QPalette::Midlight, brush3);
+        palette1.setBrush(QPalette::Active, QPalette::Dark, brush4);
+        palette1.setBrush(QPalette::Active, QPalette::Mid, brush5);
+        palette1.setBrush(QPalette::Active, QPalette::Text, brush);
+        palette1.setBrush(QPalette::Active, QPalette::BrightText, brush6);
+        palette1.setBrush(QPalette::Active, QPalette::ButtonText, brush);
+        palette1.setBrush(QPalette::Active, QPalette::Base, brush6);
+        palette1.setBrush(QPalette::Active, QPalette::Window, brush1);
+        palette1.setBrush(QPalette::Active, QPalette::Shadow, brush);
+        palette1.setBrush(QPalette::Active, QPalette::AlternateBase, brush2);
+        palette1.setBrush(QPalette::Active, QPalette::ToolTipBase, brush7);
+        palette1.setBrush(QPalette::Active, QPalette::ToolTipText, brush);
+        palette1.setBrush(QPalette::Inactive, QPalette::WindowText, brush);
+        palette1.setBrush(QPalette::Inactive, QPalette::Button, brush1);
+        palette1.setBrush(QPalette::Inactive, QPalette::Light, brush2);
+        palette1.setBrush(QPalette::Inactive, QPalette::Midlight, brush3);
+        palette1.setBrush(QPalette::Inactive, QPalette::Dark, brush4);
+        palette1.setBrush(QPalette::Inactive, QPalette::Mid, brush5);
+        palette1.setBrush(QPalette::Inactive, QPalette::Text, brush);
+        palette1.setBrush(QPalette::Inactive, QPalette::BrightText, brush6);
+        palette1.setBrush(QPalette::Inactive, QPalette::ButtonText, brush);
+        palette1.setBrush(QPalette::Inactive, QPalette::Base, brush6);
+        palette1.setBrush(QPalette::Inactive, QPalette::Window, brush1);
+        palette1.setBrush(QPalette::Inactive, QPalette::Shadow, brush);
+        palette1.setBrush(QPalette::Inactive, QPalette::AlternateBase, brush2);
+        palette1.setBrush(QPalette::Inactive, QPalette::ToolTipBase, brush7);
+        palette1.setBrush(QPalette::Inactive, QPalette::ToolTipText, brush);
+        palette1.setBrush(QPalette::Disabled, QPalette::WindowText, brush4);
+        palette1.setBrush(QPalette::Disabled, QPalette::Button, brush1);
+        palette1.setBrush(QPalette::Disabled, QPalette::Light, brush2);
+        palette1.setBrush(QPalette::Disabled, QPalette::Midlight, brush3);
+        palette1.setBrush(QPalette::Disabled, QPalette::Dark, brush4);
+        palette1.setBrush(QPalette::Disabled, QPalette::Mid, brush5);
+        palette1.setBrush(QPalette::Disabled, QPalette::Text, brush4);
+        palette1.setBrush(QPalette::Disabled, QPalette::BrightText, brush6);
+        palette1.setBrush(QPalette::Disabled, QPalette::ButtonText, brush4);
+        palette1.setBrush(QPalette::Disabled, QPalette::Base, brush1);
+        palette1.setBrush(QPalette::Disabled, QPalette::Window, brush1);
+        palette1.setBrush(QPalette::Disabled, QPalette::Shadow, brush);
+        palette1.setBrush(QPalette::Disabled, QPalette::AlternateBase, brush1);
+        palette1.setBrush(QPalette::Disabled, QPalette::ToolTipBase, brush7);
+        palette1.setBrush(QPalette::Disabled, QPalette::ToolTipText, brush);
+        Abort->setPalette(palette1);
+        splitter_2->addWidget(Abort);
         MainWindow->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
@@ -428,8 +476,7 @@ public:
         statusBar->setObjectName(QString::fromUtf8("statusBar"));
         MainWindow->setStatusBar(statusBar);
         QWidget::setTabOrder(RunButt, ModeSel);
-        QWidget::setTabOrder(ModeSel, pushButton_2);
-        QWidget::setTabOrder(pushButton_2, CommButt);
+        QWidget::setTabOrder(ModeSel, CommButt);
 
         retranslateUi(MainWindow);
 
@@ -461,7 +508,10 @@ public:
         RunButt->setToolTip(QApplication::translate("MainWindow", "Controls the QR", 0, QApplication::UnicodeUTF8));
 #endif // QT_NO_TOOLTIP
         RunButt->setText(QApplication::translate("MainWindow", "Run", 0, QApplication::UnicodeUTF8));
-        pushButton_2->setText(QApplication::translate("MainWindow", "Calibration", 0, QApplication::UnicodeUTF8));
+#ifndef QT_NO_TOOLTIP
+        SaveDL->setToolTip(QApplication::translate("MainWindow", "Controls the QR", 0, QApplication::UnicodeUTF8));
+#endif // QT_NO_TOOLTIP
+        SaveDL->setText(QApplication::translate("MainWindow", "Download DataLog", 0, QApplication::UnicodeUTF8));
 #ifndef QT_NO_TOOLTIP
         Abort->setToolTip(QApplication::translate("MainWindow", "Controls the QR", 0, QApplication::UnicodeUTF8));
 #endif // QT_NO_TOOLTIP
