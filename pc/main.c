@@ -194,6 +194,8 @@ int main()
 		//EVALUATES IF ABORTION REQUESTED
 		if (abort == 1) keymap[0] = MODE_ABORT;
 
+		//MODE SELECTIONA		
+		mode_selection(keymap, TeleData+2 ,data[0]);
 		//SETS THE PACKAGE WITH THE DESIRED DATA
 		SetPkgMode(&mPkg, keymap[0]);
 		SetPkgData(&mPkg, data);
@@ -254,6 +256,10 @@ int main()
 						for (i = 0; i < TELPKGLEN; i++) {
 							printf("[%x]",TeleData[i]);
 						}
+
+						// using the telemetry for mode switching
+						TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
+						
 				
 						// DECODING. Checksum proof and stores decoded values in new array DispData
 						//ChkSumOK = decode(TeleData,&DispData);
