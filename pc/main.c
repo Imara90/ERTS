@@ -20,16 +20,19 @@
 #include "read_kb.h" 	// Diogo's keyboard
 #include "rs232.h" 	// Provides functions to open and close rs232 port
 
+
 #define BYTE unsigned char
 #define FALSE 	0
 #define TRUE 	1
+#include "mode_selection.h"	// Diogos mode selection function
 
 #define START_BYTE 0x80
-#define TELPKGLEN     6 //EXPECTED TELEMETRY PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define TELLEN	      19
+#define TELPKGLEN     TELLEN - 1 //EXPECTED TELEMETRY PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define TELPKGCHKSUM  TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DLPKGLEN     6 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define DLPKGLEN     12 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  DLPKGLEN - 1
 
 
@@ -191,6 +194,8 @@ int main()
 		//EVALUATES IF ABORTION REQUESTED
 		if (abort == 1) keymap[0] = MODE_ABORT;
 
+		//MODE SELECTIONA		
+		mode_selection(keymap, TeleData+2 ,data[0]);
 		//SETS THE PACKAGE WITH THE DESIRED DATA
 		SetPkgMode(&mPkg, keymap[0]);
 		SetPkgData(&mPkg, data);
@@ -251,6 +256,10 @@ int main()
 						for (i = 0; i < TELPKGLEN; i++) {
 							printf("[%x]",TeleData[i]);
 						}
+
+						// using the telemetry for mode switching
+						TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
+						
 				
 						// DECODING. Checksum proof and stores decoded values in new array DispData
 						//ChkSumOK = decode(TeleData,&DispData);

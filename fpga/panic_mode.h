@@ -33,7 +33,7 @@ void panic_mode(void) {
 	
 	if(ae[0] == reference_thrust && ae[1] == reference_thrust && ae[2] == reference_thrust && ae[3] == reference_thrust) {
 		delay_ms(2000);//wait 2 seconds
-		package[MODE] = SAFE_MODE;//enter safe_mode
+		telemetry_flag = telemetry_flag | 0x02;
 	}
 
 }

@@ -7,6 +7,9 @@
 void safe_mode(void)
 {
 	int i;
+
+	telemetry_flag &= 0x01;
+		
 	for (i = 0; i < 4; i++)
 	{
 		ae[i] = ae[i] - SAFE_JUMP;
