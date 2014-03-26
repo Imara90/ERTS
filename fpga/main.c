@@ -140,6 +140,9 @@ int   dl[DLOGSIZE];
 int   dl_count = 0;
 //#define LogParams	
 
+// telemetry variables should be compliant with pc
+#define TELLEN		10
+
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
 
@@ -768,6 +771,7 @@ void store_data(void)
 	storing[j++] = y0[4];
 	storing[j++] = y0[5];
 */
+	// TODO correct way checksum
 	storing[j++] = sum;
 
 	for (i = 0; i < 12; i++)
@@ -817,7 +821,7 @@ void send_data(void)
  */
 void send_telemetry(void)
 {
-	BYTE telem[nParams];
+	BYTE telem[10];
 	int j, i, sum;
 	sum = 0;
 
@@ -863,18 +867,21 @@ void send_telemetry(void)
 
 		telem[j++] = STARTING_BYTE;
 		telem[j++] = (BYTE)(X32_ms_clock >> 8);
-		telem[j++] = ae[0];
-		telem[j++] = ae[1];
-		telem[j++] = ae[2];
-		telem[j++] = ae[3];
-
-/*
+		telem[j++] = (BYTE)ae[0];
+		telem[j++] = (BYTE)ae[1];
+		telem[j++] = (BYTE)ae[2];
+		telem[j++] = (BYTE)ae[3];
 		telem[j++] = phi;
 		telem[j++] = theta;
+		telem[j++] = telemetry_flag;
+/*
 		telem[j++] = r;
 		telem[j++] = pcontrol;
 		telem[j++] = p1control;
+
+/*
 		telem[j++] = p2control;
+
 		telem[j++] = Z;
 		telem[j++] = L;
 		telem[j++] = M;
@@ -888,6 +895,10 @@ void send_telemetry(void)
 			sum += telem[i];
 		}
 		sum = ~sum;
+		if (sum == 0x80)
+		{
+			sum = 0x00;
+		}
 		telem[j++] = sum;
 
 		// send the data
