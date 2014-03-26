@@ -27,7 +27,7 @@
 #include "mode_selection.h"	// Diogos mode selection function
 
 #define START_BYTE 0x80
-#define TELLEN	      10
+#define TELLEN	      19
 #define TELPKGLEN     TELLEN - 1 //EXPECTED TELEMETRY PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define TELPKGCHKSUM  TELPKGLEN - 1
 

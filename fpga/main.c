@@ -141,7 +141,7 @@ int   dl_count = 0;
 //#define LogParams	
 
 // telemetry variables should be compliant with pc
-#define TELLEN		10
+#define TELLEN		19
 
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
@@ -821,7 +821,7 @@ void send_data(void)
  */
 void send_telemetry(void)
 {
-	BYTE telem[10];
+	BYTE telem[TELLEN];
 	int j, i, sum;
 	sum = 0;
 
@@ -867,27 +867,24 @@ void send_telemetry(void)
 
 		telem[j++] = STARTING_BYTE;
 		telem[j++] = (BYTE)(X32_ms_clock >> 8);
+		telem[j++] = package[MODE];
 		telem[j++] = (BYTE)ae[0];
 		telem[j++] = (BYTE)ae[1];
 		telem[j++] = (BYTE)ae[2];
 		telem[j++] = (BYTE)ae[3];
 		telem[j++] = phi;
 		telem[j++] = theta;
-		telem[j++] = telemetry_flag;
-/*
 		telem[j++] = r;
 		telem[j++] = pcontrol;
 		telem[j++] = p1control;
-
-/*
 		telem[j++] = p2control;
-
 		telem[j++] = Z;
 		telem[j++] = L;
 		telem[j++] = M;
 		telem[j++] = N;		
 		telem[j++] = telemetry_flag;
-*/
+		// INCLUDE THE CHECKSUM IN THE COUNT
+
 
 		// calculate the checksum, dont include starting byte
 		for (i = 1; i < j ; i++)
