@@ -229,9 +229,11 @@ int 	commthres = 1000;
 int	polltell = 1;
 int 	pollthres = 15;
 long 	polltime = 0;
-
+BYTE	telemetry_flag = 0x00;
 
 BYTE 	package[nParams];
+
+// Can be changed?
 BYTE 	sel_mode, roll, pitch, yaw, lift, checksum;
 BYTE 	prev_mode = 0;//VARIABLE TO SAVE PREVIOUS MODE
 BYTE	mode = 0;//ACTUAL OPERATING MODE
@@ -522,8 +524,8 @@ void isr_qr_link(void)
 	Butt2Filter();
 	KalmanFilter();
 
-    //Yaw Rate
-    r = y0[5] - OFFSET_y0[5];
+    	//Yaw Rate
+    	r = y0[5] - OFFSET_y0[5];
 
 
 	//Gets the maximum value
@@ -539,11 +541,6 @@ void isr_qr_link(void)
 		}
 	}*/
 		
-	/*printf("Unfiltered ... s0 = %i s1 = %i s2 = %i s3 = %i s4 = %i s5 = %i \n",s0,s1,s2,s3,s4,s5);
-	printf("filtered ..... s0 = %i s1 = %i s2 = %i s3 = %i s4 = %i s5 = %i \n",y0[1],y0[2],y0[3],y0[4],y0[5],y0[6]);
-   	printf("size = %i \n",sizeof(s0));*/
-	//printf("max = [%i][%i][%i][%i][%i][%i] \n",max[0],max[1],max[2],max[3],max[4],max[5]);
-
 
 	// monitor presence of interrupts 
 	isr_qr_counter++;
@@ -643,6 +640,24 @@ void toggle_led(int i)
 	X32_leds = (X32_leds ^ (1 << i));
 }
 
+/*------------------------------------------------------------------
+ * toggle_led -- toggle led # i
+ *------------------------------------------------------------------
+ */
+void on_led(int i) 
+{
+	X32_leds = (1 << i);
+}
+
+/*------------------------------------------------------------------
+ * toggle_led -- toggle led # i
+ *------------------------------------------------------------------
+ */
+void off_led(int i) 
+{
+	X32_leds = (0 << i);
+}
+
 
 /*------------------------------------------------------------------
  * Decoding function with a higher execution level
@@ -659,23 +674,13 @@ void decode(void)
 
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	// Safe the current mode to determine mode changes
-	prev_mode = package[MODE];
-
 	// Take the value from the buffer and reset the elem
 	// buffer value to make sure it isn't read multiple times
-	sel_mode = cbGet(&rxcb);
-	for (i = 1; i < nParams; i++)
+	// Changing of the mode is taken care of in the pc part
+	for (i = 0; i < nParams; i++)
 	{
 		package[i] = cbGet(&rxcb);
 	}
-
-	if( sel_mode == SAFE_MODE || sel_mode == ABORT_MODE || (prev_mode == SAFE_MODE && (ae[0] == 0 && ae[1] == 0 && ae[2] == 0 && ae[3] == 0 && package[LIFT] == 0)) && sel_mode != PANIC_MODE && ((sel_mode != FULL_CONTROL_MODE && sel_mode != YAW_CONTROL_MODE) || calibration_done == 1) && (sel_mode != CALIBRATION_MODE || calibration_counter == 0) || (sel_mode == PANIC_MODE && prev_mode != SAFE_MODE) || (sel_mode == P_CONTROL_MODE && (prev_mode == YAW_CONTROL_MODE || prev_mode == FULL_CONTROL_MODE)) || (prev_mode == P_CONTROL_MODE && sel_mode == last_control_mode) ) 
-	{
-							package[MODE] = sel_mode;
-	}
-	else package[MODE] = prev_mode;
-	
 	
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
@@ -691,10 +696,8 @@ int check_sum(void)
 	BYTE sum;
 	int i;
 
-	sum = sel_mode;
-
 	// independent of the package structure
-	for (i = 1; i < (nParams - 1); i++)
+	for (i = 0; i < (nParams - 1); i++)
 	{
 		sum += package[i];
 	}	
@@ -820,16 +823,18 @@ void send_telemetry(void)
 
 	// Checks if more than or 100 ms have passed since the last 
 	// telemetry
+/* final telemetry
 	if (X32_ms_clock - polltime >= 100)
 	{
 		j = 0;
 		telem[j++] = STARTING_BYTE;
-		telem[j++] = X32_ms_clock >> 8;
+		telem[j++] = (BYTE)(X32_ms_clock >> 8);
 		telem[j++] = package[MODE];
 		telem[j++] = package[LIFT];
 		telem[j++] = package[ROLL];
 		telem[j++] = package[PITCH];
 		telem[j++] = package[YAW];
+		telem[j++] = telemetry_flag;
 
 		// calculate the checksum, dont include starting byte
 		for (i = 1; i < j ; i++)
@@ -848,13 +853,52 @@ void send_telemetry(void)
 			X32_rs232_data = telem[i];
 			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
 		}
+		polltime = X32_ms_clock;
+	}
+*/
+	// telemetry for the last lab
+	if (X32_ms_clock - polltime >= 100)
+	{
+		j = 0;
+
+		telem[j++] = STARTING_BYTE;
+		telem[j++] = (BYTE)(X32_ms_clock >> 8);
+		telem[j++] = ae[0];
+		telem[j++] = ae[1];
+		telem[j++] = ae[2];
+		telem[j++] = ae[3];
+
 /*
-		if (X32_rs232_txready)
+		telem[j++] = phi;
+		telem[j++] = theta;
+		telem[j++] = r;
+		telem[j++] = pcontrol;
+		telem[j++] = p1control;
+		telem[j++] = p2control;
+		telem[j++] = Z;
+		telem[j++] = L;
+		telem[j++] = M;
+		telem[j++] = N;		
+		telem[j++] = telemetry_flag;
+*/
+
+		// calculate the checksum, dont include starting byte
+		for (i = 1; i < j ; i++)
 		{
-			X32_rs232_data = X32_ms_clock;
+			sum += telem[i];
+		}
+		sum = ~sum;
+		telem[j++] = sum;
+
+		// send the data
+		for (i = 0; i < j; i++)
+		{
+			// wait untill tx is ready to send
+			while ( !X32_rs232_txready ) ;
+
+			X32_rs232_data = telem[i];
 			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
 		}
-*/	
 		polltime = X32_ms_clock;
 	}
 	
@@ -990,16 +1034,16 @@ int main()
 				{
 					case SAFE_MODE:
 						safe_mode();
-// TODO isn't this better in the safe mode function?
-						if (sel_mode == SAFE_MODE) calibration_counter = 0; //Sets that the user can enter again calibration mode
-						last_control_mode = 0; //reset last_control_mode variable
+						on_led(0);
 						// safe
 						break;
 					case PANIC_MODE:
+						on_led(1);
 						panic_mode();	
 						// panic
 						break;
 					case MANUAL_MODE:
+						on_led(2);
 						manual_mode();
 						// manual
 						break;
@@ -1033,7 +1077,8 @@ int main()
 				// if the package was correct, store the correct data
 				store_data();
 				// sends the telemetry at 10Hz
-				send_telemetry();			
+				send_telemetry();	
+				X32_leds = 0;		
 			}
 		}
 	}

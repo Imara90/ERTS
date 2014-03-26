@@ -20,16 +20,18 @@
 #include "read_kb.h" 	// Diogo's keyboard
 #include "rs232.h" 	// Provides functions to open and close rs232 port
 
+
 #define BYTE unsigned char
 #define FALSE 	0
 #define TRUE 	1
+#include "mode_selection.h"	// Diogos mode selection function
 
 #define START_BYTE 0x80
 #define TELPKGLEN     6 //EXPECTED TELEMETRY PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define TELPKGCHKSUM  TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DLPKGLEN     6 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define DLPKGLEN     12 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  DLPKGLEN - 1
 
 

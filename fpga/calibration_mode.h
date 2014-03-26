@@ -28,13 +28,9 @@ void calibration_mode(void) {
 	if (calibration_counter == 128) {
 
 		for(i = 0; i < 6; i++) {
-			printf("[%i]",OFFSET_y0[i]);
 			OFFSET_y0[i] >>= 7;
-			printf("[%i]",OFFSET_y0[i]);
 		}
-		calibration_done = 1;
-		package[MODE] = SAFE_MODE;
-		//printf("\n... sensor calibration complete. Moving to SAFE MODE!\n");
+		telemetry_flag = telemetry_flag | 0x03;
 	}
 
 }
