@@ -25,7 +25,7 @@ void mode_selection(int *sel_mode,int *ae, int lift) {
     if( (TELEMETRY_FLAG & 0x02) != 0) {
         
         *sel_mode = MODE_SAFE;
-        //TELEMETRY_FLAG & 0X01;   
+        TELEMETRY_FLAG = TELEMETRY_FLAG & 0X01;   
     }
     
     if( *sel_mode == MODE_SAFE || *sel_mode == MODE_YAW_CONTROL || *sel_mode == MODE_FULL_CONTROL)    
