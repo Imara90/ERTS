@@ -644,7 +644,7 @@ void toggle_led(int i)
 }
 
 /*------------------------------------------------------------------
- * toggle_led -- toggle led # i
+ * led on 
  *------------------------------------------------------------------
  */
 void on_led(int i) 
@@ -653,14 +653,13 @@ void on_led(int i)
 }
 
 /*------------------------------------------------------------------
- * toggle_led -- toggle led # i
+led off
  *------------------------------------------------------------------
  */
 void off_led(int i) 
 {
 	X32_leds = (0 << i);
 }
-
 
 /*------------------------------------------------------------------
  * Decoding function with a higher execution level
@@ -816,6 +815,19 @@ void send_data(void)
 		}	
 	}
 
+	if (X32_rs232_txready)
+	{
+		X32_rs232_data = 0xff;
+	}	
+		if (X32_rs232_txready)
+	{
+		X32_rs232_data = 0xff;
+	}	
+	if (X32_rs232_txready)
+	{
+		X32_rs232_data = 0xff;
+	}	
+
 }
 
 /*------------------------------------------------------------------
@@ -833,7 +845,10 @@ void send_telemetry(void)
 	// telemetry
 /* final telemetry
 	if (X32_ms_clock - polltime >= 100)
-	{
+	{	
+
+		//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+	
 		j = 0;
 		telem[j++] = STARTING_BYTE;
 		telem[j++] = (BYTE)(X32_ms_clock >> 8);
@@ -843,6 +858,8 @@ void send_telemetry(void)
 		telem[j++] = package[PITCH];
 		telem[j++] = package[YAW];
 		telem[j++] = telemetry_flag;
+
+		//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 		// calculate the checksum, dont include starting byte
 		for (i = 1; i < j ; i++)
@@ -1040,6 +1057,7 @@ int main()
 			if (check_sum())
 			{
 				switch (package[MODE])
+				//switch (sel_mode)
 				{
 					case SAFE_MODE:
 						safe_mode();
@@ -1054,10 +1072,12 @@ int main()
 					case MANUAL_MODE:
 						on_led(2);
 						manual_mode();
+						on_led(2);
 						// manual
 						break;
 					case CALIBRATION_MODE:
 						calibration_mode();
+						on_led(1);
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
@@ -1070,8 +1090,8 @@ int main()
 						// full
 						break;
 					case P_CONTROL_MODE:
-                        p_control_mode();						
-                        // p
+                        			p_control_mode();						
+                        			// p
 						break;
 					case ABORT_MODE:
 						program_done++;
@@ -1092,6 +1112,8 @@ int main()
 			}
 		}
 	}
+
+	on_led(7);
 
 	// send the data log to the pc
 	send_data();	

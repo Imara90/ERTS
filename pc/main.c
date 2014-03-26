@@ -176,7 +176,21 @@ int main()
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		//printf("key %i\n",key);
-		if (key != -1) abort = read_kb(keymap,(char*)&key);
+		
+
+
+		
+		//CHECKS KEYBOARD INPUT FOR DATALOGGING
+		if (key == 126){ //Data Logging requested
+			DLreq = 1;
+			datacount = 0; // Resets the counter (Reading new data)
+		}
+
+		
+		if (writeflag == 1){
+
+
+if (key != -1) abort = read_kb(keymap,(char*)&key);
 		
 		switch (keymap[0]) {
 			case MODE_P: //CONTROL GAINS, Starting from the second place in data array (First place is reserved for lift value)
@@ -307,6 +321,7 @@ int main()
 					// DATA LOGGING DECODING. Only If the stored data has the expected size
 					if (datacount == DLPKGLEN) //Complete Pkg Received
 					{
+						dltimeout = 0;
 						printf("DL ");
 						//Prints the stored package
 						for (i = 0; i < DLPKGLEN; i++) {
@@ -325,6 +340,15 @@ int main()
 							fprintf(DLfile,"\n");
 						}
 					}
+					else
+					{
+						if (dltimeout++ > 3000)
+						{
+							printf("\n timed out, timeout: %d", dltimeout);
+							return 1;
+						}
+					}
+					// else return 0;
 					writeflag = 0;
 				}
 				//dltimeout = 0;
@@ -345,4 +369,5 @@ int main()
 	return 0;
 	
 }
+
 
