@@ -31,14 +31,16 @@
 #define TELPKGLEN     	TELLEN - 1 
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
-//#define START_BYTE 0x80
+#define START_BYTE 0x80
 #define DATALEN		60
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
 
 //DEBUG
-//int sumglobal = 0;
+int sumglobal = 0;
 
+int dataclose = -1;
+int telclose = -1;
 
 int TeleDecode(int* TelPkg/*, int* Output*/){
 	
@@ -80,11 +82,11 @@ int DLDecode(int* DLPkg/*, int* Output*/){
 		sum += DLPkg[i];
 	}
 	sum = (BYTE)~sum;
-    	if (sum = 0x80)
+    	if (sum == 0x80)
 	{
         	sum = 0x00;
     	}
-
+	sumglobal = sum;
 	if (ChkSum == sum)
 	{
 		//DECODING PART
@@ -102,7 +104,7 @@ int main()
 	term_nonblocking();
 	keyboard_nonblocking();
 
-	//Initializes the keymap from the keyboard
+	//Initializes the keymap from the keyboarde
 	int keymap[8] = {MODE_SAFE,0,0,0,0,0,0,0};
 	//Initializes the keymap from the keyboard
 	int jmap[4] = {0,0,0,0};
@@ -144,8 +146,8 @@ int main()
 	nbtx=nbrx=0;
 
 	//DATA LOGGING FILE
-	int DLData[TELPKGLEN];
-	for(i = 0; i < TELPKGLEN; i++){
+	int DLData[DLPKGLEN];
+	for(i = 0; i < DLPKGLEN; i++){
 		DLData[i] = 0;
 	}
 	int dltimeout = 0;
@@ -188,36 +190,7 @@ int main()
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		//printf("key %i\n",key);
-		if (key != -1) abort = read_kb(keymap,(char*)&key);
 		
-		switch (keymap[0]) {
-			case MODE_P: //CONTROL GAINS, Starting from the second place in data array (First place is reserved for lift value)
-				data[0] = 0;				
-				data[1] = keymap[5];
-				data[2] = keymap[6];
-				data[3] = keymap[7];
-				break;
-				
-			default: //CONTROL MODES
-				data[0] = jmap[0]+keymap[1];
-				data[1] = jmap[1]+keymap[2];
-				data[2] = jmap[2]+keymap[3];
-				data[3] = jmap[3]+keymap[4];
-				break;
-		}
-		
-		//EVALUATES IF ABORTION REQUESTED
-		if (abort == 1) keymap[0] = MODE_ABORT;
-		//MODE SELECTIONA		
-		mode_selection(keymap, TeleData+2 ,data[0]);
-		//SETS THE PACKAGE WITH THE DESIRED DATA
-		SetPkgMode(&mPkg, keymap[0]);
-		SetPkgData(&mPkg, data);
-		//Prints the package
-		/*for (i = 0; i < PKGLEN; i++) {
-			printf("[%x]",mPkg.Pkg[i]);
-		}
-		printf("\n");*/
 		
 		//CHECKS KEYBOARD INPUT FOR DATALOGGING
 		if (key == 126){ //Data Logging requested
@@ -227,6 +200,39 @@ int main()
 
 		
 		if (writeflag == 1){
+			
+			// Handle the pressed key and joystick commands
+			if (key != -1) abort = read_kb(keymap,(char*)&key);
+		
+			switch (keymap[0]) {
+				case MODE_P: //CONTROL GAINS, Starting from the second place in data array (First place is reserved for lift value)
+					data[0] = 0;				
+					data[1] = keymap[5];
+					data[2] = keymap[6];
+					data[3] = keymap[7];
+					break;
+				
+				default: //CONTROL MODES
+					data[0] = jmap[0]+keymap[1];
+					data[1] = jmap[1]+keymap[2];
+					data[2] = jmap[2]+keymap[3];
+					data[3] = jmap[3]+keymap[4];
+					break;
+			}
+		
+			//EVALUATES IF ABORTION REQUESTED
+			if (abort == 1) keymap[0] = MODE_ABORT;
+			//MODE SELECTIONA		
+			mode_selection(keymap, TeleData+2 ,data[0]);
+			//SETS THE PACKAGE WITH THE DESIRED DATA
+			SetPkgMode(&mPkg, keymap[0]);
+			SetPkgData(&mPkg, data);
+			//Prints the package
+			/*for (i = 0; i < PKGLEN; i++) {
+				printf("[%x]",mPkg.Pkg[i]);
+			}
+			printf("\n");*/			
+
 			//WRITTING
 			//Writes the pkg byte by byte. Makes sure that each byte is written
 			do{
@@ -255,14 +261,16 @@ int main()
 				{
 					datacount = 0; //Reset the data counter. Starts over!!
 				}
-				// STORING THE DATA. Starts over if a starting BYTE is found!!!
-				if (readbuff != START_BYTE)
-				{
-					TeleData[datacount] = readbuff;
-					datacount++;
-				}
+				
 				// NORMAL OPERATION
 				if (DLreq == 0){ 
+					// STORING THE DATA. Starts over if a starting BYTE is found!!!
+					if (readbuff != START_BYTE)
+					{
+						TeleData[datacount] = readbuff;
+						//DLData[datacount] = readbuff;
+						datacount++;
+					}
 					// TELEMETRY DECODING. Only If the store data has the expected size
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
@@ -310,6 +318,7 @@ int main()
 						printf(" Chksum OK = %i \n",ChkSumOK);
 						//Saves data only if the pkg is complete
 						if (ChkSumOK){
+							
 							//Writes the telemetry in a Txt file
 							for (i = 0; i < TELPKGLEN; i++) {
 								fprintf(TeleFile, "%x ", TeleData[i]);
@@ -320,23 +329,31 @@ int main()
 				}
 				else //DATA LOG REQUESTED Shuts writting down and only reads
 				{
+					// STORING THE DATA. Starts over if a starting BYTE is found!!!
+					if (readbuff != START_BYTE)
+					{
+						//TeleData[datacount] = readbuff;
+						DLData[datacount] = readbuff;
+						datacount++;
+					}
 					// DATA LOGGING DECODING. Only If the stored data has the expected size
 					if (datacount == DLPKGLEN) //Complete Pkg Received
 					{
 						printf("DL ");
 						//Prints the stored package
 						for (i = 0; i < DLPKGLEN; i++) {
-							printf("[%x]",TeleData[i]);
+							printf("[%x]",DLData[i]);
 						}
+						//printf("    [%x]", sumglobal);
 						//DECODING. Checksum proof and stores decoded values in new array DispData
 						//ChkSumOK = decode(TeleData,&DispData);
-						ChkSumOK = DLDecode(TeleData);
+						ChkSumOK = DLDecode(DLData);
 						printf(" Chksum OK = %i \n",ChkSumOK);
 						//Saves data only if the pkg is complete
 						if (ChkSumOK){
 							//Writes the datalog in a Txt file
 							for (i = 0; i < DLPKGLEN; i++) {
-								fprintf(DLfile, "%x ", TeleData[i]);
+								fprintf(DLfile, "%x ", DLData[i]);
 							}
 							fprintf(DLfile,"\n");
 						}
@@ -348,18 +365,31 @@ int main()
 		} while (nbrx > 0);
 
 		if( (dltimeout++ > 200000) && writeflag == 0){
+			rs232_close();
 			printf("Data Login Downloaded... \n");
 			
-            fclose(DLfile);
-	        fclose(TeleFile);
-            return 0;
+			telclose = fclose(TeleFile);
+			if (telclose == 0)
+			{
+				printf("\nTelemetry file closed correctly");
+			}
+			else printf("\nTelemetry file closed wrong");
+
+			dataclose = fclose(DLfile);
+			if (dataclose == 0)
+			{
+				printf("\nDatalog closed correctly");
+			}
+			else printf("\nDatalog closed wrong");
+		    	
+		    	return 0;
 		}
 		
 		
 	}
-	fclose(DLfile);
-	fclose(TeleFile);
-	rs232_close();
+	//fclose(DLfile);
+	//fclose(TeleFile);
+	
 	printf("\n Port is closed \n");
 	return 0;
 	
