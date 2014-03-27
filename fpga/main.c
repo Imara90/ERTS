@@ -948,7 +948,7 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(N >> 16);
 		telem[j++] = (BYTE)(N >> 8);
 		telem[j++] = (BYTE)(N);		
-		telem[j++] = 0xff;
+		//telem[j++] = 0x01;
 		telem[j++] = telemetry_flag;
 		// INCLUDE THE CHECKSUM IN THE COUNT
 
@@ -963,7 +963,7 @@ void send_telemetry(void)
 		{
 			sum = 0x00;
 		}
-		//telem[j++] = sum;
+		telem[j++] = sum;
 
 		// send the data
 		for (i = 0; i < j; i++)
