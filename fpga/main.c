@@ -141,7 +141,7 @@ int   dl_count = 0;
 //#define LogParams	
 
 // telemetry variables should be compliant with pc
-#define TELLEN		19
+#define TELLEN		31
 
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
@@ -706,6 +706,10 @@ int check_sum(void)
 	}	
 	sum = ~sum;
 	
+	if (sum == 0x80)
+	{
+		sum = 0x00;
+	}
 	
 	if (package[CHECKSUM] != sum) {
 		return 0;
@@ -740,13 +744,13 @@ void store_data(void)
 	j = 0;
 	storing[j++] = 0x80;
 	// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-	storing[j++] = X32_ms_clock >> 8;
-	storing[j++] = X32_ms_clock;
+	storing[j++] = (BYTE)(X32_ms_clock >> 8);
+	storing[j++] = (BYTE)(X32_ms_clock);
 	storing[j++] = package[MODE];
 	storing[j++] = package[LIFT];
 	storing[j++] = package[ROLL];
-	storing[j++] = package[YAW];
 	storing[j++] = package[PITCH];
+	storing[j++] = package[YAW];
 	storing[j++] = ae[0];
 	storing[j++] = ae[1];
 	storing[j++] = ae[2];
@@ -868,20 +872,33 @@ void send_telemetry(void)
 		telem[j++] = STARTING_BYTE;
 		telem[j++] = (BYTE)(X32_ms_clock >> 8);
 		telem[j++] = package[MODE];
-		telem[j++] = (BYTE)ae[0];
-		telem[j++] = (BYTE)ae[1];
-		telem[j++] = (BYTE)ae[2];
-		telem[j++] = (BYTE)ae[3];
-		telem[j++] = phi;
-		telem[j++] = theta;
-		telem[j++] = r;
-		telem[j++] = pcontrol;
-		telem[j++] = p1control;
-		telem[j++] = p2control;
-		telem[j++] = Z;
-		telem[j++] = L;
-		telem[j++] = M;
-		telem[j++] = N;		
+		telem[j++] = (BYTE)(ae[0] >> 8);
+		telem[j++] = (BYTE)(ae[0]);
+		telem[j++] = (BYTE)(ae[1] >> 8);
+		telem[j++] = (BYTE)(ae[1]);
+		telem[j++] = (BYTE)(ae[2] >> 8);
+		telem[j++] = (BYTE)(ae[2]);
+		telem[j++] = (BYTE)(ae[3] >> 8);
+		telem[j++] = (BYTE)(ae[3]);
+		telem[j++] = (BYTE)(phi >> 8);
+		telem[j++] = (BYTE)(phi);
+		telem[j++] = (BYTE)(theta >> 8);
+		telem[j++] = (BYTE)(theta);
+		telem[j++] = (BYTE)(r >> 8);
+		telem[j++] = (BYTE)(r);
+		telem[j++] = (BYTE)(Z >> 16);
+		telem[j++] = (BYTE)(Z >> 8);
+		telem[j++] = (BYTE)(Z);
+		telem[j++] = (BYTE)(L >> 16);
+		telem[j++] = (BYTE)(L >> 8);
+		telem[j++] = (BYTE)(L);
+		telem[j++] = (BYTE)(M >> 16);
+		telem[j++] = (BYTE)(M >> 8);
+		telem[j++] = (BYTE)(M);
+		telem[j++] = (BYTE)(N >> 16);
+		telem[j++] = (BYTE)(N >> 8);
+		telem[j++] = (BYTE)(N);		
+		//telem[j++] = package[CHECKSUM];
 		telem[j++] = telemetry_flag;
 		// INCLUDE THE CHECKSUM IN THE COUNT
 
@@ -1022,22 +1039,6 @@ int main()
 			decode();
 			if (check_sum())
 			{
-				//store_data();
-				// Check if data is ready to be sent, and send	
-/*	
-				if (X32_rs232_stat & 0x01)
-				{
-					//X32_rs232_data = package[CHECKSUM];//package[txcount+1];
-					//X32_rs232_data =  sizeof(X32_ms_clock);
-					//X32_rs232_data = sizeof(BYTE);
-					if(!testcbIsEmpty(&testcb))
-					{
-						X32_rs232_data = testcb.elems[testcb.start];
-						testcb.start = (testcb.start + 1) % testcb.size;
-					}				
-				}		
-*/
-
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
@@ -1060,11 +1061,12 @@ int main()
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
-						last_control_mode = YAW_CONTROL_MODE;						
+						yaw_control_mode();		
 						// yaw
 						break;
 					case FULL_CONTROL_MODE:
-						last_control_mode = FULL_CONTROL_MODE;						
+						full_control_mode();
+							
 						// full
 						break;
 					case P_CONTROL_MODE:
