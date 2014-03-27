@@ -115,8 +115,8 @@ int main()
 		return 0;
 	}
 	//Joystick buffer clearence and calibration of yaw axis
-//	clear_js_buffer();
-// 	js_calibration();
+	clear_js_buffer();
+ 	js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
 	 *(P,P1,P2,0 for Control Gains Mode)*/
@@ -186,7 +186,7 @@ int main()
 //    	printf("%zu", sizeof(long));
 		
 		//reads data from the joystick ...comment if joystick is not connected
-		// abort = read_js(jmap);
+		abort = read_js(jmap);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		//printf("key %i\n",key);
@@ -301,6 +301,7 @@ int main()
 						printf("[%x]",TeleData[TELPKGLEN - 1]);
 						// DEBUG
 						//printf("[%x]",sumglobal);
+						printf("    [%x]", mPkg.Pkg[1]);
 
 
 					/*	for (i = 0; i < TELPKGLEN; i++) {
@@ -323,6 +324,7 @@ int main()
 							for (i = 0; i < TELPKGLEN; i++) {
 								fprintf(TeleFile, "%x ", TeleData[i]);
 							}
+							
 							fprintf(TeleFile,"\n");
 						}
 					}
@@ -353,7 +355,7 @@ int main()
 						if (ChkSumOK){
 							//Writes the datalog in a Txt file
 							for (i = 0; i < DLPKGLEN; i++) {
-								fprintf(DLfile, "%x ", DLData[i]);
+								fprintf(DLfile, "%i ", DLData[i]);
 							}
 							fprintf(DLfile,"\n");
 						}

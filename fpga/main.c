@@ -134,7 +134,7 @@ int   p_b = 0;
 int   q_b = 0;
 
 //DEFINE SIZE OF DATA LOGGING VARIABLES
-#define DLOGSIZE	50000 
+#define DLOGSIZE	1000000 
 //data logging variables
 int   dl[DLOGSIZE];
 int   dl_count = 0;
@@ -235,6 +235,8 @@ int 	pollthres = 15;
 long 	polltime = 0;
 BYTE	telemetry_flag = 0x00;
 
+int overflow;
+
 long 	controltime;
 
 BYTE 	package[nParams];
@@ -279,9 +281,9 @@ int integral[3] = {0,0,0};
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-int mult(int a, int b)
+long mult(int a, int b)
 {
-	unsigned int result;
+	long result;
 	result = a * b;
 	result = (result >> 14);
 //	printf("\nresult(%i * %i) = %i,",a,b,result );
@@ -312,8 +314,8 @@ void KalmanFilter(void)
 {
         
     //Kalman for p, phi    
-    sphi = y0[1] - OFFSET_y0[1]; //TODO CONFIRM SENSOR SIGNALS 
-    sp = y0[3] - OFFSET_y0[3];
+    sphi = x0[1] - OFFSET_y0[1]; //TODO CONFIRM SENSOR SIGNALS 
+    sp = x0[3] - OFFSET_y0[3];
     
     p = sp - p_b;
     phi = phi + mult(p,P2PHI);
@@ -321,8 +323,8 @@ void KalmanFilter(void)
     p_b = p_b + ((phi - sphi) >> C2);
  
     //Kalman for q, theta
-    stheta = y0[0] - OFFSET_y0[0]; //TODO CONFIRM SENSOR SIGNALS    
-    sq = y0[4] - OFFSET_y0[4];
+    stheta = x0[0] - OFFSET_y0[0]; //TODO CONFIRM SENSOR SIGNALS    
+    sq = x0[4] - OFFSET_y0[4];
     
     q = sq - q_b;
     theta = theta + mult(q,P2PHI);
@@ -528,11 +530,19 @@ void isr_qr_link(void)
 	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
 	
-	Butt2Filter();
-	KalmanFilter();
+	overflow = 0;
+	if (!overflow)
+	{
+		ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+
+		//Butt2Filter();
+		//KalmanFilter();
+
+		DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+	}
 
     	//Yaw Rate
-    	r = y0[5] - OFFSET_y0[5];
+    	r = x0[5] - OFFSET_y0[5];
 
 
 	//Gets the maximum value
@@ -569,10 +579,12 @@ void isr_qr_link(void)
 	// Send actuator values
 	// (Need to supply a continous stream, otherwise
 	// QR will go to safe mode, so just send every ms)
+/*
 	X32_QR_a0 = ae[0];
 	X32_QR_a1 = ae[1];
 	X32_QR_a2 = ae[2];
 	X32_QR_a3 = ae[3];
+*/
 
 	// record isr execution time (ignore overflow)
         inst = X32_instruction_counter - inst;
@@ -772,13 +784,23 @@ void store_data(void)
 	storing[j++] = (BYTE)(x0[4]);
 	storing[j++] = (BYTE)(x0[5] >> 8);
 	storing[j++] = (BYTE)(x0[5]);
-	storing[j++] = (BYTE)(y0[0]);
-	storing[j++] = (BYTE)(y0[1]);
+/*
+	storing[j++] = (BYTE)(y0[0] - OFFSET_y0[0]);
+	storing[j++] = (BYTE)(y0[1] - OFFSET_y0[1]);
 
-	storing[j++] = (BYTE)(y0[2]);
-	storing[j++] = (BYTE)(y0[3]);
-	storing[j++] = (BYTE)(y0[4]);
-	storing[j++] = (BYTE)(y0[5]);
+	storing[j++] = (BYTE)(y0[2] - OFFSET_y0[2]);
+	storing[j++] = (BYTE)(y0[3] - OFFSET_y0[3]);
+	storing[j++] = (BYTE)(y0[4] - OFFSET_y0[4]);
+	storing[j++] = (BYTE)(y0[5] - OFFSET_y0[5]);
+*/
+	storing[j++] = (BYTE)(x0[0] - OFFSET_y0[0]);
+	storing[j++] = (BYTE)(x0[1] - OFFSET_y0[1]);
+
+	storing[j++] = (BYTE)(x0[2] - OFFSET_y0[2]);
+	storing[j++] = (BYTE)(x0[3] - OFFSET_y0[3]);
+	storing[j++] = (BYTE)(x0[4] - OFFSET_y0[4]);
+	storing[j++] = (BYTE)(x0[5] - OFFSET_y0[5]);
+
 	storing[j++] = (BYTE)(phi >> 8);
 	storing[j++] = (BYTE)(phi);
 	storing[j++] = (BYTE)(theta >> 8);
@@ -929,32 +951,47 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(ae[2] >> 8);
 		telem[j++] = (BYTE)(ae[2]);
 		telem[j++] = (BYTE)(ae[3] >> 8);
-
 		telem[j++] = (BYTE)(ae[3]);
+/*
+	telem[j++] = (BYTE)(x0[0] >> 8);
+	telem[j++] = (BYTE)(x0[0]);
+	telem[j++] = (BYTE)(x0[1] >> 8);
+	telem[j++] = (BYTE)(x0[1]);
+	telem[j++] = (BYTE)(x0[2] >> 8);
+	telem[j++] = (BYTE)(x0[2]);
+
+	telem[j++] = (BYTE)(x0[3] >> 8);
+	telem[j++] = (BYTE)(x0[3]);
+	telem[j++] = (BYTE)(x0[4] >> 8);
+	telem[j++] = (BYTE)(x0[4]);
+	telem[j++] = (BYTE)(x0[5] >> 8);
+	telem[j++] = (BYTE)(x0[5]);
+
+
+*/
 		telem[j++] = (BYTE)(phi >> 8);
 		telem[j++] = (BYTE)(phi);
 		telem[j++] = (BYTE)(theta >> 8);
 		telem[j++] = (BYTE)(theta);
+		//telem[j++] = (BYTE)(OFFSET_y0[5] >> 8);
+		//telem[j++] = (BYTE)(OFFSET_y0[5]);	
 		telem[j++] = (BYTE)(r >> 8);
 		telem[j++] = (BYTE)(r);
+
 		telem[j++] = (BYTE)(Z >> 16);
 		telem[j++] = (BYTE)(Z >> 8);
 		telem[j++] = (BYTE)(Z);
-
 		telem[j++] = (BYTE)(L >> 16);
 		telem[j++] = (BYTE)(L >> 8);
 		telem[j++] = (BYTE)(L);
-        //telem[j++] = (BYTE)(package[ROLL] >> 16);
-		//telem[j++] = (BYTE)(package[ROLL] >> 8);
-		//telem[j++] = (BYTE)(package[ROLL]);		
-        telem[j++] = (BYTE)(M >> 16);
+        	telem[j++] = (BYTE)(M >> 16);
 		telem[j++] = (BYTE)(M >> 8);
 		telem[j++] = (BYTE)(M);
 		telem[j++] = (BYTE)(N >> 16);
 		telem[j++] = (BYTE)(N >> 8);
-		telem[j++] = (BYTE)(N);		
+		//telem[j++] = (BYTE)(N);	
+		telem[j++] = calibration_counter;	
 		telem[j++] = telemetry_flag;
-		//telem[j++] = 0xff;
 		// STILL INCLUDE THE CHECKSUM IN THE COUNT
 
 
@@ -982,6 +1019,20 @@ void send_telemetry(void)
 		polltime = X32_ms_clock;
 	}
 	
+}
+
+void overflow_isr(void) 
+{
+	DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
+	overflow = 1;
+	toggle_led(7);
+}
+
+void div0_isr() 
+{
+	printf("ERROR: Division by zero occurred!\r\n");
+	exit(EXIT_FAILURE);
+	toggle_led(6);
 }
 
 /*------------------------------------------------------------------
@@ -1027,7 +1078,14 @@ int main()
 	// prepare rs232 tx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_TX, &isr_rs232_tx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 15);
-        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);        
+        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);    
+
+	INTERRUPT_VECTOR(INTERRUPT_OVERFLOW) = &overflow_isr;
+	INTERRUPT_PRIORITY(INTERRUPT_OVERFLOW) = 10;    
+
+	INTERRUPT_VECTOR(INTERRUPT_DIVISION_BY_ZERO) = &div0_isr;
+	INTERRUPT_PRIORITY(INTERRUPT_DIVISION_BY_ZERO) = 10;
+	ENABLE_INTERRUPT(INTERRUPT_DIVISION_BY_ZERO);
 
         // prepare wireless rx interrupt and getchar handler
         //SET_INTERRUPT_VECTOR(INTERRUPT_WIRELESS_RX, &isr_wireless_rx);
@@ -1106,9 +1164,10 @@ int main()
 						// manual
 						break;
 					case CALIBRATION_MODE:
-                        if(calibration_counter < 129) {						    
-                            calibration_mode();
-                        }
+                        			if(calibration_counter < 129)
+						{					    
+                            				calibration_mode();
+                        			}
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
@@ -1141,11 +1200,11 @@ int main()
 				store_data();
 				// sends the telemetry at 10Hz
 				send_telemetry();	
-				X32_leds = 0;		
+				//off_led(1);off_led(0);off_led(2);off_led(3);off_led(4);off_led(5);		
 			}
 		}
 	}
-	on_led(7);
+	//on_led(7);
 
 	// send the data log to the pc
 	send_data();	
