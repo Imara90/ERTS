@@ -529,7 +529,7 @@ void isr_qr_link(void)
 	timestamp = X32_QR_timestamp;
 	
 	Butt2Filter();
-	KalmanFilter();
+	//KalmanFilter();
 
     	//Yaw Rate
     	r = y0[5] - OFFSET_y0[5];
@@ -933,8 +933,10 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(ae[3]);
 		telem[j++] = (BYTE)(phi >> 8);
 		telem[j++] = (BYTE)(phi);
-		telem[j++] = (BYTE)(theta >> 8);
-		telem[j++] = (BYTE)(theta);
+		//telem[j++] = (BYTE)(theta >> 8);
+		//telem[j++] = (BYTE)(theta);
+		telem[j++] = (BYTE)(OFFSET_y0[5] >> 8);
+		telem[j++] = (BYTE)(OFFSET_y0[5]);	
 		telem[j++] = (BYTE)(r >> 8);
 		telem[j++] = (BYTE)(r);
 		telem[j++] = (BYTE)(Z >> 16);
@@ -944,10 +946,10 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(L >> 16);
 		telem[j++] = (BYTE)(L >> 8);
 		telem[j++] = (BYTE)(L);
-        //telem[j++] = (BYTE)(package[ROLL] >> 16);
+        	//telem[j++] = (BYTE)(package[ROLL] >> 16);
 		//telem[j++] = (BYTE)(package[ROLL] >> 8);
 		//telem[j++] = (BYTE)(package[ROLL]);		
-        telem[j++] = (BYTE)(M >> 16);
+        	telem[j++] = (BYTE)(M >> 16);
 		telem[j++] = (BYTE)(M >> 8);
 		telem[j++] = (BYTE)(M);
 		telem[j++] = (BYTE)(N >> 16);
