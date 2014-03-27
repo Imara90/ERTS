@@ -27,7 +27,7 @@
 #include "mode_selection.h"	// Diogos mode selection function
 
 #define START_BYTE 0x80
-#define TELLEN	      23
+#define TELLEN	      31
 #define TELPKGLEN     TELLEN - 1 //EXPECTED TELEMETRY PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define TELPKGCHKSUM  TELPKGLEN - 1
 
@@ -71,7 +71,8 @@ int DLDecode(int* DLPkg/*, int* Output*/){
 		sum += DLPkg[i];
 	}
 	sum = (BYTE)~sum;
-//	printf("[%x][%x]",,ChkSum);
+//	sum = (BYTE)~sum;
+
 	if (ChkSum == sum)
 	{
 		//DECODING PART
@@ -261,11 +262,21 @@ int main()
 					*/
 						printf("[%x]",TeleData[0]);
 						printf("[%x]",TeleData[1]);
+						// ae[0 - 1]
 						printf("[%d]", (int)((TeleData[2] << 8) | TeleData[3]));
 						printf("[%d]", (int)((TeleData[4] << 8) | TeleData[5]));
 						printf("[%d]", (int)((TeleData[6] << 8) | TeleData[7]));
 						printf("[%d]", (int)((TeleData[8] << 8) | TeleData[9]));
-
+						// phi - r
+						printf("[%d]", (int)((TeleData[10] << 8) | TeleData[11]));
+						printf("[%d]", (int)((TeleData[12] << 8) | TeleData[13]));
+						printf("[%d]", (int)((TeleData[14] << 8) | TeleData[15]));
+						// Z - N
+						printf("[%i]", (int)((TeleData[16] << 16) | (TeleData[17] << 8) | TeleData[18]));
+						printf("[%i]", (int)((TeleData[19] << 16) | (TeleData[20] << 8) | TeleData[21]));
+						printf("[%i]", (int)((TeleData[22] << 16) | (TeleData[23] << 8) | TeleData[24]));
+						printf("[%i]", (int)((TeleData[25] << 16) | (TeleData[26] << 8) | TeleData[27]));
+						printf("[%x]",TeleData[TELPKGLEN - 2]);
 
 
 					/*	for (i = 0; i < TELPKGLEN; i++) {
