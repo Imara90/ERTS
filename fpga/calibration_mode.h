@@ -30,6 +30,7 @@ void calibration_mode(void) {
 		for(i = 0; i < 6; i++) {
 			OFFSET_y0[i] >>= 7;
 		}
+        calibration_counter = 0;
 		telemetry_flag = telemetry_flag | 0x03;
 	}
 
