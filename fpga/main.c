@@ -805,7 +805,8 @@ void store_data(void)
 	storing[j++] = (BYTE)(p1control);
 	storing[j++] = (BYTE)(p2control >> 8);
 	storing[j++] = (BYTE)(p2control);
-	storing[j++] = (BYTE)(controltime);
+	storing[j++] = 0xff;
+	//storing[j++] = (BYTE)(controltime);
 
     // calculate the checksum, dont include starting byte
 	for (i = 1; i < j ; i++)
@@ -849,6 +850,8 @@ void store_data(void)
  */
 void send_data(void)
 {
+
+DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// send data from the data log untill it is empty
 	while (dscb.end != dscb.start)
 	{
@@ -858,6 +861,7 @@ void send_data(void)
 		X32_rs232_data = dscb.elems[dscb.start].value;
 		dscb.start = (dscb.start + 1) % CBDATA_SIZE;	
 	}
+ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -947,6 +951,7 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(N >> 8);
 		telem[j++] = (BYTE)(N);		
 		telem[j++] = telemetry_flag;
+		//telem[j++] = 0xff;
 		// STILL INCLUDE THE CHECKSUM IN THE COUNT
 
 
@@ -1134,6 +1139,7 @@ int main()
 			}
 		}
 	}
+	on_led(7);
 
 	// send the data log to the pc
 	send_data();	
