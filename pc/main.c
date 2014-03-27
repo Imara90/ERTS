@@ -301,6 +301,7 @@ int main()
 						printf("[%x]",TeleData[TELPKGLEN - 1]);
 						// DEBUG
 						//printf("[%x]",sumglobal);
+						printf("    [%x]", mPkg.Pkg[1]);
 
 
 					/*	for (i = 0; i < TELPKGLEN; i++) {
@@ -323,6 +324,7 @@ int main()
 							for (i = 0; i < TELPKGLEN; i++) {
 								fprintf(TeleFile, "%x ", TeleData[i]);
 							}
+							
 							fprintf(TeleFile,"\n");
 						}
 					}

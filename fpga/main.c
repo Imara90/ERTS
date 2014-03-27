@@ -134,7 +134,7 @@ int   p_b = 0;
 int   q_b = 0;
 
 //DEFINE SIZE OF DATA LOGGING VARIABLES
-#define DLOGSIZE	50000 
+#define DLOGSIZE	1000000 
 //data logging variables
 int   dl[DLOGSIZE];
 int   dl_count = 0;
@@ -281,9 +281,9 @@ int integral[3] = {0,0,0};
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-int mult(int a, int b)
+long mult(int a, int b)
 {
-	int result;
+	long result;
 	result = a * b;
 	result = (result >> 14);
 //	printf("\nresult(%i * %i) = %i,",a,b,result );
@@ -314,8 +314,8 @@ void KalmanFilter(void)
 {
         
     //Kalman for p, phi    
-    sphi = y0[1] - OFFSET_y0[1]; //TODO CONFIRM SENSOR SIGNALS 
-    sp = y0[3] - OFFSET_y0[3];
+    sphi = x0[1] - OFFSET_y0[1]; //TODO CONFIRM SENSOR SIGNALS 
+    sp = x0[3] - OFFSET_y0[3];
     
     p = sp - p_b;
     phi = phi + mult(p,P2PHI);
@@ -323,8 +323,8 @@ void KalmanFilter(void)
     p_b = p_b + ((phi - sphi) >> C2);
  
     //Kalman for q, theta
-    stheta = y0[0] - OFFSET_y0[0]; //TODO CONFIRM SENSOR SIGNALS    
-    sq = y0[4] - OFFSET_y0[4];
+    stheta = x0[0] - OFFSET_y0[0]; //TODO CONFIRM SENSOR SIGNALS    
+    sq = x0[4] - OFFSET_y0[4];
     
     q = sq - q_b;
     theta = theta + mult(q,P2PHI);
@@ -535,14 +535,14 @@ void isr_qr_link(void)
 	{
 		ENABLE_INTERRUPT(INTERRUPT_OVERFLOW);
 
-		Butt2Filter();
-		KalmanFilter();
+		//Butt2Filter();
+		//KalmanFilter();
 
 		DISABLE_INTERRUPT(INTERRUPT_OVERFLOW);
 	}
 
     	//Yaw Rate
-    	r = y0[5] - OFFSET_y0[5];
+    	r = x0[5] - OFFSET_y0[5];
 
 
 	//Gets the maximum value
@@ -784,13 +784,23 @@ void store_data(void)
 	storing[j++] = (BYTE)(x0[4]);
 	storing[j++] = (BYTE)(x0[5] >> 8);
 	storing[j++] = (BYTE)(x0[5]);
-	storing[j++] = (BYTE)(y0[0]);
-	storing[j++] = (BYTE)(y0[1]);
+/*
+	storing[j++] = (BYTE)(y0[0] - OFFSET_y0[0]);
+	storing[j++] = (BYTE)(y0[1] - OFFSET_y0[1]);
 
-	storing[j++] = (BYTE)(y0[2]);
-	storing[j++] = (BYTE)(y0[3]);
-	storing[j++] = (BYTE)(y0[4]);
-	storing[j++] = (BYTE)(y0[5]);
+	storing[j++] = (BYTE)(y0[2] - OFFSET_y0[2]);
+	storing[j++] = (BYTE)(y0[3] - OFFSET_y0[3]);
+	storing[j++] = (BYTE)(y0[4] - OFFSET_y0[4]);
+	storing[j++] = (BYTE)(y0[5] - OFFSET_y0[5]);
+*/
+	storing[j++] = (BYTE)(x0[0] - OFFSET_y0[0]);
+	storing[j++] = (BYTE)(x0[1] - OFFSET_y0[1]);
+
+	storing[j++] = (BYTE)(x0[2] - OFFSET_y0[2]);
+	storing[j++] = (BYTE)(x0[3] - OFFSET_y0[3]);
+	storing[j++] = (BYTE)(x0[4] - OFFSET_y0[4]);
+	storing[j++] = (BYTE)(x0[5] - OFFSET_y0[5]);
+
 	storing[j++] = (BYTE)(phi >> 8);
 	storing[j++] = (BYTE)(phi);
 	storing[j++] = (BYTE)(theta >> 8);
@@ -979,9 +989,9 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(M);
 		telem[j++] = (BYTE)(N >> 16);
 		telem[j++] = (BYTE)(N >> 8);
-		telem[j++] = (BYTE)(N);		
+		//telem[j++] = (BYTE)(N);	
+		telem[j++] = calibration_counter;	
 		telem[j++] = telemetry_flag;
-		//telem[j++] = 0xff;
 		// STILL INCLUDE THE CHECKSUM IN THE COUNT
 
 
@@ -1022,7 +1032,7 @@ void div0_isr()
 {
 	printf("ERROR: Division by zero occurred!\r\n");
 	exit(EXIT_FAILURE);
-	toddle_led(6);
+	toggle_led(6);
 }
 
 /*------------------------------------------------------------------
@@ -1154,9 +1164,10 @@ int main()
 						// manual
 						break;
 					case CALIBRATION_MODE:
-                        if(calibration_counter < 129) {						    
-                            calibration_mode();
-                        }
+                        			if(calibration_counter < 129)
+						{					    
+                            				calibration_mode();
+                        			}
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
