@@ -898,8 +898,8 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(N >> 16);
 		telem[j++] = (BYTE)(N >> 8);
 		telem[j++] = (BYTE)(N);		
-		telem[j++] = package[CHECKSUM];
-		//telem[j++] = telemetry_flag;
+		//telem[j++] = package[CHECKSUM];
+		telem[j++] = telemetry_flag;
 		// INCLUDE THE CHECKSUM IN THE COUNT
 
 
@@ -1061,12 +1061,12 @@ int main()
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
-						yaw_control_mode();
-						last_control_mode = YAW_CONTROL_MODE;						
+						yaw_control_mode();		
 						// yaw
 						break;
 					case FULL_CONTROL_MODE:
-						last_control_mode = FULL_CONTROL_MODE;						
+						full_control_mode();
+							
 						// full
 						break;
 					case P_CONTROL_MODE:
