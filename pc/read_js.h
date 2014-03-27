@@ -157,9 +157,9 @@ void js_calibration(void) {
 		}
 		
 		c=getchar();
-		if(c == 't' && (pos_calibration_yaw>6000 || neg_calibration_yaw<-6000)){
+		if(c == 't'){
 		
-			printf("\nCalibration might be incorrect! Do you want to repeat[y/n]?");
+			printf("\nPositive Cal.: %d Negative Cal.: %d. Do you want to repeat[y/n]?",pos_calibration_yaw,neg_calibration_yaw);
 			c=getchar();			
 			while (c == -1) {c=getchar();usleep(20000);}
 			if (c == 'y') {

@@ -11,8 +11,8 @@ Generates actuator inputs for the yaw control mode.
 #define LOW_Z_CONVERSION 81000/75 //81000 for all engines at 450 (hover)
 #define HIGH_Z_CONVERSION (MAX_Z-450)/(255-75)
 
-#define MAX_LM	155000 // one engine at 600 and the other 3 at 450
-#define LM_CONVERSION 155000/127
+#define MAX_LM	50000 // one engine at 600 and the other 3 at 450
+#define LM_CONVERSION MAX_LM/127
 
 #define MAX_YAWRATE 20 // ?? - define experimentally
 #define YAWRATE_SCALING MAX_YAWRATE/127
