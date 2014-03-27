@@ -853,13 +853,11 @@ void send_data(void)
 	while (dscb.end != dscb.start)
 	{
 
-		if (X32_rs232_txready)
-		{
-			X32_rs232_data = dscb.elems[dscb.start].value;
-			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
-		}	
-	}
+		while ( !X32_rs232_txready ) ;
 
+		X32_rs232_data = dscb.elems[dscb.start].value;
+		dscb.start = (dscb.start + 1) % CBDATA_SIZE;	
+	}
 }
 
 /*------------------------------------------------------------------
@@ -948,9 +946,8 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(N >> 16);
 		telem[j++] = (BYTE)(N >> 8);
 		telem[j++] = (BYTE)(N);		
-		//telem[j++] = 0x01;
 		telem[j++] = telemetry_flag;
-		// INCLUDE THE CHECKSUM IN THE COUNT
+		// STILL INCLUDE THE CHECKSUM IN THE COUNT
 
 
 		// calculate the checksum, dont include starting byte
@@ -1056,16 +1053,6 @@ int main()
 	for (i = 0; i < nParams; i++)
 	{
 		package[i] = 0;
-
-		// DEBUG DEBUG DEBUG
-/*
-		testcb.elems[testcb.end] = i;
-		testcb.end = (testcb.end + 1) % testcb.size;
-		if (testcb.end == testcb.start)
-		{
-			testcb.start = (testcb.start + 1) % testcb.size; // full, overwrite 
-		}
-*/
 	}
 
 	// Print to indicate start
