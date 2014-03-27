@@ -9,7 +9,7 @@ Define DC offset of the sensors while QR is not moving
 //GLOBALS
 int OFFSET_y0[6] = {0, 0, 0, 0, 0, 0};
 int calibration_counter = 0;
-int calibration_done = 0;
+
 
 void calibration_mode(void) {
 
@@ -23,15 +23,15 @@ void calibration_mode(void) {
 	{
 		OFFSET_y0[i] += y0[i];
 	}
-	calibration_counter++;
-
+	
+    calibration_counter++;
 	if (calibration_counter == 128) {
 
 		for(i = 0; i < 6; i++) {
 			OFFSET_y0[i] >>= 7;
 		}
-        calibration_counter = 0;
+        
 		telemetry_flag = telemetry_flag | 0x03;
 	}
-
+    
 }
