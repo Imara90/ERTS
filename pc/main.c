@@ -27,14 +27,17 @@
 #include "mode_selection.h"	// Diogos mode selection function
 
 #define START_BYTE 0x80
-#define TELLEN	      31
-#define TELPKGLEN     TELLEN - 1 //EXPECTED TELEMETRY PACKAGE LENGTH EXCLUDING THE STARTING BYTE
-#define TELPKGCHKSUM  TELPKGLEN - 1
+#define TELLEN	      	31
+#define TELPKGLEN     	TELLEN - 1 
+#define TELPKGCHKSUM  	TELPKGLEN - 1
 
-#define START_BYTE 0x80
-#define DLPKGLEN     58 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
-#define DLPKGCHKSUM  DLPKGLEN - 1
+//#define START_BYTE 0x80
+#define DATALEN		60
+#define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define DLPKGCHKSUM  	DLPKGLEN - 1
 
+//DEBUG
+//int sumglobal = 0;
 
 
 int TeleDecode(int* TelPkg/*, int* Output*/){
@@ -48,9 +51,12 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 		sum += TelPkg[i];
 	}
 	sum = (BYTE)~sum;
-    if (sum = 0x80){
-        sum = 0x00;
-    }
+   	if (sum == 0x80)
+	{
+        	sum = 0x00;
+    	}
+	// DEBUG
+	//sumglobal = sum;
 //	printf("[%x][%x]",,ChkSum);
 	if (ChkSum == sum)
 	{
@@ -107,8 +113,8 @@ int main()
 		return 0;
 	}
 	//Joystick buffer clearence and calibration of yaw axis
-	clear_js_buffer();
-	js_calibration();
+//	clear_js_buffer();
+// 	js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
 	 *(P,P1,P2,0 for Control Gains Mode)*/
@@ -178,7 +184,7 @@ int main()
 //    	printf("%zu", sizeof(long));
 		
 		//reads data from the joystick ...comment if joystick is not connected
-		abort = read_js(jmap);
+		// abort = read_js(jmap);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		//printf("key %i\n",key);
@@ -281,7 +287,12 @@ int main()
 						printf("[%i]", (int)((TeleData[19] << 16) | (TeleData[20] << 8) | TeleData[21]));
 						printf("[%i]", (int)((TeleData[22] << 16) | (TeleData[23] << 8) | TeleData[24]));
 						printf("[%i]", (int)((TeleData[25] << 16) | (TeleData[26] << 8) | TeleData[27]));
+						// telemetry flag
 						printf("[%x]",TeleData[TELPKGLEN - 2]);
+						// checksum
+						printf("[%x]",TeleData[TELPKGLEN - 1]);
+						// DEBUG
+						//printf("[%x]",sumglobal);
 
 
 					/*	for (i = 0; i < TELPKGLEN; i++) {

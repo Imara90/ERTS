@@ -139,6 +139,7 @@ int   q_b = 0;
 int   dl[DLOGSIZE];
 int   dl_count = 0;
 //#define LogParams	
+#define DATAPACKAGE	60
 
 // telemetry variables should be compliant with pc
 #define TELLEN		31
@@ -233,6 +234,8 @@ int	polltell = 1;
 int 	pollthres = 15;
 long 	polltime = 0;
 BYTE	telemetry_flag = 0x00;
+
+long 	controltime;
 
 BYTE 	package[nParams];
 
@@ -731,7 +734,7 @@ void store_data(void)
 {
 	BYTE sum;
 	int i, j;
-	BYTE storing[storenosensor];
+	BYTE storing[DATAPACKAGE];
 	sum = 0;
 
 
@@ -747,30 +750,62 @@ void store_data(void)
 	storing[j++] = package[ROLL];
 	storing[j++] = package[PITCH];
 	storing[j++] = package[YAW];
-	storing[j++] = (BYTE)ae[0];
-	storing[j++] = (BYTE)ae[1];
-	storing[j++] = (BYTE)ae[2];
-	storing[j++] = (BYTE)ae[3];
-/*
-	storing[j++] = x0[0] >> 8;
-	storing[j++] = x0[0];
-	storing[j++] = x0[1] >> 8;
-	storing[j++] = x0[1];
-	storing[j++] = x0[2] >> 8;
-	storing[j++] = x0[2];
-	storing[j++] = x0[3] >> 8;
-	storing[j++] = x0[3];
-	storing[j++] = x0[4] >> 8;
-	storing[j++] = x0[4];
-	storing[j++] = x0[5] >> 8;
-	storing[j++] = x0[5];
-	storing[j++] = y0[0];
-	storing[j++] = y0[1];
-	storing[j++] = y0[2];
-	storing[j++] = y0[3];
-	storing[j++] = y0[4];
-	storing[j++] = y0[5];
-*/
+	storing[j++] = (BYTE)(ae[0] >> 8);
+	storing[j++] = (BYTE)(ae[0]);
+
+	storing[j++] = (BYTE)(ae[1] >> 8);
+	storing[j++] = (BYTE)(ae[1]);
+	storing[j++] = (BYTE)(ae[2] >> 8);
+	storing[j++] = (BYTE)(ae[2]);
+	storing[j++] = (BYTE)(ae[3] >> 8);
+	storing[j++] = (BYTE)(ae[3]);
+	storing[j++] = (BYTE)(x0[0] >> 8);
+	storing[j++] = (BYTE)(x0[0]);
+	storing[j++] = (BYTE)(x0[1] >> 8);
+	storing[j++] = (BYTE)(x0[1]);
+
+	storing[j++] = (BYTE)(x0[2] >> 8);
+	storing[j++] = (BYTE)(x0[2]);
+	storing[j++] = (BYTE)(x0[3] >> 8);
+	storing[j++] = (BYTE)(x0[3]);
+	storing[j++] = (BYTE)(x0[4] >> 8);
+	storing[j++] = (BYTE)(x0[4]);
+	storing[j++] = (BYTE)(x0[5] >> 8);
+	storing[j++] = (BYTE)(x0[5]);
+	storing[j++] = (BYTE)(y0[0]);
+	storing[j++] = (BYTE)(y0[1]);
+
+	storing[j++] = (BYTE)(y0[2]);
+	storing[j++] = (BYTE)(y0[3]);
+	storing[j++] = (BYTE)(y0[4]);
+	storing[j++] = (BYTE)(y0[5]);
+	storing[j++] = (BYTE)(phi >> 8);
+	storing[j++] = (BYTE)(phi);
+	storing[j++] = (BYTE)(theta >> 8);
+	storing[j++] = (BYTE)(theta);
+	storing[j++] = (BYTE)(p);
+	storing[j++] = (BYTE)(q);
+
+	storing[j++] = (BYTE)(Z >> 16);
+	storing[j++] = (BYTE)(Z >> 8);
+	storing[j++] = (BYTE)(Z);
+	storing[j++] = (BYTE)(L >> 16);
+	storing[j++] = (BYTE)(L >> 8);
+	storing[j++] = (BYTE)(L);
+	storing[j++] = (BYTE)(M >> 16);
+	storing[j++] = (BYTE)(M >> 8);
+	storing[j++] = (BYTE)(M);
+	storing[j++] = (BYTE)(N >> 16);
+
+	storing[j++] = (BYTE)(N >> 8);
+	storing[j++] = (BYTE)(N);	
+	storing[j++] = (BYTE)(pcontrol >> 8);
+	storing[j++] = (BYTE)(pcontrol);
+	storing[j++] = (BYTE)(p1control >> 8);
+	storing[j++] = (BYTE)(p1control);
+	storing[j++] = (BYTE)(p2control >> 8);
+	storing[j++] = (BYTE)(p2control);
+	storing[j++] = (BYTE)(controltime);
 
     // calculate the checksum, dont include starting byte
 	for (i = 1; i < j ; i++)
@@ -818,13 +853,11 @@ void send_data(void)
 	while (dscb.end != dscb.start)
 	{
 
-		if (X32_rs232_txready)
-		{
-			X32_rs232_data = dscb.elems[dscb.start].value;
-			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
-		}	
-	}
+		while ( !X32_rs232_txready ) ;
 
+		X32_rs232_data = dscb.elems[dscb.start].value;
+		dscb.start = (dscb.start + 1) % CBDATA_SIZE;	
+	}
 }
 
 /*------------------------------------------------------------------
@@ -892,6 +925,7 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(ae[2] >> 8);
 		telem[j++] = (BYTE)(ae[2]);
 		telem[j++] = (BYTE)(ae[3] >> 8);
+
 		telem[j++] = (BYTE)(ae[3]);
 		telem[j++] = (BYTE)(phi >> 8);
 		telem[j++] = (BYTE)(phi);
@@ -902,6 +936,7 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(Z >> 16);
 		telem[j++] = (BYTE)(Z >> 8);
 		telem[j++] = (BYTE)(Z);
+
 		telem[j++] = (BYTE)(L >> 16);
 		telem[j++] = (BYTE)(L >> 8);
 		telem[j++] = (BYTE)(L);
@@ -911,9 +946,8 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(N >> 16);
 		telem[j++] = (BYTE)(N >> 8);
 		telem[j++] = (BYTE)(N);		
-		//telem[j++] = package[CHECKSUM];
 		telem[j++] = telemetry_flag;
-		// INCLUDE THE CHECKSUM IN THE COUNT
+		// STILL INCLUDE THE CHECKSUM IN THE COUNT
 
 
 		// calculate the checksum, dont include starting byte
@@ -1019,16 +1053,6 @@ int main()
 	for (i = 0; i < nParams; i++)
 	{
 		package[i] = 0;
-
-		// DEBUG DEBUG DEBUG
-/*
-		testcb.elems[testcb.end] = i;
-		testcb.end = (testcb.end + 1) % testcb.size;
-		if (testcb.end == testcb.start)
-		{
-			testcb.start = (testcb.start + 1) % testcb.size; // full, overwrite 
-		}
-*/
 	}
 
 	// Print to indicate start
@@ -1038,6 +1062,9 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
 	while (! program_done) {		
+		// profiling the control time	
+		controltime = X32_ms_clock;
+
 		// reset the commflag to check communication
 		if (commflag++ > commthres)
 		{
@@ -1098,6 +1125,8 @@ int main()
 				}
 				
 				// if the package was correct, store the correct data
+				controltime = X32_ms_clock - controltime;
+
 				store_data();
 				// sends the telemetry at 10Hz
 				send_telemetry();	
