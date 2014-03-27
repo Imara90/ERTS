@@ -141,7 +141,7 @@ int   dl_count = 0;
 //#define LogParams	
 
 // telemetry variables should be compliant with pc
-#define TELLEN		19
+#define TELLEN		23
 
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
@@ -868,10 +868,14 @@ void send_telemetry(void)
 		telem[j++] = STARTING_BYTE;
 		telem[j++] = (BYTE)(X32_ms_clock >> 8);
 		telem[j++] = package[MODE];
-		telem[j++] = (BYTE)ae[0];
-		telem[j++] = (BYTE)ae[1];
-		telem[j++] = (BYTE)ae[2];
-		telem[j++] = (BYTE)ae[3];
+		telem[j++] = (BYTE)(ae[0] >> 8);
+		telem[j++] = (BYTE)(ae[0]);
+		telem[j++] = (BYTE)(ae[1] >> 8);
+		telem[j++] = (BYTE)(ae[1]);
+		telem[j++] = (BYTE)(ae[2] >> 8);
+		telem[j++] = (BYTE)(ae[2]);
+		telem[j++] = (BYTE)(ae[3] >> 8);
+		telem[j++] = (BYTE)(ae[3]);
 		telem[j++] = phi;
 		telem[j++] = theta;
 		telem[j++] = r;
