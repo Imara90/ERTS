@@ -39,7 +39,7 @@ int i;
 		case 50://MANUAL MODE (key '2')
 			*key_map= MODE_MANUAL;
 			break;
-		case 51://CALIBRATION MODE (key '3')
+		case '3'://CALIBRATION MODE (key '3')
 			*key_map= MODE_CALIBRATION;
 			break;
 		case 52://YAW CONTROL MODE (key '4')

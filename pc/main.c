@@ -32,7 +32,7 @@
 #define TELPKGCHKSUM  TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DLPKGLEN     12 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define DLPKGLEN     58 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  DLPKGLEN - 1
 
 
@@ -48,6 +48,9 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 		sum += TelPkg[i];
 	}
 	sum = (BYTE)~sum;
+    if (sum = 0x80){
+        sum = 0x00;
+    }
 //	printf("[%x][%x]",,ChkSum);
 	if (ChkSum == sum)
 	{
@@ -71,7 +74,10 @@ int DLDecode(int* DLPkg/*, int* Output*/){
 		sum += DLPkg[i];
 	}
 	sum = (BYTE)~sum;
-//	sum = (BYTE)~sum;
+    	if (sum = 0x80)
+	{
+        	sum = 0x00;
+    	}
 
 	if (ChkSum == sum)
 	{
@@ -196,7 +202,6 @@ int main()
 		
 		//EVALUATES IF ABORTION REQUESTED
 		if (abort == 1) keymap[0] = MODE_ABORT;
-
 		//MODE SELECTIONA		
 		mode_selection(keymap, TeleData+2 ,data[0]);
 		//SETS THE PACKAGE WITH THE DESIRED DATA
@@ -327,14 +332,17 @@ int main()
 					}
 					writeflag = 0;
 				}
-				//dltimeout = 0;
+				dltimeout = 0;
 			}
 		} while (nbrx > 0);
 
-		/*if( (dltimeout++ > 2000) && writeflag == 0){
-			printf("Data Login Downloaded...");
-			break;
-		}*/
+		if( (dltimeout++ > 200000) && writeflag == 0){
+			printf("Data Login Downloaded... \n");
+			
+            fclose(DLfile);
+	        fclose(TeleFile);
+            return 0;
+		}
 		
 		
 	}
@@ -345,4 +353,5 @@ int main()
 	return 0;
 	
 }
+
 
