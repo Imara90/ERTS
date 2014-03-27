@@ -36,6 +36,8 @@
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
 
+//DEBUG
+//int sumglobal = 0;
 
 
 int TeleDecode(int* TelPkg/*, int* Output*/){
@@ -49,10 +51,12 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 		sum += TelPkg[i];
 	}
 	sum = (BYTE)~sum;
-   	if (sum = 0x80)
+   	if (sum == 0x80)
 	{
         	sum = 0x00;
     	}
+	// DEBUG
+	//sumglobal = sum;
 //	printf("[%x][%x]",,ChkSum);
 	if (ChkSum == sum)
 	{
@@ -287,6 +291,8 @@ int main()
 						printf("[%x]",TeleData[TELPKGLEN - 2]);
 						// checksum
 						printf("[%x]",TeleData[TELPKGLEN - 1]);
+						// DEBUG
+						//printf("[%x]",sumglobal);
 
 
 					/*	for (i = 0; i < TELPKGLEN; i++) {
