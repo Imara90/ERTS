@@ -32,7 +32,7 @@
 #define TELPKGCHKSUM  TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DLPKGLEN     12 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define DLPKGLEN     58 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  DLPKGLEN - 1
 
 
@@ -48,6 +48,9 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 		sum += TelPkg[i];
 	}
 	sum = (BYTE)~sum;
+    if (sum = 0x80){
+        sum = 0x00;
+    }
 //	printf("[%x][%x]",,ChkSum);
 	if (ChkSum == sum)
 	{
@@ -71,7 +74,10 @@ int DLDecode(int* DLPkg/*, int* Output*/){
 		sum += DLPkg[i];
 	}
 	sum = (BYTE)~sum;
-//	sum = (BYTE)~sum;
+    	if (sum = 0x80)
+	{
+        	sum = 0x00;
+    	}
 
 	if (ChkSum == sum)
 	{
@@ -176,21 +182,7 @@ int main()
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		//printf("key %i\n",key);
-		
-
-
-		
-		//CHECKS KEYBOARD INPUT FOR DATALOGGING
-		if (key == 126){ //Data Logging requested
-			DLreq = 1;
-			datacount = 0; // Resets the counter (Reading new data)
-		}
-
-		
-		if (writeflag == 1){
-
-
-if (key != -1) abort = read_kb(keymap,(char*)&key);
+		if (key != -1) abort = read_kb(keymap,(char*)&key);
 		
 		switch (keymap[0]) {
 			case MODE_P: //CONTROL GAINS, Starting from the second place in data array (First place is reserved for lift value)
@@ -210,7 +202,6 @@ if (key != -1) abort = read_kb(keymap,(char*)&key);
 		
 		//EVALUATES IF ABORTION REQUESTED
 		if (abort == 1) keymap[0] = MODE_ABORT;
-
 		//MODE SELECTIONA		
 		mode_selection(keymap, TeleData+2 ,data[0]);
 		//SETS THE PACKAGE WITH THE DESIRED DATA
@@ -321,7 +312,6 @@ if (key != -1) abort = read_kb(keymap,(char*)&key);
 					// DATA LOGGING DECODING. Only If the stored data has the expected size
 					if (datacount == DLPKGLEN) //Complete Pkg Received
 					{
-						dltimeout = 0;
 						printf("DL ");
 						//Prints the stored package
 						for (i = 0; i < DLPKGLEN; i++) {
@@ -340,25 +330,19 @@ if (key != -1) abort = read_kb(keymap,(char*)&key);
 							fprintf(DLfile,"\n");
 						}
 					}
-					else
-					{
-						if (dltimeout++ > 3000)
-						{
-							printf("\n timed out, timeout: %d", dltimeout);
-							return 1;
-						}
-					}
-					// else return 0;
 					writeflag = 0;
 				}
-				//dltimeout = 0;
+				dltimeout = 0;
 			}
 		} while (nbrx > 0);
 
-		/*if( (dltimeout++ > 2000) && writeflag == 0){
-			printf("Data Login Downloaded...");
-			break;
-		}*/
+		if( (dltimeout++ > 200000) && writeflag == 0){
+			printf("Data Login Downloaded... \n");
+			
+            fclose(DLfile);
+	        fclose(TeleFile);
+            return 0;
+		}
 		
 		
 	}

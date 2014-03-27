@@ -237,6 +237,7 @@ BYTE	telemetry_flag = 0x00;
 BYTE 	package[nParams];
 
 // Can be changed?
+
 BYTE 	sel_mode, roll, pitch, yaw, lift, checksum;
 BYTE 	prev_mode = 0;//VARIABLE TO SAVE PREVIOUS MODE
 BYTE	mode = 0;//ACTUAL OPERATING MODE
@@ -732,16 +733,12 @@ void store_data(void)
 	int i, j;
 	BYTE storing[storenosensor];
 	sum = 0;
-	
-	// determine the checksum for the send package
-	sum = X32_ms_clock + package[MODE] + package[LIFT] + package[ROLL] + 				package[PITCH] + package[YAW] + ae[0] + ae[1] + ae[2] + ae[3]; /* + 
-				 x0[0] + x0[1] + x0[2] + x0[3] + x0[4] + x0[5]; */
-	sum = ~sum;
+
 
 	// TODO find a way to save P values if the mode has changed
 	
 	j = 0;
-	storing[j++] = 0x80;
+	storing[j++] = STARTING_BYTE;
 	// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
 	storing[j++] = (BYTE)(X32_ms_clock >> 8);
 	storing[j++] = (BYTE)(X32_ms_clock);
@@ -750,10 +747,10 @@ void store_data(void)
 	storing[j++] = package[ROLL];
 	storing[j++] = package[PITCH];
 	storing[j++] = package[YAW];
-	storing[j++] = ae[0];
-	storing[j++] = ae[1];
-	storing[j++] = ae[2];
-	storing[j++] = ae[3];
+	storing[j++] = (BYTE)ae[0];
+	storing[j++] = (BYTE)ae[1];
+	storing[j++] = (BYTE)ae[2];
+	storing[j++] = (BYTE)ae[3];
 /*
 	storing[j++] = x0[0] >> 8;
 	storing[j++] = x0[0];
@@ -774,19 +771,32 @@ void store_data(void)
 	storing[j++] = y0[4];
 	storing[j++] = y0[5];
 */
-	// TODO correct way checksum
+
+    // calculate the checksum, dont include starting byte
+	for (i = 1; i < j ; i++)
+	{
+		sum += storing[i];
+	}
+	sum = ~sum;
+   	if (sum == 0x80)
+	{
+        	sum = 0;
+    	}
+	
 	storing[j++] = sum;
 
-	for (i = 0; i < 12; i++)
+	// TODO CHECK IF THIS STILL WORKS
+	for (i = 0; i < j; i++)
 	{
+		// TODO IS THIS CAUSING ANY ERROS
 		// make sure only starting byte can be 0x80
 		if ((i != 0) && (storing[i] == 0x80))
 		{
 			// if the value is -128, correct it to -127
 			storing[i] = 0x81;
 		}
+		// Write to the circular buffer and overwrite if necesary
 		dscb.elems[dscb.end].value = storing[i];
-		//printf(" %x, ", storing[i]);
 		dscb.end = (dscb.end + 1) % CBDATA_SIZE;
 		if (dscb.end == dscb.start)
 		{
@@ -815,19 +825,6 @@ void send_data(void)
 		}	
 	}
 
-	if (X32_rs232_txready)
-	{
-		X32_rs232_data = 0xff;
-	}	
-		if (X32_rs232_txready)
-	{
-		X32_rs232_data = 0xff;
-	}	
-	if (X32_rs232_txready)
-	{
-		X32_rs232_data = 0xff;
-	}	
-
 }
 
 /*------------------------------------------------------------------
@@ -845,10 +842,7 @@ void send_telemetry(void)
 	// telemetry
 /* final telemetry
 	if (X32_ms_clock - polltime >= 100)
-	{	
-
-		//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-	
+	{
 		j = 0;
 		telem[j++] = STARTING_BYTE;
 		telem[j++] = (BYTE)(X32_ms_clock >> 8);
@@ -859,14 +853,16 @@ void send_telemetry(void)
 		telem[j++] = package[YAW];
 		telem[j++] = telemetry_flag;
 
-		//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-
 		// calculate the checksum, dont include starting byte
 		for (i = 1; i < j ; i++)
 		{
 			sum += telem[i];
 		}
 		sum = ~sum;
+        if (sum == 0x80){
+            sum = 0;
+        }
+        
 		telem[j++] = sum;
 
 		// send the data
@@ -1057,7 +1053,6 @@ int main()
 			if (check_sum())
 			{
 				switch (package[MODE])
-				//switch (sel_mode)
 				{
 					case SAFE_MODE:
 						safe_mode();
@@ -1072,12 +1067,10 @@ int main()
 					case MANUAL_MODE:
 						on_led(2);
 						manual_mode();
-						on_led(2);
 						// manual
 						break;
 					case CALIBRATION_MODE:
 						calibration_mode();
-						on_led(1);
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
@@ -1113,8 +1106,6 @@ int main()
 		}
 	}
 
-	on_led(7);
-
 	// send the data log to the pc
 	send_data();	
 
@@ -1122,4 +1113,5 @@ int main()
 
 	return 0;
 }
+
 
