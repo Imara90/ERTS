@@ -944,7 +944,10 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(L >> 16);
 		telem[j++] = (BYTE)(L >> 8);
 		telem[j++] = (BYTE)(L);
-		telem[j++] = (BYTE)(M >> 16);
+        //telem[j++] = (BYTE)(package[ROLL] >> 16);
+		//telem[j++] = (BYTE)(package[ROLL] >> 8);
+		//telem[j++] = (BYTE)(package[ROLL]);		
+        telem[j++] = (BYTE)(M >> 16);
 		telem[j++] = (BYTE)(M >> 8);
 		telem[j++] = (BYTE)(M);
 		telem[j++] = (BYTE)(N >> 16);
@@ -1088,6 +1091,7 @@ int main()
 				{
 					case SAFE_MODE:
 						safe_mode();
+                        calibration_counter = 0;
 						on_led(0);
 						// safe
 						break;
@@ -1102,7 +1106,9 @@ int main()
 						// manual
 						break;
 					case CALIBRATION_MODE:
-						calibration_mode();
+                        if(calibration_counter < 129) {						    
+                            calibration_mode();
+                        }
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
