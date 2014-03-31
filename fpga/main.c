@@ -142,7 +142,7 @@ int   dl_count = 0;
 #define DATAPACKAGE	60
 
 // telemetry variables should be compliant with pc
-#define TELLEN		31
+#define TELLEN		23
 
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
@@ -527,12 +527,14 @@ void isr_qr_link(void)
 	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; x0[2] = X32_QR_s2; 
 	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
-	
-	Butt2Filter();
-	KalmanFilter();
-
-    	//Yaw Rate
-    	r = y0[5] - OFFSET_y0[5];
+	//in case of erros, sensors must go to the main function
+	if(calibration_done)
+    {
+        Butt2Filter();
+	    KalmanFilter();
+    }
+   	//Yaw Rate
+    r = y0[5] - OFFSET_y0[5];
 
 
 	//Gets the maximum value
@@ -919,18 +921,33 @@ void send_telemetry(void)
 	{
 		j = 0;
 
+		//DON'T CHANGE
 		telem[j++] = STARTING_BYTE;
 		telem[j++] = (BYTE)(X32_ms_clock >> 8);
 		telem[j++] = package[MODE];
-		telem[j++] = (BYTE)(ae[0] >> 8);
+        telem[j++] = (BYTE)(ae[0] >> 8);
 		telem[j++] = (BYTE)(ae[0]);
-		telem[j++] = (BYTE)(ae[1] >> 8);
+        telem[j++] = (BYTE)(ae[1] >> 8);
 		telem[j++] = (BYTE)(ae[1]);
-		telem[j++] = (BYTE)(ae[2] >> 8);
+        telem[j++] = (BYTE)(ae[2] >> 8);
 		telem[j++] = (BYTE)(ae[2]);
-		telem[j++] = (BYTE)(ae[3] >> 8);
+        telem[j++] = (BYTE)(ae[3] >> 8);
+		telem[j++] = (BYTE)(ae[3]);  
+		//ABLE TO CHANGE
+        telem[j++] = r;
+        telem[j++] = (BYTE)phi >> 8;        
+        telem[j++] = (BYTE)phi;
+        telem[j++] = p;
+        telem[j++] = (BYTE)theta >> 8; 
+		telem[j++] = (BYTE)theta;
+        telem[j++] = q;
+        telem[j++] = pcontrol;
+        telem[j++] = p1control;
+        telem[j++] = p2control;
+        telem[j++] = telemetry_flag;
+		// INCLUDE THE CHECKSUM IN THE COUNT
 
-		telem[j++] = (BYTE)(ae[3]);
+		/*telem[j++] = (BYTE)(ae[3]);
 		telem[j++] = (BYTE)(phi >> 8);
 		telem[j++] = (BYTE)(phi);
 		telem[j++] = (BYTE)(theta >> 8);
@@ -954,7 +971,7 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(N >> 8);
 		telem[j++] = (BYTE)(N);		
 		telem[j++] = telemetry_flag;
-		//telem[j++] = 0xff;
+		//telem[j++] = 0xff;*/
 		// STILL INCLUDE THE CHECKSUM IN THE COUNT
 
 
@@ -1106,7 +1123,7 @@ int main()
 						// manual
 						break;
 					case CALIBRATION_MODE:
-                        if(calibration_counter < 129) {						    
+                        if(calibration_counter < CALIBRATION_THRESHOLD) {						    toggle_led(5);
                             calibration_mode();
                         }
 						// calibrate
