@@ -66,11 +66,11 @@ int i;
 		case 67://RIGHT ARROW-ROLL UP
 			*(key_map+2) = TrimToMaxByte(*(key_map+2) + 2);;
 			break;
-		case 65://UP ARROW-PITCH UP
-			*(key_map+3) = TrimToMaxByte(*(key_map+3) + 2);;
-			break;
-		case 66://DOWN ARROW-PITCH DOWN
+		case 65://UP ARROW-PITCH DOWN
 			*(key_map+3) = TrimToMaxByte(*(key_map+3) - 2);;
+			break;
+		case 66://DOWN ARROW-PITCH UP
+			*(key_map+3) = TrimToMaxByte(*(key_map+3) + 2);;
 			break;
 		case 'q'://YAW UP
 			*(key_map+4) = TrimToMaxByte(*(key_map+4) + 2);;

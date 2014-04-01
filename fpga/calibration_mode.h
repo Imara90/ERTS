@@ -5,33 +5,35 @@ Define DC offset of the sensors while QR is not moving
 
 */
 
-
+#define CALIBRATION_THRESHOLD 256
 //GLOBALS
 int OFFSET_y0[6] = {0, 0, 0, 0, 0, 0};
 int calibration_counter = 0;
-
+int calibration_done = 0;
 
 void calibration_mode(void) {
 
 	int i;
 	if (calibration_counter == 0) { 
-		//printf("\nSensor calibration on process....wait...\n");
 		for(i = 0; i < 6; i++) OFFSET_y0[i] = 0;
+        calibration_done = 0;
 	}
 		
 	for(i = 0; i < 6; i++) 
 	{
-		OFFSET_y0[i] += y0[i];
+		OFFSET_y0[i] += x0[i];
 	}
 	
-    calibration_counter++;
-	if (calibration_counter == 128) {
+    
+	if (calibration_counter == CALIBRATION_THRESHOLD-1) {
 
 		for(i = 0; i < 6; i++) {
-			OFFSET_y0[i] >>= 7;
+			   OFFSET_y0[i] >>= 8;
 		}
         
 		telemetry_flag = telemetry_flag | 0x03;
-	}
+        calibration_done = 1;
+	}   
+    calibration_counter++;
     
 }

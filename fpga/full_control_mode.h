@@ -7,7 +7,7 @@ Generates actuator inputs for the full control mode.
 
 */
 
-#define MAX_ROLLPITCH 1000 //??? -  TODO define experimentally
+#define MAX_ROLLPITCH 100 //??? -  TODO define experimentally
 #define ROLLPITCH_SCALING	MAX_ROLLPITCH/127 
 
 void full_control_mode(void) {
@@ -28,8 +28,10 @@ void full_control_mode(void) {
 	else {
 		L = p1control*((package[ROLL]-255)*ROLLPITCH_SCALING - phi);
 	}
-	L -= p2control*p; //Derivative Controller
-	
+    L -= p2control*p; //Derivative Controller
+    
+   
+        
 	//PITCH MOMENTUM
 	if (package[PITCH] <= 127) {
 		M = p1control*(package[PITCH]*ROLLPITCH_SCALING - theta);
@@ -52,22 +54,20 @@ void full_control_mode(void) {
 	ww[1] = Z - 2 * L + N;
 	ww[2] = Z - 2 * M - N;
 	ww[3] = Z + 2 * L + N;
-
-	for (i = 0; i < 4;i++){
+    
+    for (i = 0; i < 4;i++){
 		ww[i] >>= 2;
 	}
-	
     //clip actuator values to minimun 0
-	for( i = 0; i < 2; i++) 
-		if(ww[i] < 0) 
-			ww[i] = 0;
-
-	//ASSIGN ENGINE VALUES	
-	ae[0] = sqrt(ww[0]); 
-	ae[1] = sqrt(ww[1]); 
-	ae[2] = sqrt(ww[2]);	
-	ae[3] = sqrt(ww[3]);
-
+	for( i = 0; i < 4; i++){ 
+		if(ww[i] < 0){
+            ww[i] = 0;
+	    }
+    }
+	for( i = 0; i < 4; i++){
+        
+        ae[i]=ww[i];
+    }
 
 }
 	

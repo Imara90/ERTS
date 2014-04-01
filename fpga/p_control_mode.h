@@ -7,9 +7,9 @@ Updates proportional gains of control modes
 
 */
 
-#define PCONTROL_INIT   500
-#define P1CONTROL_INIT  100
-#define P2CONTROL_INIT  100
+#define PCONTROL_INIT   20
+#define P1CONTROL_INIT  1
+#define P2CONTROL_INIT  2
 
 
 //INITIALIZATION OF P GAINS
@@ -32,10 +32,10 @@ void p_control_mode(void) {
     }
     
     if (package[P1CONTROL] <= 127) {
-        p1control = p1control_init + package[PCONTROL];
+        p1control = p1control_init + package[P1CONTROL];
     }
     else {
-        p1control = p1control_init + (package[PCONTROL] - 255);
+        p1control = p1control_init + (package[P1CONTROL] - 255);
     }
     
     if (package[P2CONTROL] <= 127) {
