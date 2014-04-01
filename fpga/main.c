@@ -500,10 +500,10 @@ BYTE cbGet(CircularBuffer *cb) {
 	// To make sure the same package isn't read twice, we overwrite
 	// the starting byte. The package will still decode because of c
 	// and it will not be recognized again. 
-	if (c == STARTING_BYTE)
-	{
-		cb->elems[cb->start].value = 0;	
-	}
+	//if (c == STARTING_BYTE)
+	//{
+	//	cb->elems[cb->start].value = 0;	
+	//}
 	cb->start = (cb->start + 1) % CB_SIZE;
 
 	return c;
@@ -539,6 +539,8 @@ void isr_qr_link(void)
 {
 	int	ae_index;
 	int     i, max[6],min[6];
+
+	//starttime = X32_us_clock;
 	
 	// record time
 	isr_qr_time = X32_us_clock;
@@ -586,6 +588,8 @@ void isr_qr_link(void)
 	// record isr execution time (ignore overflow)
         inst = X32_instruction_counter - inst;
 	isr_qr_time = X32_us_clock - isr_qr_time;
+
+	//functiontime = X32_us_clock - starttime;
 }
 
 /*------------------------------------------------------------------
@@ -608,7 +612,7 @@ void isr_rs232_rx(void)
 		rxcb.end = (rxcb.end + 1) % CB_SIZE;
 		if (rxcb.end == rxcb.start)
 		{
-			rxcb.start = (rxcb.start + 1) % CB_SIZE; /* full, overwrite */
+			rxcb.start = (rxcb.start + 1) % CB_SIZE; 
 		}	
 	}
 }
@@ -742,7 +746,7 @@ void store_data(void)
 
 	if (X32_ms_clock - storetime >= DATASTORETIMEMS)
 	{
-		starttime = X32_ms_clock;
+		//starttime = X32_ms_clock;
 	
 		j = 0;
 
@@ -822,7 +826,7 @@ void store_data(void)
 		dscbWrite(&dscb, (BYTE)(sum));
 	
 		storetime = X32_ms_clock;
-		functiontime = X32_ms_clock - starttime;
+		//functiontime = X32_ms_clock - starttime;
 	}
 	
 }
@@ -901,6 +905,7 @@ void send_telemetry(void)
 	// telemetry for the last lab
 	if (X32_ms_clock - polltime >= POLLTIMEMS)
 	{
+		//starttime = X32_ms_clock;
 		j = 0;
 		sum = 0;
 		sumae = ae[0] + ae[1] + ae[2] + ae[3];
@@ -974,7 +979,7 @@ void send_telemetry(void)
 			txcb.start = (txcb.start + 1) % CB_SIZE;	
 		}
 		polltime = X32_ms_clock;
-
+		//functiontime = X32_ms_clock - starttime;
 		
 	}
 	
@@ -1138,7 +1143,7 @@ int main()
 				store_data();
 
 				// Current time of the control loop
-				//controltime = X32_ms_clock - controltime;
+				controltime = X32_ms_clock - controltime;
 
 				if ((controltime > maxtime) && controltime < 100)
 				{
@@ -1150,7 +1155,7 @@ int main()
 				X32_display = maxtime;
 
 				// profiling the control time	
-				//controltime = X32_ms_clock;
+				controltime = X32_ms_clock;
 				
 				// turn l the leds off
 				X32_leds = 0;		
