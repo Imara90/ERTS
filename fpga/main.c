@@ -466,6 +466,15 @@ void cbWrite(CircularBuffer *cb, BYTE para) {
 	}
 }
 
+void dscbWrite(CircularDataBuffer *cb, BYTE para) {
+    cb->elems[cb->end].value = para;
+    cb->end = (cb->end + 1) % CB_SIZE;
+    if (cb->end == cb->start)
+	{        
+		cb->start = (cb->start + 1) % CB_SIZE; 
+	}
+}
+
 /*------------------------------------------------------------------
  * Read from buffer and store in elem
  * Read oldest element. App must ensure !cbIsEmpty() first. 
@@ -728,99 +737,94 @@ int check_sum(void)
 void store_data(void)
 {
 	BYTE sum;
-	int i, j;
+	int i, j, startpointer;
 	BYTE storing[DATAPACKAGE];
 	sum = 0;
 
 	if (X32_ms_clock - storetime >= DATASTORETIMEMS)
 	{
 		starttime = X32_ms_clock;
-
-		// TODO find a way to save P values if the mode has changed
 	
 		j = 0;
-		storing[j++] = STARTING_BYTE;
+
+		dscbWrite(&dscb, (BYTE)STARTING_BYTE);
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-		storing[j++] = (BYTE)(X32_ms_clock >> 8);
-		storing[j++] = (BYTE)(X32_ms_clock);
-		storing[j++] = package[MODE];
-		storing[j++] = package[LIFT];
-		storing[j++] = package[ROLL];
-		storing[j++] = package[PITCH];
-		storing[j++] = package[YAW];
-		storing[j++] = (BYTE)(ae[0] >> 8);
-		storing[j++] = (BYTE)(ae[0]);
+		dscbWrite(&dscb, (BYTE)(X32_ms_clock >> 8));
+		dscbWrite(&dscb, (BYTE)(X32_ms_clock));
+		dscbWrite(&dscb, package[MODE]);
+		dscbWrite(&dscb, package[LIFT]);
+		dscbWrite(&dscb, package[ROLL]);
+		dscbWrite(&dscb, package[PITCH]);
+		dscbWrite(&dscb, package[YAW]);
+		dscbWrite(&dscb, (BYTE)(ae[0] >> 8));
+		dscbWrite(&dscb, (BYTE)(ae[0]));
 
-		storing[j++] = (BYTE)(ae[1] >> 8);
-		storing[j++] = (BYTE)(ae[1]);
-		storing[j++] = (BYTE)(ae[2] >> 8);
-		storing[j++] = (BYTE)(ae[2]);
-		storing[j++] = (BYTE)(ae[3] >> 8);
-		storing[j++] = (BYTE)(ae[3]);
-		storing[j++] = (BYTE)(x0[0] >> 8);
-		storing[j++] = (BYTE)(x0[0]);
-		storing[j++] = (BYTE)(x0[1] >> 8);
-		storing[j++] = (BYTE)(x0[1]);
+		dscbWrite(&dscb, (BYTE)(ae[1] >> 8));
+		dscbWrite(&dscb, (BYTE)(ae[1]));
+		dscbWrite(&dscb, (BYTE)(ae[2] >> 8));
+		dscbWrite(&dscb, (BYTE)(ae[2]));
+		dscbWrite(&dscb, (BYTE)(ae[3] >> 8));
+		dscbWrite(&dscb, (BYTE)(ae[3]));
+		dscbWrite(&dscb, (BYTE)(x0[0] >> 8));
+		dscbWrite(&dscb, (BYTE)(x0[0]));
+		dscbWrite(&dscb, (BYTE)(x0[1] >> 8));
+		dscbWrite(&dscb, (BYTE)(x0[1]));
 
-		storing[j++] = (BYTE)(x0[2] >> 8);
-		storing[j++] = (BYTE)(x0[2]);
-		storing[j++] = (BYTE)(x0[3] >> 8);
-		storing[j++] = (BYTE)(x0[3]);
-		storing[j++] = (BYTE)(x0[4] >> 8);
-		storing[j++] = (BYTE)(x0[4]);
-		storing[j++] = (BYTE)(x0[5] >> 8);
-		storing[j++] = (BYTE)(x0[5]);
-		storing[j++] = (BYTE)(y0[0]);
-		storing[j++] = (BYTE)(y0[1]);
+		dscbWrite(&dscb, (BYTE)(x0[2] >> 8));
+		dscbWrite(&dscb, (BYTE)(x0[2]));
+		dscbWrite(&dscb, (BYTE)(x0[3] >> 8));
+		dscbWrite(&dscb, (BYTE)(x0[3]));
+		dscbWrite(&dscb, (BYTE)(x0[4] >> 8));
+		dscbWrite(&dscb, (BYTE)(x0[4]));
+		dscbWrite(&dscb, (BYTE)(x0[5] >> 8));
+		dscbWrite(&dscb, (BYTE)(x0[5]));
+		dscbWrite(&dscb, (BYTE)(y0[0]));
+		dscbWrite(&dscb, (BYTE)(y0[1]));
 
-		storing[j++] = (BYTE)(y0[2]);
-		storing[j++] = (BYTE)(y0[3]);
-		storing[j++] = (BYTE)(y0[4]);
-		storing[j++] = (BYTE)(y0[5]);
-		storing[j++] = (BYTE)(phi >> 8);
-		storing[j++] = (BYTE)(phi);
-		storing[j++] = (BYTE)(theta >> 8);
-		storing[j++] = (BYTE)(theta);
-		storing[j++] = (BYTE)(p);
-		storing[j++] = (BYTE)(q);
+		dscbWrite(&dscb, (BYTE)(y0[2]));
+		dscbWrite(&dscb, (BYTE)(y0[3]));
+		dscbWrite(&dscb, (BYTE)(y0[4]));
+		dscbWrite(&dscb, (BYTE)(y0[5]));
+		dscbWrite(&dscb, (BYTE)(phi >> 8));
+		dscbWrite(&dscb, (BYTE)(phi));
+		dscbWrite(&dscb, (BYTE)(theta >> 8));
+		dscbWrite(&dscb, (BYTE)(theta));
+		dscbWrite(&dscb, (BYTE)(p));
+		dscbWrite(&dscb, (BYTE)(q));
+
+		dscbWrite(&dscb, (BYTE)(pcontrol >> 8));
+		dscbWrite(&dscb, (BYTE)(pcontrol));
+		dscbWrite(&dscb, (BYTE)(p1control >> 8));
+		dscbWrite(&dscb, (BYTE)(p1control));
+		dscbWrite(&dscb, (BYTE)(p2control >> 8));
+		dscbWrite(&dscb, (BYTE)(p2control));
+		dscbWrite(&dscb, (BYTE)(controltime));
 
 /*
-		storing[j++] = (BYTE)(Z >> 16);
-		storing[j++] = (BYTE)(Z >> 8);
-		storing[j++] = (BYTE)(Z);
-		storing[j++] = (BYTE)(L >> 16);
-		storing[j++] = (BYTE)(L >> 8);
-		storing[j++] = (BYTE)(L);
-		storing[j++] = (BYTE)(M >> 16);
-		storing[j++] = (BYTE)(M >> 8);
-		storing[j++] = (BYTE)(M);
-		storing[j++] = (BYTE)(N >> 16);
+		startpointer = (dscb.end - (DATAPACKAGE - 1)) % CBDATA_SIZE;
+		for ( ; startpointer == dscb.end ; (startpointer++) % CBDATA_SIZE)
+		{  
+			sum += dscb.elems[startpointer].value;
+		}
+*/
 
-		storing[j++] = (BYTE)(N >> 8);
-		storing[j++] = (BYTE)(N);
-*/	
-		storing[j++] = (BYTE)(pcontrol >> 8);
-		storing[j++] = (BYTE)(pcontrol);
-		storing[j++] = (BYTE)(p1control >> 8);
-		storing[j++] = (BYTE)(p1control);
-		storing[j++] = (BYTE)(p2control >> 8);
-		storing[j++] = (BYTE)(p2control);
-		//storing[j++] = 0xff;
-		storing[j++] = (BYTE)(controltime);
-
-	    // calculate the checksum, dont include starting byte
-		for (i = 1; i < j ; i++)
+	    	// calculate the checksum, dont include starting byte
+	/*	for (i = 1; i < j ; i++)
 		{
 			sum += storing[i];
 		}
+	*/
 		sum = ~sum;
+		sum = 0xff;
 	   	if (sum == 0x80)
 		{
 			sum = 0;
 	    	}
+		dscbWrite(&dscb, (BYTE)(sum));
 	
-		storing[j++] = sum;
+		//storing[j++] = sum;
 
+/*
 		// TODO CHECK IF THIS STILL WORKS
 		for (i = 0; i < j; i++)
 		{
@@ -839,6 +843,7 @@ void store_data(void)
 				dscb.start = (dscb.start + 1) % CBDATA_SIZE; // full, overwrite 
 			}
 		}
+*/
 	
 		storetime = X32_ms_clock;
 		functiontime = X32_ms_clock - starttime;
@@ -932,34 +937,6 @@ void send_telemetry(void)
 		cbWrite(&txcb, (BYTE)functiontime);
 		cbWrite(&txcb, (BYTE)telemetry_flag);
 		
-		sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
-
-/*
-		//DON'T CHANGE
-		telem[j++] = STARTING_BYTE;
-		telem[j++] = (BYTE)(X32_ms_clock >> 8);
-		telem[j++] = package[MODE];
-		telem[j++] = (BYTE)(sumae >> 8);
-		telem[j++] = (BYTE)(sumae);
-		telem[j++] = (BYTE)functiontime;
-        	telem[j++] = telemetry_flag;
-*/
-
-
-
-/*
-        	telem[j++] = (BYTE)(ae[0] >> 8);
-		telem[j++] = (BYTE)(ae[0]);
-        	telem[j++] = (BYTE)(ae[1] >> 8);
-		telem[j++] = (BYTE)(ae[1]);
-        	telem[j++] = (BYTE)(ae[2] >> 8);
-		telem[j++] = (BYTE)(ae[2]);
-        	telem[j++] = (BYTE)(ae[3] >> 8);
-		telem[j++] = (BYTE)(ae[3]);  
-*/
-
-
-
 		//ABLE TO CHANGE
         //telem[j++] = r;
         //telem[j++] = (BYTE)(phi >> 8);        
@@ -1002,12 +979,7 @@ void send_telemetry(void)
 		//telem[j++] = 0xff;*/
 		// STILL INCLUDE THE CHECKSUM IN THE COUNT
 
-
-		// calculate the checksum, dont include starting byte
-		//for (i = 1; i < j ; i++)
-		//{
-		//	sum += 0xff;
-		//}
+		sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
 		sum = ~sum;
 		if (sum == 0x80)
 		{
@@ -1015,8 +987,6 @@ void send_telemetry(void)
 		}
 
 		cbWrite(&txcb, (BYTE)sum);
-		//cbWrite(&txcb, (BYTE)sum);
-		//telem[j++] = sum;
 
 		// send the data
 		while (txcb.end != txcb.start)
