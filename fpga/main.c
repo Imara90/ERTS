@@ -147,7 +147,7 @@ int   dl_count = 0;
 #define TELLEN		8
 
 #define DATASTORETIMEMS	150
-#define POLLTIMEMS	100
+#define POLLTIMEMS	200
 
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
@@ -434,23 +434,36 @@ void testcbClean(CBuffer *cb) {
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */ 
+/*
 void cbWrite(CircularBuffer *cb, ElemType *elem) {
     cb->elems[cb->end] = *elem;
     cb->end = (cb->end + 1) % CB_SIZE;
     if (cb->end == cb->start)
 	{        
-		cb->start = (cb->start + 1) % CB_SIZE; /* full, overwrite */
+		cb->start = (cb->start + 1) % CB_SIZE; 
 	}
 // TODO determine if we want it to overwrite
 }
+*/
+/*
 void dscbWrite(CircularDataBuffer *cb, ElemType *elem) {
     cb->elems[cb->end] = *elem;
     cb->end = (cb->end + 1) % CBDATA_SIZE;
     if (cb->end == cb->start)
 	{        
-		cb->start = (cb->start + 1) % CBDATA_SIZE; /* full, overwrite */
+		cb->start = (cb->start + 1) % CBDATA_SIZE; 
 	}
 // TODO determine if we want it to overwrite
+}
+*/
+
+void cbWrite(CircularBuffer *cb, BYTE para) {
+    cb->elems[cb->end].value = para;
+    cb->end = (cb->end + 1) % CB_SIZE;
+    if (cb->end == cb->start)
+	{        
+		cb->start = (cb->start + 1) % CB_SIZE; 
+	}
 }
 
 /*------------------------------------------------------------------
@@ -911,12 +924,27 @@ void send_telemetry(void)
 		sum = 0;
 		sumae = ae[0] + ae[1] + ae[2] + ae[3];
 
+		cbWrite(&txcb, (BYTE)STARTING_BYTE);
+		cbWrite(&txcb, (BYTE)(X32_ms_clock >> 8));
+		cbWrite(&txcb, (BYTE)package[MODE]);
+		cbWrite(&txcb, (BYTE)(sumae >> 8));
+		cbWrite(&txcb, (BYTE)(sumae));
+		cbWrite(&txcb, (BYTE)functiontime);
+		cbWrite(&txcb, (BYTE)telemetry_flag);
+		
+		sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
+
+/*
 		//DON'T CHANGE
 		telem[j++] = STARTING_BYTE;
 		telem[j++] = (BYTE)(X32_ms_clock >> 8);
 		telem[j++] = package[MODE];
 		telem[j++] = (BYTE)(sumae >> 8);
 		telem[j++] = (BYTE)(sumae);
+		telem[j++] = (BYTE)functiontime;
+        	telem[j++] = telemetry_flag;
+*/
+
 
 
 /*
@@ -944,8 +972,7 @@ void send_telemetry(void)
         //telem[j++] = p1control;
 	//telem[j++] = (BYTE)(controltime >> 8);
         //telem[j++] = p2control;
-	telem[j++] = (BYTE)functiontime;
-        telem[j++] = telemetry_flag;
+	
 		// INCLUDE THE CHECKSUM IN THE COUNT
 
 		/*telem[j++] = (BYTE)(ae[3]);
@@ -977,25 +1004,28 @@ void send_telemetry(void)
 
 
 		// calculate the checksum, dont include starting byte
-		for (i = 1; i < j ; i++)
-		{
-			sum += telem[i];
-		}
+		//for (i = 1; i < j ; i++)
+		//{
+		//	sum += 0xff;
+		//}
 		sum = ~sum;
 		if (sum == 0x80)
 		{
 			sum = 0x00;
 		}
-		telem[j++] = sum;
+
+		cbWrite(&txcb, (BYTE)sum);
+		//cbWrite(&txcb, (BYTE)sum);
+		//telem[j++] = sum;
 
 		// send the data
-		for (i = 0; i < j; i++)
+		while (txcb.end != txcb.start)
 		{
 			// wait untill tx is ready to send
 			while ( !X32_rs232_txready ) ;
 
-			X32_rs232_data = telem[i];
-			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
+			X32_rs232_data = txcb.elems[txcb.start].value;
+			txcb.start = (txcb.start + 1) % CB_SIZE;	
 		}
 		polltime = X32_ms_clock;
 

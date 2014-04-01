@@ -27,12 +27,12 @@
 #include "mode_selection.h"	// Diogos mode selection function
 
 #define START_BYTE 0x80
-#define TELLEN	      	23
+#define TELLEN	      	8
 #define TELPKGLEN     	TELLEN - 1 
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DATALEN		60
+#define DATALEN		48
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
 
@@ -58,7 +58,7 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
         	sum = 0x00;
     	}
 	// DEBUG
-	//sumglobal = sum;
+	sumglobal = sum;
 //	printf("[%x][%x]",,ChkSum);
 	if (ChkSum == sum)
 	{
@@ -281,34 +281,47 @@ int main()
 							printf("[%x]",TeleData[i]);
 						}
 					*/
+						// time in ms
 						printf("[%d]",TeleData[0]);
+
 						printf("[%x]",TeleData[1]);
+
+						// sum of ae
+						ae[0] = (TeleData[2] << 8 | TeleData[3]);
+						ae[1] = (TeleData[2] << 8 | TeleData[3]);
+						ae[2] = (TeleData[2] << 8 | TeleData[3]);
+						ae[3] = (TeleData[2] << 8 | TeleData[3]);
+						printf("[sum ae: %d]", ae[0]);
+						
+						printf("[%d]",TeleData[4]);
+						//printf("[%d]",TeleData[5]);
                         
 						// ae[0 - 3] - DON'T CHANGE
-                        for(i=0;i<4;i++){						
-                            ae[i] = (TeleData[2+2*i] << 8  | TeleData[3+2*i]);
-                            printf("[E%d:%d]",i,ae[i]);
-                            
-                        }						
+                        //for(i=0;i<4;i++){						
+                        //    ae[i] = (TeleData[2+2*i] << 8  | TeleData[3+2*i]);
+                        //    printf("[E%d:%d]",i,ae[i]);
+                        //    
+                        //}						
                         //r                        
-                        printf("[r:%d]",(char)TeleData[10]); 
+                        //printf("[time:%d]",(char)TeleData[10]); 
                         //phi                 
-                        printf("[phi:%d]",(short)(TeleData[11] << 8 | TeleData[12])); 
+                        //printf("[phi:%d]",(short)(TeleData[11] << 8 | TeleData[12])); 
                         //phi                 
-                        printf("[p:%d]",(char)TeleData[13]); 
+                        //printf("[p:%d]",(char)TeleData[13]); 
                         //the                
-                        printf("[the:%d]",(short)(TeleData[14] << 8 | TeleData[15])); 
-                        //q                       
-                        printf("[q:%d]",(char)TeleData[16]); 
+                        //printf("[the:%d]",(short)(TeleData[14] << 8 | TeleData[15])); 
+                        //q, actually control time                        
+                        //printf("[time:%d]",(char)TeleData[16]); 
+/*
                         //pcontrol                       
                         printf("[pc:%d]",(char)TeleData[17]); 
                         //q p1control                     
                         printf("[p1c:%d]",(char)TeleData[18]); 
 
-                        //p2control, actually control time               
+                        //p2control              
                         printf("[p2c:%d]",(char)TeleData[19]); 
 
-			// printf("[the:%d]",(short)(TeleData[18] << 8 | TeleData[19])); 
+*/			// printf("[the:%d]",(short)(TeleData[18] << 8 | TeleData[19])); 
 						
 
                         /*// Z - N
@@ -318,6 +331,11 @@ int main()
 						printf("[%i]", (int)((TeleData[25] << 16) | (TeleData[26] << 8) | TeleData[27]));*/
 						// telemetry flag
 						printf("[%x]",TeleData[TELPKGLEN - 2]);
+						// checksum
+						printf("[%x]",TeleData[TELPKGLEN - 1]);
+						// checksum
+						printf("[%x]", sumglobal);
+						
 						
 
 					/*	for (i = 0; i < TELPKGLEN; i++) {
