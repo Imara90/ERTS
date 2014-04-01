@@ -141,10 +141,13 @@ int   q_b = 0;
 int   dl[DLOGSIZE];
 int   dl_count = 0;
 //#define LogParams	
-#define DATAPACKAGE	60
+#define DATAPACKAGE	48
 
 // telemetry variables should be compliant with pc
-#define TELLEN		23
+#define TELLEN		8
+
+#define DATASTORETIMEMS	150
+#define POLLTIMEMS	100
 
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
@@ -239,6 +242,9 @@ BYTE	telemetry_flag = 0x00;
 
 long 	controltime = 0;
 long 	maxtime = 0;
+long 	storetime = 0;
+long	functiontime = 0;
+long	starttime = 0;
 
 BYTE 	package[nParams];
 
@@ -254,11 +260,11 @@ long int Z = 0;//LIFT FORCE
 long int L = 0;//ROLL MOMENTUM
 long int M = 0;//PICTH MOMENTU
 long int N = 0;//YAW MOMENTUM
-int phi = 0; //ROLL ANGLE
-int theta = 0; //PITCH ANGLE
-int p = 0; //ROLL RATE
-int q = 0; //PITCH RATE
-int r = 0; //YAW RATE
+int 	phi = 0; //ROLL ANGLE
+int 	theta = 0; //PITCH ANGLE
+int 	p = 0; //ROLL RATE
+int 	q = 0; //PITCH RATE
+int 	r = 0; //YAW RATE
 long int ww[4] = {0, 0, 0, 0};
 
 // Own written functions
@@ -713,107 +719,116 @@ void store_data(void)
 	BYTE storing[DATAPACKAGE];
 	sum = 0;
 
+	if (X32_ms_clock - storetime >= DATASTORETIMEMS)
+	{
+		starttime = X32_ms_clock;
 
-	// TODO find a way to save P values if the mode has changed
+		// TODO find a way to save P values if the mode has changed
 	
-	j = 0;
-	storing[j++] = STARTING_BYTE;
-	// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-	storing[j++] = (BYTE)(X32_ms_clock >> 8);
-	storing[j++] = (BYTE)(X32_ms_clock);
-	storing[j++] = package[MODE];
-	storing[j++] = package[LIFT];
-	storing[j++] = package[ROLL];
-	storing[j++] = package[PITCH];
-	storing[j++] = package[YAW];
-	storing[j++] = (BYTE)(ae[0] >> 8);
-	storing[j++] = (BYTE)(ae[0]);
+		j = 0;
+		storing[j++] = STARTING_BYTE;
+		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
+		storing[j++] = (BYTE)(X32_ms_clock >> 8);
+		storing[j++] = (BYTE)(X32_ms_clock);
+		storing[j++] = package[MODE];
+		storing[j++] = package[LIFT];
+		storing[j++] = package[ROLL];
+		storing[j++] = package[PITCH];
+		storing[j++] = package[YAW];
+		storing[j++] = (BYTE)(ae[0] >> 8);
+		storing[j++] = (BYTE)(ae[0]);
 
-	storing[j++] = (BYTE)(ae[1] >> 8);
-	storing[j++] = (BYTE)(ae[1]);
-	storing[j++] = (BYTE)(ae[2] >> 8);
-	storing[j++] = (BYTE)(ae[2]);
-	storing[j++] = (BYTE)(ae[3] >> 8);
-	storing[j++] = (BYTE)(ae[3]);
-	storing[j++] = (BYTE)(x0[0] >> 8);
-	storing[j++] = (BYTE)(x0[0]);
-	storing[j++] = (BYTE)(x0[1] >> 8);
-	storing[j++] = (BYTE)(x0[1]);
+		storing[j++] = (BYTE)(ae[1] >> 8);
+		storing[j++] = (BYTE)(ae[1]);
+		storing[j++] = (BYTE)(ae[2] >> 8);
+		storing[j++] = (BYTE)(ae[2]);
+		storing[j++] = (BYTE)(ae[3] >> 8);
+		storing[j++] = (BYTE)(ae[3]);
+		storing[j++] = (BYTE)(x0[0] >> 8);
+		storing[j++] = (BYTE)(x0[0]);
+		storing[j++] = (BYTE)(x0[1] >> 8);
+		storing[j++] = (BYTE)(x0[1]);
 
-	storing[j++] = (BYTE)(x0[2] >> 8);
-	storing[j++] = (BYTE)(x0[2]);
-	storing[j++] = (BYTE)(x0[3] >> 8);
-	storing[j++] = (BYTE)(x0[3]);
-	storing[j++] = (BYTE)(x0[4] >> 8);
-	storing[j++] = (BYTE)(x0[4]);
-	storing[j++] = (BYTE)(x0[5] >> 8);
-	storing[j++] = (BYTE)(x0[5]);
-	storing[j++] = (BYTE)(y0[0]);
-	storing[j++] = (BYTE)(y0[1]);
+		storing[j++] = (BYTE)(x0[2] >> 8);
+		storing[j++] = (BYTE)(x0[2]);
+		storing[j++] = (BYTE)(x0[3] >> 8);
+		storing[j++] = (BYTE)(x0[3]);
+		storing[j++] = (BYTE)(x0[4] >> 8);
+		storing[j++] = (BYTE)(x0[4]);
+		storing[j++] = (BYTE)(x0[5] >> 8);
+		storing[j++] = (BYTE)(x0[5]);
+		storing[j++] = (BYTE)(y0[0]);
+		storing[j++] = (BYTE)(y0[1]);
 
-	storing[j++] = (BYTE)(y0[2]);
-	storing[j++] = (BYTE)(y0[3]);
-	storing[j++] = (BYTE)(y0[4]);
-	storing[j++] = (BYTE)(y0[5]);
-	storing[j++] = (BYTE)(phi >> 8);
-	storing[j++] = (BYTE)(phi);
-	storing[j++] = (BYTE)(theta >> 8);
-	storing[j++] = (BYTE)(theta);
-	storing[j++] = (BYTE)(p);
-	storing[j++] = (BYTE)(q);
+		storing[j++] = (BYTE)(y0[2]);
+		storing[j++] = (BYTE)(y0[3]);
+		storing[j++] = (BYTE)(y0[4]);
+		storing[j++] = (BYTE)(y0[5]);
+		storing[j++] = (BYTE)(phi >> 8);
+		storing[j++] = (BYTE)(phi);
+		storing[j++] = (BYTE)(theta >> 8);
+		storing[j++] = (BYTE)(theta);
+		storing[j++] = (BYTE)(p);
+		storing[j++] = (BYTE)(q);
 
-	storing[j++] = (BYTE)(Z >> 16);
-	storing[j++] = (BYTE)(Z >> 8);
-	storing[j++] = (BYTE)(Z);
-	storing[j++] = (BYTE)(L >> 16);
-	storing[j++] = (BYTE)(L >> 8);
-	storing[j++] = (BYTE)(L);
-	storing[j++] = (BYTE)(M >> 16);
-	storing[j++] = (BYTE)(M >> 8);
-	storing[j++] = (BYTE)(M);
-	storing[j++] = (BYTE)(N >> 16);
+/*
+		storing[j++] = (BYTE)(Z >> 16);
+		storing[j++] = (BYTE)(Z >> 8);
+		storing[j++] = (BYTE)(Z);
+		storing[j++] = (BYTE)(L >> 16);
+		storing[j++] = (BYTE)(L >> 8);
+		storing[j++] = (BYTE)(L);
+		storing[j++] = (BYTE)(M >> 16);
+		storing[j++] = (BYTE)(M >> 8);
+		storing[j++] = (BYTE)(M);
+		storing[j++] = (BYTE)(N >> 16);
 
-	storing[j++] = (BYTE)(N >> 8);
-	storing[j++] = (BYTE)(N);	
-	storing[j++] = (BYTE)(pcontrol >> 8);
-	storing[j++] = (BYTE)(pcontrol);
-	storing[j++] = (BYTE)(p1control >> 8);
-	storing[j++] = (BYTE)(p1control);
-	storing[j++] = (BYTE)(p2control >> 8);
-	storing[j++] = (BYTE)(p2control);
-	storing[j++] = 0xff;
-	//storing[j++] = (BYTE)(controltime);
+		storing[j++] = (BYTE)(N >> 8);
+		storing[j++] = (BYTE)(N);
+*/	
+		storing[j++] = (BYTE)(pcontrol >> 8);
+		storing[j++] = (BYTE)(pcontrol);
+		storing[j++] = (BYTE)(p1control >> 8);
+		storing[j++] = (BYTE)(p1control);
+		storing[j++] = (BYTE)(p2control >> 8);
+		storing[j++] = (BYTE)(p2control);
+		//storing[j++] = 0xff;
+		storing[j++] = (BYTE)(controltime);
 
-    // calculate the checksum, dont include starting byte
-	for (i = 1; i < j ; i++)
-	{
-		sum += storing[i];
-	}
-	sum = ~sum;
-   	if (sum == 0x80)
-	{
-        	sum = 0;
-    	}
+	    // calculate the checksum, dont include starting byte
+		for (i = 1; i < j ; i++)
+		{
+			sum += storing[i];
+		}
+		sum = ~sum;
+	   	if (sum == 0x80)
+		{
+			sum = 0;
+	    	}
 	
-	storing[j++] = sum;
+		storing[j++] = sum;
 
-	// TODO CHECK IF THIS STILL WORKS
-	for (i = 0; i < j; i++)
-	{
-		// TODO IS THIS CAUSING ANY ERROS
-		// make sure only starting byte can be 0x80
-		if ((i != 0) && (storing[i] == 0x80))
+		// TODO CHECK IF THIS STILL WORKS
+		for (i = 0; i < j; i++)
 		{
-			// if the value is -128, correct it to -127
-			storing[i] = 0x81;
+			// TODO IS THIS CAUSING ANY ERROS
+			// make sure only starting byte can be 0x80
+			if ((i != 0) && (storing[i] == 0x80))
+			{
+				// if the value is -128, correct it to -127
+				storing[i] = 0x81;
+			}
+			// Write to the circular buffer and overwrite if necesary
+			dscb.elems[dscb.end].value = storing[i];
+			dscb.end = (dscb.end + 1) % CBDATA_SIZE;
+			if (dscb.end == dscb.start)
+			{
+				dscb.start = (dscb.start + 1) % CBDATA_SIZE; // full, overwrite 
+			}
 		}
-		// Write to the circular buffer and overwrite if necesary
-		dscb.elems[dscb.end].value = storing[i];
-		dscb.end = (dscb.end + 1) % CBDATA_SIZE;
-		if (dscb.end == dscb.start)
-		{
-			dscb.start = (dscb.start + 1) % CBDATA_SIZE; // full, overwrite 
-		}
+	
+		storetime = X32_ms_clock;
+		functiontime = X32_ms_clock - starttime;
 	}
 	
 }
@@ -848,8 +863,7 @@ ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
 void send_telemetry(void)
 {
 	BYTE telem[TELLEN];
-	int j, i, sum;
-	sum = 0;
+	int j, i, sum, sumae;
 
 	// Checks if more than or 100 ms have passed since the last 
 	// telemetry
@@ -891,38 +905,46 @@ void send_telemetry(void)
 	}
 */
 	// telemetry for the last lab
-	if (X32_ms_clock - polltime >= 100)
+	if (X32_ms_clock - polltime >= POLLTIMEMS)
 	{
 		j = 0;
+		sum = 0;
+		sumae = ae[0] + ae[1] + ae[2] + ae[3];
 
 		//DON'T CHANGE
 		telem[j++] = STARTING_BYTE;
 		telem[j++] = (BYTE)(X32_ms_clock >> 8);
 		telem[j++] = package[MODE];
-        telem[j++] = (BYTE)(ae[0] >> 8);
+		telem[j++] = (BYTE)(sumae >> 8);
+		telem[j++] = (BYTE)(sumae);
+
+
+/*
+        	telem[j++] = (BYTE)(ae[0] >> 8);
 		telem[j++] = (BYTE)(ae[0]);
-        telem[j++] = (BYTE)(ae[1] >> 8);
+        	telem[j++] = (BYTE)(ae[1] >> 8);
 		telem[j++] = (BYTE)(ae[1]);
-        telem[j++] = (BYTE)(ae[2] >> 8);
+        	telem[j++] = (BYTE)(ae[2] >> 8);
 		telem[j++] = (BYTE)(ae[2]);
-        telem[j++] = (BYTE)(ae[3] >> 8);
+        	telem[j++] = (BYTE)(ae[3] >> 8);
 		telem[j++] = (BYTE)(ae[3]);  
+*/
 
 
 
 		//ABLE TO CHANGE
-        telem[j++] = r;
-        telem[j++] = (BYTE)(phi >> 8);        
-        telem[j++] = (BYTE)phi;
-        telem[j++] = p;
-        telem[j++] = (BYTE)(theta >> 8); 
-	telem[j++] = (BYTE)theta;
-        telem[j++] = q;
-        telem[j++] = pcontrol;
-        telem[j++] = p1control;
+        //telem[j++] = r;
+        //telem[j++] = (BYTE)(phi >> 8);        
+        //telem[j++] = (BYTE)phi;
+        //telem[j++] = p;
+        //telem[j++] = (BYTE)(theta >> 8); 
+	//telem[j++] = (BYTE)theta;
+        //telem[j++] = q;
+        //telem[j++] = pcontrol;
+        //telem[j++] = p1control;
 	//telem[j++] = (BYTE)(controltime >> 8);
-	telem[j++] = (BYTE)controltime;
-        telem[j++] = p2control;
+        //telem[j++] = p2control;
+	telem[j++] = (BYTE)functiontime;
         telem[j++] = telemetry_flag;
 		// INCLUDE THE CHECKSUM IN THE COUNT
 
@@ -976,6 +998,8 @@ void send_telemetry(void)
 			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
 		}
 		polltime = X32_ms_clock;
+
+		
 	}
 	
 }
@@ -1134,10 +1158,10 @@ int main()
 				}
 				
 				// if the package was correct, store the correct data
-				//store_data();
+				store_data();
 
 				// Current time of the control loop
-				controltime = X32_ms_clock - controltime;
+				//controltime = X32_ms_clock - controltime;
 
 				if ((controltime > maxtime) && controltime < 100)
 				{
@@ -1149,7 +1173,7 @@ int main()
 				X32_display = maxtime;
 
 				// profiling the control time	
-				controltime = X32_ms_clock;
+				//controltime = X32_ms_clock;
 				
 				// turn l the leds off
 				X32_leds = 0;		
