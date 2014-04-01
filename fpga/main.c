@@ -943,7 +943,8 @@ void send_telemetry(void)
         telem[j++] = q;
         telem[j++] = pcontrol;
         telem[j++] = p1control;
-        telem[j++] = p2control;
+	telem[j++] = (BYTE)controltime;
+        //telem[j++] = p2control;
         telem[j++] = telemetry_flag;
 		// INCLUDE THE CHECKSUM IN THE COUNT
 
@@ -1080,16 +1081,11 @@ int main()
 		package[i] = 0;
 	}
 
-	// Print to indicate start
-	//printf("Hello! \nMode, Parameter 1, Parameter 2, Parameter 3, Parameter 4, Checksum");
-
 	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	while (! program_done) {		
-		// profiling the control time	
-		controltime = X32_ms_clock;
-
+	while (! program_done) 
+	{		
 		// reset the commflag to check communication
 		if (commflag++ > commthres)
 		{
@@ -1108,7 +1104,7 @@ int main()
 				{
 					case SAFE_MODE:
 						safe_mode();
-                        calibration_counter = 0;
+                       				calibration_counter = 0;
 						on_led(0);
 						// safe
 						break;
@@ -1123,9 +1119,11 @@ int main()
 						// manual
 						break;
 					case CALIBRATION_MODE:
-                        if(calibration_counter < CALIBRATION_THRESHOLD) {						    toggle_led(5);
-                            calibration_mode();
-                        }
+                       				if(calibration_counter < CALIBRATION_THRESHOLD) 
+						{	
+							toggle_led(5);
+                            				calibration_mode();
+                        			}
 						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
@@ -1143,9 +1141,10 @@ int main()
 						break;
 					case ABORT_MODE:
 						program_done++;
-// TODO, doesn't it has to change into panic mode? Maybe abort mode is not the right word
-// if this needs to be done, it has to be done as in the panic mode, with care, not force
-						for (i=0; i < 4; i++) ae[i]=0;
+						for (i = 0; i < 4; i++)
+						{
+							ae[i]=0;
+						}
 						break;					
 					default :
 						// safe
@@ -1153,21 +1152,28 @@ int main()
 				}
 				
 				// if the package was correct, store the correct data
-				controltime = X32_ms_clock - controltime;
-
 				store_data();
+
+				// Current time of the control loop
+				controltime = X32_ms_clock - controltime;
 				// sends the telemetry at 10Hz
 				send_telemetry();	
+
+				// profiling the control time	
+				controltime = X32_ms_clock;
+
+				// turn all the leds off
 				X32_leds = 0;		
 			}
 		}
 	}
+	// turn on led 7 when program is finished
 	on_led(7);
+
+        DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 
 	// send the data log to the pc
 	send_data();	
-
-        DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 
 	return 0;
 }
