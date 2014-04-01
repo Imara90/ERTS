@@ -738,7 +738,6 @@ void store_data(void)
 {
 	BYTE sum;
 	int i, j, startpointer;
-	BYTE storing[DATAPACKAGE];
 	sum = 0;
 
 	if (X32_ms_clock - storetime >= DATASTORETIMEMS)
@@ -821,29 +820,6 @@ void store_data(void)
 			sum = 0;
 	    	}
 		dscbWrite(&dscb, (BYTE)(sum));
-	
-		//storing[j++] = sum;
-
-/*
-		// TODO CHECK IF THIS STILL WORKS
-		for (i = 0; i < j; i++)
-		{
-			// TODO IS THIS CAUSING ANY ERROS
-			// make sure only starting byte can be 0x80
-			if ((i != 0) && (storing[i] == 0x80))
-			{
-				// if the value is -128, correct it to -127
-				storing[i] = 0x81;
-			}
-			// Write to the circular buffer and overwrite if necesary
-			dscb.elems[dscb.end].value = storing[i];
-			dscb.end = (dscb.end + 1) % CBDATA_SIZE;
-			if (dscb.end == dscb.start)
-			{
-				dscb.start = (dscb.start + 1) % CBDATA_SIZE; // full, overwrite 
-			}
-		}
-*/
 	
 		storetime = X32_ms_clock;
 		functiontime = X32_ms_clock - starttime;
@@ -1073,6 +1049,7 @@ int main()
 	testcbInit(&testcb, 7);
 	testcb.elems = testelems;
 	testcbClean(&testcb);
+	//ElemType elem = {0};
 
 	controltime = 0;
 	maxtime = 0;

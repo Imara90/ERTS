@@ -333,8 +333,7 @@ int main()
 						printf("[%x]",TeleData[TELPKGLEN - 2]);
 						// checksum
 						printf("[%x]",TeleData[TELPKGLEN - 1]);
-						// checksum
-						printf("[%x]", sumglobal);
+						
 						
 						
 
@@ -350,6 +349,8 @@ int main()
 						// DECODING. Checksum proof and stores decoded values in new array DispData
 						//ChkSumOK = decode(TeleData,&DispData);
 						ChkSumOK = TeleDecode(TeleData);
+						// checksum
+						printf("[%x]", sumglobal);
 						printf(" Chksum OK = %i \n",ChkSumOK);
 						//Saves data only if the pkg is complete
 						if (ChkSumOK){
