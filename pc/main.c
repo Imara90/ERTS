@@ -304,8 +304,11 @@ int main()
                         printf("[pc:%d]",(char)TeleData[17]); 
                         //q p1control                     
                         printf("[p1c:%d]",(char)TeleData[18]); 
-                        //p2control                      
+
+                        //p2control, actually control time               
                         printf("[p2c:%d]",(char)TeleData[19]); 
+
+			// printf("[the:%d]",(short)(TeleData[18] << 8 | TeleData[19])); 
 						
 
                         /*// Z - N

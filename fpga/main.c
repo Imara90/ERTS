@@ -61,6 +61,8 @@ TODO also want telemetry set and concurring protocol
 
 #define X32_button		peripherals[PERIPHERAL_BUTTONS]
 #define X32_switches		peripherals[PERIPHERAL_SWITCHES]
+#define PERIPHERAL_DISPLAY	0x05
+#define X32_display		peripherals[PERIPHERAL_DISPLAY]
 
 /*********************************************************************/
 
@@ -235,7 +237,8 @@ int 	pollthres = 15;
 long 	polltime = 0;
 BYTE	telemetry_flag = 0x00;
 
-long 	controltime;
+long 	controltime = 0;
+long 	maxtime = 0;
 
 BYTE 	package[nParams];
 
@@ -492,16 +495,6 @@ BYTE dscbGet(CircularDataBuffer *cb) {
 }
 
 /*------------------------------------------------------------------
- * isr_qr_timer -- QR timer interrupt handler - not used
- * By Imara Speek - 1506374
- *------------------------------------------------------------------
- */
-void isr_qr_timer(void)
-{
-
-}
-
-/*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
  *------------------------------------------------------------------
  */
@@ -529,26 +522,12 @@ void isr_qr_link(void)
 	timestamp = X32_QR_timestamp;
 	//in case of erros, sensors must go to the main function
 	if(calibration_done)
-    {
-        Butt2Filter();
-	    KalmanFilter();
-    }
+    	{
+        	Butt2Filter();
+		KalmanFilter();
+    	}
    	//Yaw Rate
-    r = y0[5] - OFFSET_y0[5];
-
-
-	//Gets the maximum value
-	/*for (i=0;i<6;i++)
-	{
-		if (x0[i] > max[i])
-		{
-			max[i] = x0[i];
-		}
-		if (x0[i] < min[i])
-		{
-			min[i] = x0[i];
-		}
-	}*/
+    	r = y0[5] - OFFSET_y0[5];
 		
 
 	// monitor presence of interrupts 
@@ -682,8 +661,6 @@ void decode(void)
 
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	// Take the value from the buffer and reset the elem
-	// buffer value to make sure it isn't read multiple times
 	// Changing of the mode is taken care of in the pc part
 	for (i = 0; i < nParams; i++)
 	{
@@ -722,9 +699,6 @@ int check_sum(void)
 	else
 		return 1;
 }
-
-#define storenosensor 12
-#define storeall 24
 
 /*------------------------------------------------------------------
  * Data Logging Storage
@@ -933,18 +907,22 @@ void send_telemetry(void)
 		telem[j++] = (BYTE)(ae[2]);
         telem[j++] = (BYTE)(ae[3] >> 8);
 		telem[j++] = (BYTE)(ae[3]);  
+
+
+
 		//ABLE TO CHANGE
         telem[j++] = r;
-        telem[j++] = (BYTE)phi >> 8;        
+        telem[j++] = (BYTE)(phi >> 8);        
         telem[j++] = (BYTE)phi;
         telem[j++] = p;
-        telem[j++] = (BYTE)theta >> 8; 
-		telem[j++] = (BYTE)theta;
+        telem[j++] = (BYTE)(theta >> 8); 
+	telem[j++] = (BYTE)theta;
         telem[j++] = q;
         telem[j++] = pcontrol;
         telem[j++] = p1control;
+	//telem[j++] = (BYTE)(controltime >> 8);
 	telem[j++] = (BYTE)controltime;
-        //telem[j++] = p2control;
+        telem[j++] = p2control;
         telem[j++] = telemetry_flag;
 		// INCLUDE THE CHECKSUM IN THE COUNT
 
@@ -1072,6 +1050,9 @@ int main()
 	testcb.elems = testelems;
 	testcbClean(&testcb);
 
+	controltime = 0;
+	maxtime = 0;
+
 	// Initialize value to write
 	//elem.value = 0;
 
@@ -1091,6 +1072,7 @@ int main()
 		{
 			package[MODE] = PANIC_MODE;
 		}	
+
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
@@ -1152,17 +1134,24 @@ int main()
 				}
 				
 				// if the package was correct, store the correct data
-				store_data();
+				//store_data();
 
 				// Current time of the control loop
 				controltime = X32_ms_clock - controltime;
+
+				if ((controltime > maxtime) && controltime < 100)
+				{
+					maxtime = controltime;
+				}
+
 				// sends the telemetry at 10Hz
 				send_telemetry();	
+				X32_display = maxtime;
 
 				// profiling the control time	
 				controltime = X32_ms_clock;
-
-				// turn all the leds off
+				
+				// turn l the leds off
 				X32_leds = 0;		
 			}
 		}
