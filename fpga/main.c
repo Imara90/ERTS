@@ -904,7 +904,8 @@ void send_telemetry(void)
 		testcbWrite(txcb, (BYTE)telemetry_flag);
 	
 		// determining the checksum
-		sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
+		//sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
+		sum = (BYTE)(X32_ms_clock >> 8) + (BYTE)(functiontime >> 8) + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
 		sum = ~sum;
 
 		// make sure the checksum isn't the starting byte 0x80
