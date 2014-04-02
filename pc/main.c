@@ -27,7 +27,7 @@
 #include "mode_selection.h"	// Diogos mode selection function
 
 #define START_BYTE 0x80
-#define TELLEN	      	9
+#define TELLEN	      	8
 #define TELPKGLEN     	TELLEN - 1 
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
@@ -52,9 +52,10 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 	//CHECKSUM CHECK
 	for(i = 0; i < TELPKGCHKSUM ; i++)
 	{
-		sum += TelPkg[i];
+		//sum += TelPkg[i];
+		sum ^= TelPkg[i];
 	}
-	sum = (BYTE)~sum;
+	//sum = (BYTE)~sum;
    	if (sum == 0x80)
 	{
         	sum = 0x00;
@@ -277,36 +278,23 @@ int main()
 					}
 					// TELEMETRY DECODING. Only If the store data has the expected size
 
-#ifdef DEBUGGING
+
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
-						// time
-						printf("[%d]",TeleData[0]);
+#ifdef DEBUGGING
+						printf("[%d], [functiontime: %d], [flag: %x], [CHK: %x]",TeleData[0], (TeleData[1] << 8 | TeleData[2]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);
 
-						// mode
-						printf("[%d]",TeleData[1]);
-						
-						printf("[functiontime: %d]",(TeleData[2] << 8 | TeleData[3]));
-
-						// no
-						printf("[no: %d]",TeleData[6]);
-						// no
-						printf("[no: %d]",TeleData[7]);
-
-						// telemetry flag
-						printf("[%x]",TeleData[TELPKGLEN - 2]);
-						// checksum
-						printf("[CHK: %x]",TeleData[TELPKGLEN - 1]);
-
+// final telemetry 
+#else						
+						printf("\n[r: %d], [phi: %d], [theta: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+#endif						
 						// using the telemetry for mode switching
 						TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
-						
-				
 						// DECODING. Checksum proof and stores decoded values in new array DispData
 						//ChkSumOK = decode(TeleData,&DispData);
 						ChkSumOK = TeleDecode(TeleData);
 						// checksum
-						printf("[%x]", sumglobal);
+						//printf("[CalcCheck: %x]", sumglobal);
 						printf(" Chksum OK = %i \n",ChkSumOK);
 						//Saves data only if the pkg is complete
 						if (ChkSumOK)
@@ -320,10 +308,6 @@ int main()
 							fprintf(TeleFile,"\n");
 						}
 					}
-// final telemetry 
-#else
-
-#endif
 				}
 				else //DATA LOG REQUESTED Shuts writting down and only reads
 				{
