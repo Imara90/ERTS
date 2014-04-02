@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created: Tue Mar 25 19:42:12 2014
+** Created: Wed Apr 2 10:29:48 2014
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -35,7 +35,6 @@ class Ui_MainWindow
 {
 public:
     QWidget *centralWidget;
-    QLabel *StatusLbl;
     QGroupBox *groupBox;
     QWidget *gridLayoutWidget;
     QGridLayout *gridLayout;
@@ -57,27 +56,33 @@ public:
     QLCDNumber *P;
     QLCDNumber *P1;
     QLCDNumber *P2;
-    QGroupBox *groupBox_2;
-    QSplitter *splitter;
+    QLabel *QRImage;
+    QLCDNumber *Pitch_2;
+    QLCDNumber *Yaw_2;
+    QLCDNumber *Lift_2;
+    QLCDNumber *Roll_2;
     QWidget *layoutWidget;
-    QVBoxLayout *verticalLayout_3;
-    QLabel *label_9;
-    QLabel *label_10;
-    QLabel *label_11;
-    QLabel *label_12;
-    QLabel *label_13;
-    QLabel *label_14;
-    QWidget *layoutWidget1;
-    QVBoxLayout *TelLay;
-    QLCDNumber *Tel1;
-    QLCDNumber *Tel2;
-    QLCDNumber *Tel4;
-    QLCDNumber *Tel3;
-    QLCDNumber *Tel5;
-    QLCDNumber *Tel6;
-    QSplitter *splitter_2;
+    QGridLayout *gridLayout_2;
+    QVBoxLayout *verticalLayout_8;
+    QLabel *label_24;
+    QLabel *label_19;
+    QLabel *label_20;
+    QLabel *label_21;
+    QVBoxLayout *verticalLayout_4;
+    QLabel *label_23;
+    QLCDNumber *Lift_3;
+    QLCDNumber *Roll_3;
+    QLCDNumber *Pitch_3;
+    QVBoxLayout *verticalLayout_5;
+    QLabel *label_25;
+    QLCDNumber *Lift_4;
+    QLCDNumber *Roll_4;
+    QLCDNumber *Pitch_4;
+    QSplitter *splitter_3;
+    QSplitter *splitter;
     QPushButton *CommButt;
     QPushButton *RunButt;
+    QSplitter *splitter_2;
     QPushButton *SaveDL;
     QPushButton *Abort;
     QMenuBar *menuBar;
@@ -88,21 +93,15 @@ public:
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName(QString::fromUtf8("MainWindow"));
-        MainWindow->resize(831, 544);
+        MainWindow->resize(845, 711);
         centralWidget = new QWidget(MainWindow);
         centralWidget->setObjectName(QString::fromUtf8("centralWidget"));
-        StatusLbl = new QLabel(centralWidget);
-        StatusLbl->setObjectName(QString::fromUtf8("StatusLbl"));
-        StatusLbl->setGeometry(QRect(10, 460, 811, 21));
-        StatusLbl->setAcceptDrops(false);
-        StatusLbl->setFrameShape(QFrame::StyledPanel);
-        StatusLbl->setFrameShadow(QFrame::Plain);
         groupBox = new QGroupBox(centralWidget);
         groupBox->setObjectName(QString::fromUtf8("groupBox"));
-        groupBox->setGeometry(QRect(30, 0, 221, 411));
+        groupBox->setGeometry(QRect(30, 0, 221, 351));
         gridLayoutWidget = new QWidget(groupBox);
         gridLayoutWidget->setObjectName(QString::fromUtf8("gridLayoutWidget"));
-        gridLayoutWidget->setGeometry(QRect(10, 30, 201, 331));
+        gridLayoutWidget->setGeometry(QRect(0, 20, 201, 331));
         gridLayout = new QGridLayout(gridLayoutWidget);
         gridLayout->setSpacing(6);
         gridLayout->setContentsMargins(11, 11, 11, 11);
@@ -225,127 +224,163 @@ public:
 
         gridLayout->addLayout(verticalLayout, 0, 1, 1, 1);
 
-        groupBox_2 = new QGroupBox(centralWidget);
-        groupBox_2->setObjectName(QString::fromUtf8("groupBox_2"));
-        groupBox_2->setGeometry(QRect(260, 0, 261, 361));
-        groupBox_2->setAlignment(Qt::AlignJustify|Qt::AlignTop);
-        groupBox_2->setFlat(false);
-        groupBox_2->setCheckable(false);
-        splitter = new QSplitter(groupBox_2);
-        splitter->setObjectName(QString::fromUtf8("splitter"));
-        splitter->setGeometry(QRect(20, 30, 211, 251));
-        splitter->setOrientation(Qt::Horizontal);
-        layoutWidget = new QWidget(splitter);
+        QRImage = new QLabel(centralWidget);
+        QRImage->setObjectName(QString::fromUtf8("QRImage"));
+        QRImage->setGeometry(QRect(460, 360, 251, 231));
+        QRImage->setFrameShape(QFrame::Box);
+        QRImage->setPixmap(QPixmap(QString::fromUtf8("QRChamp.png")));
+        QRImage->setScaledContents(true);
+        QRImage->setAlignment(Qt::AlignCenter);
+        Pitch_2 = new QLCDNumber(centralWidget);
+        Pitch_2->setObjectName(QString::fromUtf8("Pitch_2"));
+        Pitch_2->setGeometry(QRect(520, 600, 111, 37));
+        Pitch_2->setFrameShape(QFrame::StyledPanel);
+        Pitch_2->setFrameShadow(QFrame::Raised);
+        Pitch_2->setMode(QLCDNumber::Dec);
+        Yaw_2 = new QLCDNumber(centralWidget);
+        Yaw_2->setObjectName(QString::fromUtf8("Yaw_2"));
+        Yaw_2->setGeometry(QRect(710, 450, 111, 36));
+        Yaw_2->setFrameShape(QFrame::StyledPanel);
+        Yaw_2->setFrameShadow(QFrame::Raised);
+        Yaw_2->setMode(QLCDNumber::Dec);
+        Lift_2 = new QLCDNumber(centralWidget);
+        Lift_2->setObjectName(QString::fromUtf8("Lift_2"));
+        Lift_2->setGeometry(QRect(520, 320, 111, 37));
+        Lift_2->setFrameShape(QFrame::StyledPanel);
+        Lift_2->setFrameShadow(QFrame::Raised);
+        Lift_2->setMode(QLCDNumber::Dec);
+        Roll_2 = new QLCDNumber(centralWidget);
+        Roll_2->setObjectName(QString::fromUtf8("Roll_2"));
+        Roll_2->setGeometry(QRect(350, 450, 101, 41));
+        Roll_2->setFrameShape(QFrame::StyledPanel);
+        Roll_2->setFrameShadow(QFrame::Raised);
+        Roll_2->setMode(QLCDNumber::Dec);
+        layoutWidget = new QWidget(centralWidget);
         layoutWidget->setObjectName(QString::fromUtf8("layoutWidget"));
-        verticalLayout_3 = new QVBoxLayout(layoutWidget);
-        verticalLayout_3->setSpacing(6);
-        verticalLayout_3->setContentsMargins(11, 11, 11, 11);
-        verticalLayout_3->setObjectName(QString::fromUtf8("verticalLayout_3"));
-        verticalLayout_3->setContentsMargins(0, 0, 0, 0);
-        label_9 = new QLabel(layoutWidget);
-        label_9->setObjectName(QString::fromUtf8("label_9"));
+        layoutWidget->setGeometry(QRect(20, 380, 301, 171));
+        gridLayout_2 = new QGridLayout(layoutWidget);
+        gridLayout_2->setSpacing(6);
+        gridLayout_2->setContentsMargins(11, 11, 11, 11);
+        gridLayout_2->setObjectName(QString::fromUtf8("gridLayout_2"));
+        gridLayout_2->setVerticalSpacing(6);
+        gridLayout_2->setContentsMargins(0, 0, 0, 0);
+        verticalLayout_8 = new QVBoxLayout();
+        verticalLayout_8->setSpacing(6);
+        verticalLayout_8->setObjectName(QString::fromUtf8("verticalLayout_8"));
+        label_24 = new QLabel(layoutWidget);
+        label_24->setObjectName(QString::fromUtf8("label_24"));
 
-        verticalLayout_3->addWidget(label_9);
+        verticalLayout_8->addWidget(label_24);
 
-        label_10 = new QLabel(layoutWidget);
-        label_10->setObjectName(QString::fromUtf8("label_10"));
+        label_19 = new QLabel(layoutWidget);
+        label_19->setObjectName(QString::fromUtf8("label_19"));
 
-        verticalLayout_3->addWidget(label_10);
+        verticalLayout_8->addWidget(label_19);
 
-        label_11 = new QLabel(layoutWidget);
-        label_11->setObjectName(QString::fromUtf8("label_11"));
+        label_20 = new QLabel(layoutWidget);
+        label_20->setObjectName(QString::fromUtf8("label_20"));
 
-        verticalLayout_3->addWidget(label_11);
+        verticalLayout_8->addWidget(label_20);
 
-        label_12 = new QLabel(layoutWidget);
-        label_12->setObjectName(QString::fromUtf8("label_12"));
+        label_21 = new QLabel(layoutWidget);
+        label_21->setObjectName(QString::fromUtf8("label_21"));
 
-        verticalLayout_3->addWidget(label_12);
+        verticalLayout_8->addWidget(label_21);
 
-        label_13 = new QLabel(layoutWidget);
-        label_13->setObjectName(QString::fromUtf8("label_13"));
 
-        verticalLayout_3->addWidget(label_13);
+        gridLayout_2->addLayout(verticalLayout_8, 0, 0, 1, 1);
 
-        label_14 = new QLabel(layoutWidget);
-        label_14->setObjectName(QString::fromUtf8("label_14"));
+        verticalLayout_4 = new QVBoxLayout();
+        verticalLayout_4->setSpacing(6);
+        verticalLayout_4->setObjectName(QString::fromUtf8("verticalLayout_4"));
+        label_23 = new QLabel(layoutWidget);
+        label_23->setObjectName(QString::fromUtf8("label_23"));
 
-        verticalLayout_3->addWidget(label_14);
+        verticalLayout_4->addWidget(label_23);
 
-        splitter->addWidget(layoutWidget);
-        layoutWidget1 = new QWidget(splitter);
-        layoutWidget1->setObjectName(QString::fromUtf8("layoutWidget1"));
-        TelLay = new QVBoxLayout(layoutWidget1);
-        TelLay->setSpacing(6);
-        TelLay->setContentsMargins(11, 11, 11, 11);
-        TelLay->setObjectName(QString::fromUtf8("TelLay"));
-        TelLay->setContentsMargins(0, 0, 0, 0);
-        Tel1 = new QLCDNumber(layoutWidget1);
-        Tel1->setObjectName(QString::fromUtf8("Tel1"));
-        Tel1->setFrameShape(QFrame::StyledPanel);
-        Tel1->setFrameShadow(QFrame::Raised);
-        Tel1->setMode(QLCDNumber::Hex);
+        Lift_3 = new QLCDNumber(layoutWidget);
+        Lift_3->setObjectName(QString::fromUtf8("Lift_3"));
+        Lift_3->setFrameShape(QFrame::StyledPanel);
+        Lift_3->setFrameShadow(QFrame::Raised);
+        Lift_3->setMode(QLCDNumber::Dec);
 
-        TelLay->addWidget(Tel1);
+        verticalLayout_4->addWidget(Lift_3);
 
-        Tel2 = new QLCDNumber(layoutWidget1);
-        Tel2->setObjectName(QString::fromUtf8("Tel2"));
-        Tel2->setFrameShape(QFrame::StyledPanel);
-        Tel2->setFrameShadow(QFrame::Raised);
-        Tel2->setMode(QLCDNumber::Hex);
+        Roll_3 = new QLCDNumber(layoutWidget);
+        Roll_3->setObjectName(QString::fromUtf8("Roll_3"));
+        Roll_3->setFrameShape(QFrame::StyledPanel);
+        Roll_3->setFrameShadow(QFrame::Raised);
+        Roll_3->setMode(QLCDNumber::Dec);
 
-        TelLay->addWidget(Tel2);
+        verticalLayout_4->addWidget(Roll_3);
 
-        Tel4 = new QLCDNumber(layoutWidget1);
-        Tel4->setObjectName(QString::fromUtf8("Tel4"));
-        Tel4->setFrameShape(QFrame::StyledPanel);
-        Tel4->setFrameShadow(QFrame::Raised);
-        Tel4->setMode(QLCDNumber::Hex);
+        Pitch_3 = new QLCDNumber(layoutWidget);
+        Pitch_3->setObjectName(QString::fromUtf8("Pitch_3"));
+        Pitch_3->setFrameShape(QFrame::StyledPanel);
+        Pitch_3->setFrameShadow(QFrame::Raised);
+        Pitch_3->setMode(QLCDNumber::Dec);
 
-        TelLay->addWidget(Tel4);
+        verticalLayout_4->addWidget(Pitch_3);
 
-        Tel3 = new QLCDNumber(layoutWidget1);
-        Tel3->setObjectName(QString::fromUtf8("Tel3"));
-        Tel3->setFrameShape(QFrame::StyledPanel);
-        Tel3->setFrameShadow(QFrame::Raised);
-        Tel3->setMode(QLCDNumber::Hex);
 
-        TelLay->addWidget(Tel3);
+        gridLayout_2->addLayout(verticalLayout_4, 0, 1, 1, 1);
 
-        Tel5 = new QLCDNumber(layoutWidget1);
-        Tel5->setObjectName(QString::fromUtf8("Tel5"));
-        Tel5->setFrameShape(QFrame::StyledPanel);
-        Tel5->setFrameShadow(QFrame::Raised);
-        Tel5->setMode(QLCDNumber::Hex);
+        verticalLayout_5 = new QVBoxLayout();
+        verticalLayout_5->setSpacing(6);
+        verticalLayout_5->setObjectName(QString::fromUtf8("verticalLayout_5"));
+        label_25 = new QLabel(layoutWidget);
+        label_25->setObjectName(QString::fromUtf8("label_25"));
+        label_25->setLayoutDirection(Qt::LeftToRight);
+        label_25->setAlignment(Qt::AlignCenter);
 
-        TelLay->addWidget(Tel5);
+        verticalLayout_5->addWidget(label_25);
 
-        Tel6 = new QLCDNumber(layoutWidget1);
-        Tel6->setObjectName(QString::fromUtf8("Tel6"));
-        Tel6->setFrameShape(QFrame::StyledPanel);
-        Tel6->setFrameShadow(QFrame::Raised);
-        Tel6->setMode(QLCDNumber::Hex);
+        Lift_4 = new QLCDNumber(layoutWidget);
+        Lift_4->setObjectName(QString::fromUtf8("Lift_4"));
+        Lift_4->setFrameShape(QFrame::StyledPanel);
+        Lift_4->setFrameShadow(QFrame::Raised);
+        Lift_4->setMode(QLCDNumber::Dec);
 
-        TelLay->addWidget(Tel6);
+        verticalLayout_5->addWidget(Lift_4);
 
-        splitter->addWidget(layoutWidget1);
-        splitter_2 = new QSplitter(centralWidget);
-        splitter_2->setObjectName(QString::fromUtf8("splitter_2"));
-        splitter_2->setGeometry(QRect(580, 30, 221, 401));
-        QSizePolicy sizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        sizePolicy.setHorizontalStretch(0);
-        sizePolicy.setVerticalStretch(0);
-        sizePolicy.setHeightForWidth(splitter_2->sizePolicy().hasHeightForWidth());
-        splitter_2->setSizePolicy(sizePolicy);
-        splitter_2->setOrientation(Qt::Vertical);
-        splitter_2->setHandleWidth(25);
-        CommButt = new QPushButton(splitter_2);
+        Roll_4 = new QLCDNumber(layoutWidget);
+        Roll_4->setObjectName(QString::fromUtf8("Roll_4"));
+        Roll_4->setFrameShape(QFrame::StyledPanel);
+        Roll_4->setFrameShadow(QFrame::Raised);
+        Roll_4->setMode(QLCDNumber::Dec);
+
+        verticalLayout_5->addWidget(Roll_4);
+
+        Pitch_4 = new QLCDNumber(layoutWidget);
+        Pitch_4->setObjectName(QString::fromUtf8("Pitch_4"));
+        Pitch_4->setFrameShape(QFrame::StyledPanel);
+        Pitch_4->setFrameShadow(QFrame::Raised);
+        Pitch_4->setMode(QLCDNumber::Dec);
+
+        verticalLayout_5->addWidget(Pitch_4);
+
+
+        gridLayout_2->addLayout(verticalLayout_5, 0, 2, 1, 1);
+
+        splitter_3 = new QSplitter(centralWidget);
+        splitter_3->setObjectName(QString::fromUtf8("splitter_3"));
+        splitter_3->setGeometry(QRect(320, 30, 431, 171));
+        splitter_3->setFrameShape(QFrame::NoFrame);
+        splitter_3->setOrientation(Qt::Horizontal);
+        splitter = new QSplitter(splitter_3);
+        splitter->setObjectName(QString::fromUtf8("splitter"));
+        splitter->setOrientation(Qt::Vertical);
+        CommButt = new QPushButton(splitter);
         CommButt->setObjectName(QString::fromUtf8("CommButt"));
-        splitter_2->addWidget(CommButt);
-        RunButt = new QPushButton(splitter_2);
+        splitter->addWidget(CommButt);
+        RunButt = new QPushButton(splitter);
         RunButt->setObjectName(QString::fromUtf8("RunButt"));
         RunButt->setEnabled(false);
-        splitter_2->addWidget(RunButt);
+        splitter->addWidget(RunButt);
+        splitter_3->addWidget(splitter);
+        splitter_2 = new QSplitter(splitter_3);
+        splitter_2->setObjectName(QString::fromUtf8("splitter_2"));
+        splitter_2->setOrientation(Qt::Vertical);
         SaveDL = new QPushButton(splitter_2);
         SaveDL->setObjectName(QString::fromUtf8("SaveDL"));
         SaveDL->setEnabled(false);
@@ -464,10 +499,22 @@ public:
         palette1.setBrush(QPalette::Disabled, QPalette::ToolTipText, brush);
         Abort->setPalette(palette1);
         splitter_2->addWidget(Abort);
+        splitter_3->addWidget(splitter_2);
         MainWindow->setCentralWidget(centralWidget);
+        Abort->raise();
+        RunButt->raise();
+        groupBox->raise();
+        QRImage->raise();
+        Pitch_2->raise();
+        Yaw_2->raise();
+        Lift_2->raise();
+        Roll_2->raise();
+        layoutWidget->raise();
+        SaveDL->raise();
+        CommButt->raise();
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 831, 25));
+        menuBar->setGeometry(QRect(0, 0, 845, 25));
         MainWindow->setMenuBar(menuBar);
         mainToolBar = new QToolBar(MainWindow);
         mainToolBar->setObjectName(QString::fromUtf8("mainToolBar"));
@@ -486,7 +533,6 @@ public:
     void retranslateUi(QMainWindow *MainWindow)
     {
         MainWindow->setWindowTitle(QApplication::translate("MainWindow", "MainWindow", 0, QApplication::UnicodeUTF8));
-        StatusLbl->setText(QString());
         groupBox->setTitle(QApplication::translate("MainWindow", "Sent Parameters", 0, QApplication::UnicodeUTF8));
         label_5->setText(QApplication::translate("MainWindow", "Mode", 0, QApplication::UnicodeUTF8));
         label->setText(QApplication::translate("MainWindow", "Lift", 0, QApplication::UnicodeUTF8));
@@ -496,18 +542,18 @@ public:
         label_8->setText(QApplication::translate("MainWindow", "P", 0, QApplication::UnicodeUTF8));
         label_6->setText(QApplication::translate("MainWindow", "P1", 0, QApplication::UnicodeUTF8));
         label_7->setText(QApplication::translate("MainWindow", "P2", 0, QApplication::UnicodeUTF8));
-        groupBox_2->setTitle(QApplication::translate("MainWindow", "Telemetry", 0, QApplication::UnicodeUTF8));
-        label_9->setText(QApplication::translate("MainWindow", "S1", 0, QApplication::UnicodeUTF8));
-        label_10->setText(QApplication::translate("MainWindow", "S2", 0, QApplication::UnicodeUTF8));
-        label_11->setText(QApplication::translate("MainWindow", "S3", 0, QApplication::UnicodeUTF8));
-        label_12->setText(QApplication::translate("MainWindow", "S4", 0, QApplication::UnicodeUTF8));
-        label_13->setText(QApplication::translate("MainWindow", "S5", 0, QApplication::UnicodeUTF8));
-        label_14->setText(QApplication::translate("MainWindow", "S6", 0, QApplication::UnicodeUTF8));
+        QRImage->setText(QString());
+        label_24->setText(QString());
+        label_19->setText(QApplication::translate("MainWindow", "r", 0, QApplication::UnicodeUTF8));
+        label_20->setText(QApplication::translate("MainWindow", "phi", 0, QApplication::UnicodeUTF8));
+        label_21->setText(QApplication::translate("MainWindow", "theta", 0, QApplication::UnicodeUTF8));
+        label_23->setText(QApplication::translate("MainWindow", "REFERENCES", 0, QApplication::UnicodeUTF8));
+        label_25->setText(QApplication::translate("MainWindow", "QR", 0, QApplication::UnicodeUTF8));
         CommButt->setText(QApplication::translate("MainWindow", "Connect", 0, QApplication::UnicodeUTF8));
 #ifndef QT_NO_TOOLTIP
         RunButt->setToolTip(QApplication::translate("MainWindow", "Controls the QR", 0, QApplication::UnicodeUTF8));
 #endif // QT_NO_TOOLTIP
-        RunButt->setText(QApplication::translate("MainWindow", "Run", 0, QApplication::UnicodeUTF8));
+        RunButt->setText(QApplication::translate("MainWindow", "Start Sending...", 0, QApplication::UnicodeUTF8));
 #ifndef QT_NO_TOOLTIP
         SaveDL->setToolTip(QApplication::translate("MainWindow", "Controls the QR", 0, QApplication::UnicodeUTF8));
 #endif // QT_NO_TOOLTIP

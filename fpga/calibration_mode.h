@@ -16,6 +16,7 @@ void calibration_mode(void) {
 	int i;
 	if (calibration_counter == 0) { 
 		for(i = 0; i < 6; i++) OFFSET_y0[i] = 0;
+		telemetry_flag = telemetry_flag & 0xFE;
         calibration_done = 0;
 	}
 		

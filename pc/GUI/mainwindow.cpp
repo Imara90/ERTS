@@ -9,6 +9,7 @@
 #include "../read_js.h"
 #include "../rs232.h"
 #include "../Package.h"
+#include "../mode_selection.h" 	// Diogos mode selection function
 
 
 int flag = 0;
@@ -21,16 +22,22 @@ unsigned char  QRMode = MODE_SAFE; //Initializes QR Mode
 //#define TRUE 	1
 
 #define START_BYTE 0x80
-#define TELPKGLEN     6 //EXPECTED TELEMETRY PACKAGE LENGTH EXCLUDING THE STARTING BYTE
-#define TELPKGCHKSUM  TELPKGLEN - 1
+#define TELLEN	      	23
+#define TELPKGLEN     	TELLEN - 1
+#define TELPKGCHKSUM  	TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DLPKGLEN     6 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
-#define DLPKGCHKSUM  DLPKGLEN - 1
+#define DATALEN		60
+#define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
+#define DLPKGCHKSUM  	DLPKGLEN - 1
 
 //Flag to trigger data logging
 bool DataLogkey = false;
 
+FILE* DLfile;
+FILE* TeleFile;
+int dataclose = -1;
+int telclose = -1;
 
 int TeleDecode(int* TelPkg/*, int* Output*/){
 
@@ -43,6 +50,12 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
         sum += TelPkg[i];
     }
     sum = (BYTE)~sum;
+    if (sum == 0x80)
+    {
+            sum = 0x00;
+        }
+    // DEBUG
+    //sumglobal = sum;
 //	printf("[%x][%x]",,ChkSum);
     if (ChkSum == sum)
     {
@@ -66,7 +79,10 @@ int DLDecode(int* DLPkg/*, int* Output*/){
         sum += DLPkg[i];
     }
     sum = (BYTE)~sum;
-//	printf("[%x][%x]",,ChkSum);
+        if (sum == 0x80)
+    {
+            sum = 0x00;
+        }
     if (ChkSum == sum)
     {
         //DECODING PART
@@ -77,6 +93,15 @@ int DLDecode(int* DLPkg/*, int* Output*/){
     }
     return TRUE;
 }
+
+
+void SetStatusColor(QStatusBar* statusBar,QString mString,QColor mColor){
+    QPalette palette;
+    palette.setColor(QPalette::Background,mColor);
+    statusBar->showMessage(mString);
+    statusBar->setPalette(palette);
+}
+
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -107,9 +132,44 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_RunButt_clicked()
 {
+    //------------------------------------GUI PARAMETERS----------------------
+    //RUN OR STOP DATA TRANSFER
+    ui->label_5->setFocus();
+
+    if (ui->RunButt->text() == "Start Sending..."){
+        //Start communication
+        SetStatusColor(ui->statusBar,"Running... ",Qt::yellow);
+        ui->CommButt->setEnabled(false);
+        ui->SaveDL->setEnabled(true);
+        flag = 0;
+        ui->SaveDL->setEnabled(true);
+        ui->RunButt->setText("Stop Sending...");
+    }
+    else
+    {
+        if (QRMode == MODE_SAFE || QRMode == MODE_ABORT){
+//            // Closes the Files
+//            if (telclose != 0);
+//            fclose(DLfile);
+//            if (telclose != 0);
+//            fclose(TeleFile);
+            //Stops communication
+            SetStatusColor(ui->statusBar,"Stopped... !!!",Qt::yellow);
+            //ui->StatusLbl->setStyleSheet("QLabel { background-color : white}");
+            ui->RunButt->setText("Start Sending...");
+            ui->CommButt->setEnabled(true);
+            ui->SaveDL->setEnabled(false);
+            flag = 1;
+        }else{
+            SetStatusColor(ui->statusBar,"Warning!! Please set SAFE MODE before stopping communication!!",Qt::red);
+            return;
+        }
+    }
 
 
     //----------------------------------- VARIABLES INITIALIZATION-------------------------------//
+    //Engine Values for mode selection
+    int ae[4]={0,0,0,0};
     //Initializes the keymap from the keyboard
     int keymap[8] = {MODE_SAFE,0,0,0,0,0,0,0};
     //Initializes the keymap from the keyboard
@@ -136,29 +196,31 @@ void MainWindow::on_RunButt_clicked()
     int Pkg_written = 0;
     //Used to disable writting to the port
     int writeflag = 1;
-    //Used to loop over the read Pkg
-    int datacount  = 0;
+
     // Variables supervision for tx and rx number of sent/received bytes
     int 	nbrx, nbtx;
     nbtx=nbrx=0;
 
-    //--------------------------DATA LOGGING FILE----------------------------------------------------//
-    int DLData[TELPKGLEN];
-    // Intializes DataLogging Pkg
-    for(i = 0; i < TELPKGLEN; i++){
+    //DATA LOGGING FILE
+    int linecount=0;
+    int DLData[DLPKGLEN];
+    for(i = 0; i < DLPKGLEN; i++){
         DLData[i] = 0;
     }
+    int dltimeout = 0;
     //Used to request data logging
     int DLreq = 0;
-    FILE *DLfile = fopen("DATALOGGING.txt", "w");
+    DLfile = fopen("DATALOGGING.txt", "w");
     if (DLfile == NULL)
     {
         printf("Error opening file!\n");
         exit(1);
     }
-
-    //-------------------------------TELEMETRY-----------------------------------------------------------//
+    dataclose = -1;
+    //TELEMETRY
     int TeleData[TELPKGLEN];
+    //Used to loop over the read Pkg
+    int datacount  = 0;
     int ChkSumOK = FALSE;
     //Initializes telemetry array
     for(i = 0; i < TELPKGLEN; i++){
@@ -169,39 +231,13 @@ void MainWindow::on_RunButt_clicked()
     for(i = 0; i < 7; i++){
         DisplayArray[i] = 0;
     }
-    //Stores Telemetry Data
-    FILE *TeleFile = fopen("Telemetry.txt", "w");
+    TeleFile = fopen("Telemetry.txt", "w");
     if (TeleFile == NULL)
     {
         printf("Error opening file!\n");
         exit(1);
     }
-    //------------------------------------GUI PARAMETERS----------------------
-    //RUN OR STOP DATA TRANSFER
-    ui->label_5->setFocus();
-
-    if (ui->RunButt->text() == "Run"){
-        //Start communication
-        ui->StatusLbl->setText("Running...");
-        ui->StatusLbl->setStyleSheet("QLabel { background-color : orange}");
-        ui->RunButt->setText("Stop");
-        ui->CommButt->setEnabled(false);
-        ui->SaveDL->setEnabled(true);
-        flag = 0;
-    }
-    else
-    {
-        // Closes the Files
-        fclose(DLfile);
-        fclose(TeleFile);
-        //Stops communication
-        ui->StatusLbl->setText("Stopped");
-        ui->StatusLbl->setStyleSheet("QLabel { background-color : white}");
-        ui->RunButt->setText("Run");
-        ui->CommButt->setEnabled(true);
-        ui->SaveDL->setEnabled(false);
-        flag = 1;
-    }
+    telclose = -1;
 
     while(flag == 0)
     {
@@ -215,47 +251,55 @@ void MainWindow::on_RunButt_clicked()
             DLreq = 1;
             datacount = 0; // Resets the counter (Reading new data)
         }
-        //KEYBOARD MAP
-        if (pressed_key != -1) {
-            //Creates the keyboard map based on the pressed key
-            read_kb(keymap,&pressed_key);
-        }
-        //EVALUATES IF ABORTION REQUESTED
-        if (abort == 1) keymap[0] = MODE_ABORT;
-        QRMode = keymap[0];
-        ui->ModeSel->setText(GetMode(QRMode));
-        switch (QRMode) {
-            case MODE_P:
-
-                data[1] = keymap[5];
-                data[2] = keymap[6];
-                data[3] = keymap[7];
-                data[0] = 0;
-                //SETS THE PACKAGE
-                SetPkgMode(&mPkg,QRMode);
-                SetPkgData(&mPkg,data);
-                ui->P->display(data[1]);
-                ui->P1->display(data[2]);
-                ui->P2->display(data[3]);
-                break;
-            default: //CONTROL MODES
-                //Update Package Data
-                data[0] = jmap[0]+keymap[1];
-                data[1] = jmap[1]+keymap[2];
-                data[2] = jmap[2]+keymap[3];
-                data[3] = jmap[3]+keymap[4];
-                //SETS THE PACKAGE
-                SetPkgMode(&mPkg,QRMode);
-                SetPkgData(&mPkg,data);
-                //Update MODE_PSent Info in GUI
-                ui->Lift->display(data[0]);
-                ui->Roll->display(data[1]);
-                ui->Pitch->display(data[2]);
-                ui->Yaw->display(data[3]);
-                break;
-        }
 
         if (writeflag == 1){
+
+            //KEYBOARD MAP
+            if (pressed_key != -1) {
+                //Creates the keyboard map based on the pressed key
+                read_kb(keymap,&pressed_key);
+            }
+            //EVALUATES IF ABORTION REQUESTED
+            if (abort == 1) QRMode = keymap[0] = MODE_ABORT;
+            QRMode = keymap[0];
+            ui->ModeSel->setText(GetMode(QRMode));
+
+            switch (keymap[0]) {
+                case MODE_P: //CONTROL GAINS, Starting from the second place in data array (First place is reserved for lift value)
+                    data[0] = 0;
+                    data[1] = keymap[5];
+                    data[2] = keymap[6];
+                    data[3] = keymap[7];
+                    ui->P->display(data[1]);
+                    ui->P1->display(data[2]);
+                    ui->P2->display(data[3]);
+                    break;
+
+                default: //CONTROL MODES
+                    data[0] = jmap[0]+keymap[1];
+                    data[1] = jmap[1]+keymap[2];
+                    data[2] = jmap[2]+keymap[3];
+                    data[3] = jmap[3]+keymap[4];
+                    //Update MODE_PSent Info in GUI
+                    ui->Lift->display(data[0]);
+                    ui->Roll->display(data[1]);
+                    ui->Pitch->display(data[2]);
+                    ui->Yaw->display(data[3]);
+                    break;
+            }
+
+            //MODE SELECTION
+            mode_selection(keymap, ae ,data[0]);
+            QRMode = keymap[0];
+            //SETS THE PACKAGE WITH THE DESIRED DATA
+            SetPkgMode(&mPkg, keymap[0]);
+            SetPkgData(&mPkg, data);
+            //Prints the package
+            /*for (i = 0; i < PKGLEN; i++) {
+                printf("[%x]",mPkg.Pkg[i]);
+            }
+            printf("\n");*/
+
             //WRITTING
             //Writes the pkg byte by byte. Makes sure that each byte is written
             do{
@@ -284,35 +328,42 @@ void MainWindow::on_RunButt_clicked()
                 {
                     datacount = 0; //Reset the data counter. Starts over!!
                 }
-                // STORING THE DATA. Starts over if a starting BYTE is found!!!
-                if (readbuff != START_BYTE)
-                {
-                    TeleData[datacount] = readbuff;
-                    datacount++;
-                }
+
                 // NORMAL OPERATION
                 if (DLreq == 0){
+                    // STORING THE DATA. Starts over if a starting BYTE is found!!!
+                    if (readbuff != START_BYTE)
+                    {
+                        TeleData[datacount] = readbuff;
+                        //DLData[datacount] = readbuff;
+                        datacount++;
+                    }
                     // TELEMETRY DECODING. Only If the store data has the expected size
                     if (datacount == TELPKGLEN) //Complete Pkg Received
                     {
-                        //Prints the stored package
-                        /*for (i = 0; i < TELPKGLEN; i++) {
+                    /*	//Prints the stored package
+                        for (i = 0; i < TELPKGLEN; i++) {
                             printf("[%x]",TeleData[i]);
-                        }*/
-
-                        //DISPLAYS THE DATA IN THE GUI
-                        ui->Tel1->display(TeleData[0]);
-                        ui->Tel2->display(TeleData[1]);
-                        ui->Tel3->display(TeleData[2]);
-                        ui->Tel4->display(TeleData[3]);
-                        ui->Tel5->display(TeleData[4]);
-                        ui->Tel6->display(TeleData[5]);
-
-
+                        }
+                    */
+                        for(i=0;i<4;i++){
+                            ae[i] = (TeleData[2+2*i] << 8  | TeleData[3+2*i]);
+                           // printf("[E%d:%d]",i,ae[i]);
+                        }
+                        // using the telemetry for mode switching
+                        TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
+                        //CHECKS WHETHER CALIBRATION IS DONE
+                        if(QRMode == MODE_CALIBRATION){
+                            if(TELEMETRY_FLAG & 0x01){
+                                SetStatusColor(ui->statusBar,"Calibration has been sucessful!!",Qt::green);
+                            }else
+                            {
+                                SetStatusColor(ui->statusBar,"Calibration in progress",Qt::yellow);
+                            }
+                        }
                         // DECODING. Checksum proof and stores decoded values in new array DispData
-                        //ChkSumOK = decode(TeleData,&DispData);
                         ChkSumOK = TeleDecode(TeleData);
-                        //printf(" Chksum OK = %i \n",ChkSumOK);
+//                                printf(" Chksum OK = %i \n",ChkSumOK);
                         //Saves data only if the pkg is complete
                         if (ChkSumOK){
                             //Writes the telemetry in a Txt file
@@ -325,32 +376,69 @@ void MainWindow::on_RunButt_clicked()
                 }
                 else //DATA LOG REQUESTED Shuts writting down and only reads
                 {
+                    // STORING THE DATA. Starts over if a starting BYTE is found!!!
+                    SetStatusColor(ui->statusBar,"Downloading DataLog. Please wait...",Qt::yellow);
+                    ui->SaveDL->setEnabled(false);
+                    ui->RunButt->setEnabled(false);
+                    if (readbuff != START_BYTE)
+                    {
+                        DLData[datacount] = readbuff;
+                        datacount++;
+                    }
                     // DATA LOGGING DECODING. Only If the stored data has the expected size
                     if (datacount == DLPKGLEN) //Complete Pkg Received
-                    {
-                        /*printf("DL ");
+                    {if (abort == 1) keymap[0] = MODE_ABORT;
+                        QRMode = keymap[0];
+                        ui->ModeSel->setText(GetMode(QRMode));
+                        printf("DL ");
                         //Prints the stored package
-                        for (i = 0; i < DLPKGLEN; i++) {
-                            printf("[%x]",TeleData[i]);
-                        }*/
+//                        for (i = 0; i < DLPKGLEN; i++) {
+//                            printf("[%x]",DLData[i]);
+//                        }
+                        //printf("    [%x]", sumglobal);
                         //DECODING. Checksum proof and stores decoded values in new array DispData
                         //ChkSumOK = decode(TeleData,&DispData);
-                        ChkSumOK = DLDecode(TeleData);
-                        //printf(" Chksum OK = %i \n",ChkSumOK);
+                        ChkSumOK = DLDecode(DLData);
+//                        printf(" Chksum OK = %i \n",ChkSumOK);
                         //Saves data only if the pkg is complete
                         if (ChkSumOK){
                             //Writes the datalog in a Txt file
                             for (i = 0; i < DLPKGLEN; i++) {
-                                fprintf(DLfile, "%x ", TeleData[i]);
+                                fprintf(DLfile, "%i ", DLData[i]);
                             }
+                            SetStatusColor(ui->statusBar,QString::number(linecount++),Qt::yellow);
                             fprintf(DLfile,"\n");
                         }
                     }
-                    writeflag == 0; //Disables writting
+                    writeflag = 0;
                 }
-                //dltimeout = 0;
+                dltimeout = 0;
             }
         } while (nbrx > 0);
+
+        if( (dltimeout++ > 200000) && writeflag == 0){
+            rs232_close();
+            SetStatusColor(ui->statusBar,"Data Login Downloaded...",Qt::yellow);
+            sleep(1);
+            telclose = fclose(TeleFile);
+            if (telclose == 0)
+            {
+                SetStatusColor(ui->statusBar,"Telemetry file closed correctly",Qt::green);
+            }
+            else SetStatusColor(ui->statusBar,"Telemetry file closed wrong",Qt::red);
+            sleep(1);
+            dataclose = fclose(DLfile);
+            if (dataclose == 0)
+            {
+                SetStatusColor(ui->statusBar,"\nDatalog closed correctly",Qt::green);
+            }
+            else SetStatusColor(ui->statusBar,"\nDatalog closed wrong",Qt::red);
+            sleep(1);
+            DataLogkey = false;
+            ui->RunButt->setEnabled(true);
+            return;
+        }
+
         pressed_key = -1;
     }
     DataLogkey = false;
@@ -365,20 +453,20 @@ void MainWindow::on_CommButt_clicked()
     ui->label_5->setFocus();
     if (ui->CommButt->text() == "Connect"){
         //OPEN HERE COM PORT
-        ui->StatusLbl->setText("Clearing Joystick Buffer...");
+        SetStatusColor(ui->statusBar,"Clearing Joystick Buffer...",Qt::yellow);
         //clear_js_buffer();
-        ui->StatusLbl->setText("Opening Port...");
+        SetStatusColor(ui->statusBar,"Opening Port...",Qt::yellow);
         //fd_RS232 = open_rs232_port();
         rs232_open();
         if (fd_RS232 == 0)
         {
-            ui->StatusLbl->setStyleSheet("QLabel { background-color : red}");
-            ui->StatusLbl->setText("Error Opening  the Port!!!");
+
+            SetStatusColor(ui->statusBar,"Error opening Port...",Qt::red);
             return;
         }
         ui->RunButt->setEnabled(1);
-        ui->StatusLbl->setText("Connected!");
-        ui->StatusLbl->setStyleSheet("QLabel { background-color : green}");
+        SetStatusColor(ui->statusBar,"Connected",Qt::green);
+
         ui->CommButt->setText("Disconnect");
         flag = 0;
     }
@@ -386,10 +474,10 @@ void MainWindow::on_CommButt_clicked()
     {
         //CLOSE HERE PORT
         ui->RunButt->setEnabled(0);
-        ui->StatusLbl->setText("Closing the port");
+        SetStatusColor(ui->statusBar,"Closing the Port...",Qt::yellow);
         //close_rs232_port(fd_RS232);
-        ui->StatusLbl->setText("Port Closed!");
-        ui->StatusLbl->setStyleSheet("QLabel { background-color : white}");
+        SetStatusColor(ui->statusBar,"Port Closed!",Qt::green);
+        //ui->StatusLbl->setStyleSheet("QLabel { background-color : white}");
         ui->CommButt->setText("Connect");
         flag = 1;
     }
@@ -399,8 +487,8 @@ void MainWindow::on_CommButt_clicked()
 
 void MainWindow::keyPressEvent(QKeyEvent* Key)
 {
-//    ui->StatusLbl->setText(Key->text().toLower());
-//    ui->StatusLbl->setText(QString::number(Key->key()));
+//    ui->statusBar->showMessage(Key->text().toLower());
+//    ui->statusBar->showMessage(QString::number(Key->key()));
     switch (Key->key()){
         case Qt::Key_0:
             pressed_key = 48;
@@ -472,18 +560,22 @@ void MainWindow::keyPressEvent(QKeyEvent* Key)
             pressed_key = 126;
             break;
     }
-    ui->StatusLbl->setText(QString::number(pressed_key));
-
-//    QByteArray mKey;
-//    mKey = Key->text().toAscii();
-//    pressed_key = (char*)mKey.constData();
-////    pressed_key = Key->text().toStdString();//.toInt();
-////    ui->StatusLbl->setText(pressed_key);//QString::number(pressed_key));
-////    ui->StatusLbl->setText(QString::fromStdString(mKey));//QString::number(pressed_key));
-//    ui->StatusLbl->setText(QString::fromAscii(mKey));//QString::number(pressed_key));
+    //ui->statusBar->showMessage(QString::number(pressed_key));
 }
 
 void MainWindow::on_SaveDL_clicked()
 {
     DataLogkey = true;
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    SetStatusColor(ui->statusBar,"Closing ....",Qt::yellow);
+    if(ui->RunButt->text() == "Stop Sending..."){
+        SetStatusColor(ui->statusBar,"Stopping communication with QR ....",Qt::yellow);
+        ui->RunButt->click();
+        sleep(1);
+        SetStatusColor(ui->statusBar,"Closing the port ....",Qt::yellow);
+        ui->CommButt->click();
+    }
 }
