@@ -281,8 +281,29 @@ int   dl_count = 0;
 
 // telemetry variables should be compliant with pc
 #define TELLEN		8
+
+// polling time to determine frequency for telemetry and datastoring
 #define DATASTORETIMEMS	150
 #define POLLTIMEMS	200
+
+/*****************************************************************************/
+/******************************MACROS*****************************************/
+
+#define testcbWrite(CB, VAL){ 	\
+    CB.elems[CB.end] = VAL; 			\
+    CB.end = (CB.end + 1) % CB.size;		\
+    if (CB.end == CB.start)			\
+	{        				\
+		CB.start = (CB.start + 1) % CB.size; \
+	}					\
+}
+
+
+
+/******************************MACROS*****************************************/
+/*****************************************************************************/
+
+
 
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
@@ -453,14 +474,17 @@ void dscbWrite(CircularDataBuffer *cb, BYTE para) {
 	}
 }
 
-void testcbWrite(CBuffer *cb, BYTE para) {
-    cb->elems[cb->end] = para;
-    cb->end = (cb->end + 1) % cb->size;
-    if (cb->end == cb->start)
-	{        
+/*
+void testcbWrite(CBuffer *cb, BYTE para) { 	
+    cb->elems[cb->end] = para; 			
+    cb->end = (cb->end + 1) % cb->size;		
+    if (cb->end == cb->start)			
+	{        				
 		cb->start = (cb->start + 1) % cb->size; 
-	}
+	}					
 }
+*/
+
 
 /*------------------------------------------------------------------
  * Read from buffer and store in elem
@@ -726,58 +750,58 @@ void store_data(void)
 	
 		j = 0;
 
-		testcbWrite(&testdscb, (BYTE)STARTING_BYTE);
+		testcbWrite(testdscb, (BYTE)STARTING_BYTE);
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-		testcbWrite(&testdscb, (BYTE)(X32_ms_clock >> 8));
-		testcbWrite(&testdscb, (BYTE)(X32_ms_clock));
-		testcbWrite(&testdscb, package[MODE]);
-		testcbWrite(&testdscb, package[LIFT]);
-		testcbWrite(&testdscb, package[ROLL]);
-		testcbWrite(&testdscb, package[PITCH]);
-		testcbWrite(&testdscb, package[YAW]);
-		testcbWrite(&testdscb, (BYTE)(ae[0] >> 8));
-		testcbWrite(&testdscb, (BYTE)(ae[0]));
+		testcbWrite(testdscb, (BYTE)(X32_ms_clock >> 8));
+		testcbWrite(testdscb, (BYTE)(X32_ms_clock));
+		testcbWrite(testdscb, package[MODE]);
+		testcbWrite(testdscb, package[LIFT]);
+		testcbWrite(testdscb, package[ROLL]);
+		testcbWrite(testdscb, package[PITCH]);
+		testcbWrite(testdscb, package[YAW]);
+		testcbWrite(testdscb, (BYTE)(ae[0] >> 8));
+		testcbWrite(testdscb, (BYTE)(ae[0]));
 
-		testcbWrite(&testdscb, (BYTE)(ae[1] >> 8));
-		testcbWrite(&testdscb, (BYTE)(ae[1]));
-		testcbWrite(&testdscb, (BYTE)(ae[2] >> 8));
-		testcbWrite(&testdscb, (BYTE)(ae[2]));
-		testcbWrite(&testdscb, (BYTE)(ae[3] >> 8));
-		testcbWrite(&testdscb, (BYTE)(ae[3]));
-		testcbWrite(&testdscb, (BYTE)(x0[0] >> 8));
-		testcbWrite(&testdscb, (BYTE)(x0[0]));
-		testcbWrite(&testdscb, (BYTE)(x0[1] >> 8));
-		testcbWrite(&testdscb, (BYTE)(x0[1]));
+		testcbWrite(testdscb, (BYTE)(ae[1] >> 8));
+		testcbWrite(testdscb, (BYTE)(ae[1]));
+		testcbWrite(testdscb, (BYTE)(ae[2] >> 8));
+		testcbWrite(testdscb, (BYTE)(ae[2]));
+		testcbWrite(testdscb, (BYTE)(ae[3] >> 8));
+		testcbWrite(testdscb, (BYTE)(ae[3]));
+		testcbWrite(testdscb, (BYTE)(x0[0] >> 8));
+		testcbWrite(testdscb, (BYTE)(x0[0]));
+		testcbWrite(testdscb, (BYTE)(x0[1] >> 8));
+		testcbWrite(testdscb, (BYTE)(x0[1]));
 
-		testcbWrite(&testdscb, (BYTE)(x0[2] >> 8));
-		testcbWrite(&testdscb, (BYTE)(x0[2]));
-		testcbWrite(&testdscb, (BYTE)(x0[3] >> 8));
-		testcbWrite(&testdscb, (BYTE)(x0[3]));
-		testcbWrite(&testdscb, (BYTE)(x0[4] >> 8));
-		testcbWrite(&testdscb, (BYTE)(x0[4]));
-		testcbWrite(&testdscb, (BYTE)(x0[5] >> 8));
-		testcbWrite(&testdscb, (BYTE)(x0[5]));
-		testcbWrite(&testdscb, (BYTE)(y0[0]));
-		testcbWrite(&testdscb, (BYTE)(y0[1]));
+		testcbWrite(testdscb, (BYTE)(x0[2] >> 8));
+		testcbWrite(testdscb, (BYTE)(x0[2]));
+		testcbWrite(testdscb, (BYTE)(x0[3] >> 8));
+		testcbWrite(testdscb, (BYTE)(x0[3]));
+		testcbWrite(testdscb, (BYTE)(x0[4] >> 8));
+		testcbWrite(testdscb, (BYTE)(x0[4]));
+		testcbWrite(testdscb, (BYTE)(x0[5] >> 8));
+		testcbWrite(testdscb, (BYTE)(x0[5]));
+		testcbWrite(testdscb, (BYTE)(y0[0]));
+		testcbWrite(testdscb, (BYTE)(y0[1]));
 
-		testcbWrite(&testdscb, (BYTE)(y0[2]));
-		testcbWrite(&testdscb, (BYTE)(y0[3]));
-		testcbWrite(&testdscb, (BYTE)(y0[4]));
-		testcbWrite(&testdscb, (BYTE)(y0[5]));
-		testcbWrite(&testdscb, (BYTE)(phi >> 8));
-		testcbWrite(&testdscb, (BYTE)(phi));
-		testcbWrite(&testdscb, (BYTE)(theta >> 8));
-		testcbWrite(&testdscb, (BYTE)(theta));
-		testcbWrite(&testdscb, (BYTE)(p));
-		testcbWrite(&testdscb, (BYTE)(q));
+		testcbWrite(testdscb, (BYTE)(y0[2]));
+		testcbWrite(testdscb, (BYTE)(y0[3]));
+		testcbWrite(testdscb, (BYTE)(y0[4]));
+		testcbWrite(testdscb, (BYTE)(y0[5]));
+		testcbWrite(testdscb, (BYTE)(phi >> 8));
+		testcbWrite(testdscb, (BYTE)(phi));
+		testcbWrite(testdscb, (BYTE)(theta >> 8));
+		testcbWrite(testdscb, (BYTE)(theta));
+		testcbWrite(testdscb, (BYTE)(p));
+		testcbWrite(testdscb, (BYTE)(q));
 
-		testcbWrite(&testdscb, (BYTE)(pcontrol >> 8));
-		testcbWrite(&testdscb, (BYTE)(pcontrol));
-		testcbWrite(&testdscb, (BYTE)(p1control >> 8));
-		testcbWrite(&testdscb, (BYTE)(p1control));
-		testcbWrite(&testdscb, (BYTE)(p2control >> 8));
-		testcbWrite(&testdscb, (BYTE)(p2control));
-		testcbWrite(&testdscb, (BYTE)(controltime));
+		testcbWrite(testdscb, (BYTE)(pcontrol >> 8));
+		testcbWrite(testdscb, (BYTE)(pcontrol));
+		testcbWrite(testdscb, (BYTE)(p1control >> 8));
+		testcbWrite(testdscb, (BYTE)(p1control));
+		testcbWrite(testdscb, (BYTE)(p2control >> 8));
+		testcbWrite(testdscb, (BYTE)(p2control));
+		testcbWrite(testdscb, (BYTE)(controltime));
 
 /*
 		startpointer = (dscb.end - (DATAPACKAGE - 1)) % CBDATA_SIZE;
@@ -803,7 +827,7 @@ void store_data(void)
 		{
 			sum = 0;
 	    	}
-		testcbWrite(&testdscb, (BYTE)(sum));
+		testcbWrite(testdscb, (BYTE)(sum));
 	
 		storetime = X32_ms_clock;
 		//functiontime = X32_ms_clock - starttime;
@@ -856,20 +880,28 @@ void send_telemetry(void)
 	// telemetry
 	if (X32_ms_clock - polltime >= POLLTIMEMS)
 	{
-		// profiling
-		//starttime = X32_ms_clock;
+		
 
 		j = 0;
 		sum = 0;
 		sumae = ae[0] + ae[1] + ae[2] + ae[3];
+		
 
-		testcbWrite(&txcb, (BYTE)STARTING_BYTE);
-		testcbWrite(&txcb, (BYTE)(X32_ms_clock >> 8));
-		testcbWrite(&txcb, (BYTE)package[MODE]);
-		testcbWrite(&txcb, (BYTE)(sumae >> 8));
-		testcbWrite(&txcb, (BYTE)(sumae));
-		testcbWrite(&txcb, (BYTE)functiontime);
-		testcbWrite(&txcb, (BYTE)telemetry_flag);
+		// profiling
+		starttime = X32_us_clock;
+
+		testcbWrite(txcb, (BYTE)STARTING_BYTE);
+
+		// profiling
+		functiontime = X32_us_clock - starttime;
+
+		testcbWrite(txcb, (BYTE)(X32_ms_clock >> 8));
+		//testcbWrite(&txcb, (BYTE)package[MODE]);
+		testcbWrite(txcb, (BYTE)(functiontime >> 8));
+		testcbWrite(txcb, (BYTE)(sumae >> 8));
+		testcbWrite(txcb, (BYTE)(sumae));
+		testcbWrite(txcb, (BYTE)functiontime);
+		testcbWrite(txcb, (BYTE)telemetry_flag);
 	
 		// determining the checksum
 		sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
@@ -881,7 +913,7 @@ void send_telemetry(void)
 			sum = 0x00;
 		}
 
-		testcbWrite(&txcb, (BYTE)sum);
+		testcbWrite(txcb, (BYTE)sum);
 		
 		// Send the data untill the buffer is empty
 		while (txcb.end != txcb.start)
@@ -894,8 +926,7 @@ void send_telemetry(void)
 		}
 		polltime = X32_ms_clock;
 
-		// profiling
-		//functiontime = X32_ms_clock - starttime;
+		
 
 	}
 	
@@ -982,8 +1013,6 @@ int main()
 		{
 			package[MODE] = PANIC_MODE;
 		}	
-
-
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		

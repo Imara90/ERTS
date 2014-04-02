@@ -1,3 +1,11 @@
 Profiling times pepr function
 
+telemetry sending, no macro us
+
+	0x06CA for entire telemetry 
+	0x005B for a single byte
+
+using the marco
+
+	0x0040 for a single byte
 

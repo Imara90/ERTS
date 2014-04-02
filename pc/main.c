@@ -282,6 +282,7 @@ int main()
 						}
 					*/
 						// time in ms
+/*
 						printf("[%d]",TeleData[0]);
 					
 						printf("[mode sent: %d]", mPkg.Pkg[1]);
@@ -296,6 +297,23 @@ int main()
 						printf("[sum ae: %d]", ae[0]);
 						
 						printf("[%d]",TeleData[4]);
+*/
+
+						// DEBUG DEBUG DEBUG DEBUG
+						printf("[%d]",TeleData[0]);
+				
+						// sum of ae
+						ae[0] = (TeleData[2] << 8 | TeleData[3]);
+						ae[1] = (TeleData[2] << 8 | TeleData[3]);
+						ae[2] = (TeleData[2] << 8 | TeleData[3]);
+						ae[3] = (TeleData[2] << 8 | TeleData[3]);
+						printf("[sum ae: %d]", ae[0]);
+
+						//printf("[%x]",TeleData[1]);
+						
+						printf("[functiontime: %d]",(TeleData[1] << 8 | TeleData[4]));
+
+
 						//printf("[%d]",TeleData[5]);
                         
 						// ae[0 - 3] - DON'T CHANGE
@@ -388,13 +406,13 @@ int main()
 						ChkSumOK = DLDecode(DLData);
 						printf(" Chksum OK = %i \n",ChkSumOK);
 						//Saves data only if the pkg is complete
-						if (ChkSumOK){
+						//if (ChkSumOK){
 							//Writes the datalog in a Txt file
 							for (i = 0; i < DLPKGLEN; i++) {
 								fprintf(DLfile, "%x ", DLData[i]);
 							}
 							fprintf(DLfile,"\n");
-						}
+						//}
 					}
 					writeflag = 0;
 				}
