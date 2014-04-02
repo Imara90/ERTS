@@ -16,6 +16,9 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = 0);
+
+    void closeEvent(QCloseEvent *event);
+
     ~MainWindow();
     QString GetMode(unsigned char QRMode){
     switch (QRMode){
