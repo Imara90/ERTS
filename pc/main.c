@@ -47,8 +47,8 @@ int telclose = -1;
 int TeleDecode(int* TelPkg/*, int* Output*/){
 	
 	int i;
-	int sum = 0;
-	int ChkSum = TelPkg[TELPKGCHKSUM];
+	BYTE sum = 0;
+	BYTE ChkSum = TelPkg[TELPKGCHKSUM];
 	//CHECKSUM CHECK
 	for(i = 0; i < TELPKGCHKSUM ; i++)
 	{
@@ -61,7 +61,7 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
         	sum = 0x00;
     	}
 	// DEBUG
-	sumglobal = sum;
+	//sumglobal = sum;
 //	printf("[%x][%x]",,ChkSum);
 	if (ChkSum == sum)
 	{
@@ -77,19 +77,20 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 int DLDecode(int* DLPkg/*, int* Output*/){
 	
 	int i;
-	int sum = 0;
-	int ChkSum = DLPkg[DLPKGCHKSUM];
+	BYTE sum = 0;
+	BYTE ChkSum = DLPkg[DLPKGCHKSUM];
 	//CHECKSUM CHECK
 	for(i = 0; i < DLPKGCHKSUM ; i++)
 	{
-		sum += DLPkg[i];
+		//sum += DLPkg[i];
+		sum ^= DLPkg[i];
 	}
-	sum = (BYTE)~sum;
+	//sum = (BYTE)~sum;
     	if (sum == 0x80)
 	{
         	sum = 0x00;
     	}
-	sumglobal = sum;
+	//sumglobal = sum;
 	if (ChkSum == sum)
 	{
 		//DECODING PART
@@ -186,10 +187,6 @@ int main()
 	}
 	
 	while (key != 43) {// + key
-//	printf("%zu", sizeof(int));
-//    	printf("%zu", sizeof(short));
-//    	printf("%zu", sizeof(long));
-		
 		//reads data from the joystick ...comment if joystick is not connected
 		// abort = read_js(jmap);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
@@ -317,28 +314,28 @@ int main()
 						//TeleData[datacount] = readbuff;
 						DLData[datacount] = readbuff;
 						datacount++;
+						//printf("storeeeeee");
 					}
 					// DATA LOGGING DECODING. Only If the stored data has the expected size
 					if (datacount == DLPKGLEN) //Complete Pkg Received
 					{
-						printf("DL ");
+						printf("\nDL, ");
 						//Prints the stored package
 						for (i = 0; i < DLPKGLEN; i++) {
 							printf("[%x]",DLData[i]);
 						}
-						//printf("    [%x]", sumglobal);
 						//DECODING. Checksum proof and stores decoded values in new array DispData
 						//ChkSumOK = decode(TeleData,&DispData);
 						ChkSumOK = DLDecode(DLData);
 						printf(" Chksum OK = %i \n",ChkSumOK);
 						//Saves data only if the pkg is complete
-						//if (ChkSumOK){
+						if (ChkSumOK){
 							//Writes the datalog in a Txt file
 							for (i = 0; i < DLPKGLEN; i++) {
 								fprintf(DLfile, "%x ", DLData[i]);
 							}
 							fprintf(DLfile,"\n");
-						//}
+						}
 					}
 					writeflag = 0;
 				}
@@ -346,7 +343,8 @@ int main()
 			}
 		} while (nbrx > 0);
 
-		if( (dltimeout++ > 200000) && writeflag == 0){
+		// I increased the time out
+		if( (dltimeout++ > 2000000) && writeflag == 0){
 			rs232_close();
 			printf("Data Login Downloaded... \n");
 			
@@ -366,7 +364,7 @@ int main()
 		    	
 		    	return 0;
 		}
-		
+	
 		
 	}
 	//fclose(DLfile);

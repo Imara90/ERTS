@@ -587,14 +587,11 @@ int check_sum(void)
 void store_data(void)
 {
 	BYTE sum;
-	int i, j, startpointer;
 	sum = 0;
 
 	if (X32_ms_clock - storetime >= DATASTORETIMEMS)
 	{
 		//starttime = X32_ms_clock;
-	
-		j = 0;
 
 		cbWritenoSum(dscb, (BYTE)STARTING_BYTE);
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
@@ -649,12 +646,6 @@ void store_data(void)
 		cbWrite(dscb, (BYTE)(p2control), &sum);
 		cbWrite(dscb, (BYTE)(controltime), &sum);
 
-		// TODO determine the right checksum use xor?
-		//sum = ~sum;
-
-		// DEBUG DEBUG DEBUG DEBUG
-		//sum = 0xff;
-
 		// check whether the checksum  is the same as the starting byte
 	   	if (sum == 0x80)
 		{
@@ -676,8 +667,6 @@ void store_data(void)
  */
 void send_data(void)
 {
-
-DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// send data from the data log untill it is empty
 	while (dscb.end != dscb.start)
 	{
@@ -686,8 +675,12 @@ DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 
 		X32_rs232_data = dscb.elems[dscb.start];
 		dscb.start = (dscb.start + 1) % dscb.size;	
+
+		// DEBUG DEBUG
+		X32_display = (dscb.end - dscb.start) % dscb.size;
+		//delay_ms(500);
+		on_led(6);
 	}
-ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -697,7 +690,7 @@ ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
  */
 void send_telemetry(void)
 {
-	int sum;
+	BYTE sum;
 
 	// Checks if more than or 100 ms have passed since the last 
 	// telemetry
@@ -754,11 +747,7 @@ void send_telemetry(void)
 			cbGet(txcb, &X32_rs232_data);	
 		}
 		polltime = X32_ms_clock;
-
-		
-
 	}
-	
 }
 
 /*------------------------------------------------------------------
@@ -915,17 +904,17 @@ int main()
 				controltime = X32_us_clock;
 				
 				// turn l the leds off
-				X32_leds = 0;		
+				// X32_leds = 0;		
 			}
 		}
 	}
-	// turn on led 7 when program is finished
-	on_led(7);
-
-        DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
-
 	// send the data log to the pc
 	send_data();	
+	
+	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
+
+	// turn on led 7 when program is finished
+	on_led(7);
 
 	return 0;
 }
