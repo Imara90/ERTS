@@ -79,32 +79,6 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 	return TRUE;
 }
 
-int TeleDebugDecode(int* TelPkg/*, int* Output*/){
-	
-	int i;
-	BYTE sum = 0;
-	BYTE ChkSum = TelPkg[DEBUGTELPKGCHKSUM];
-	//CHECKSUM CHECK
-	for(i = 0; i < DEBUGTELPKGCHKSUM ; i++)
-	{
-		sum ^= TelPkg[i];
-	}
-	//sum = (BYTE)~sum;
-   	if (sum == 0x80)
-	{
-        	sum = 0x00;
-    	}
-	if (ChkSum == sum)
-	{
-		//DECODING PART
-	}
-	else
-	{
-		return FALSE;
-	}	
-	return TRUE;
-}
-
 int DLDecode(int* DLPkg/*, int* Output*/){
 	
 	int i;
@@ -314,40 +288,8 @@ int main()
 						
 					}
 					// TELEMETRY DECODING. Only If the store data has the expected size
-
-//#ifdef DEBUGGING
-/*
-					if (datacount == DEBUGTELPKGLEN) //Complete Pkg Received
-					{
-						printf("[mode: %d], [ae[0]: %d], [ae[1]: %d], [ae[2]: %d], [ae[3]: %d], [r: %d], [phi: %d], [p: %d], [theta: %d], [q: %d], [pctr: %d], [p1ct: %d], [p2ctr: %d], [flag: %x], [CHK: %x]", TeleData[0], (TeleData[1] << 8 | TeleData[2]), (TeleData[3] << 8 | TeleData[4]), (TeleData[5] << 8 | TeleData[6]), (TeleData[7] << 8 | TeleData[8]), TeleData[9], (TeleData[10] << 8 | TeleData[11]), TeleData[12], (TeleData[13] << 8 | TeleData[14]), TeleData[15], TeleData[16], TeleData[17], TeleData[18], TeleData[19], TeleData[20]);					
-						// using the telemetry for mode switching
-						TELEMETRY_FLAG = TeleData[DEBUGTELPKGLEN - 2];
-						// DECODING. Checksum proof and stores decoded values in new array DispData
-						//ChkSumOK = decode(TeleData,&DispData);
-						ChkSumOK = TeleDebugDecode(TeleData);
-						// checksum
-						//printf("[CalcCheck: %x]", sumglobal);
-						printf(" Chksum OK = %i \n",ChkSumOK);
-						//Saves data only if the pkg is complete
-						if (ChkSumOK)
-						{
-							
-							//Writes the telemetry in a Txt file
-							for (i = 0; i < DEBUGTELPKGLEN; i++) 
-							{
-								//if (TeleFile != NULL)
-								//{
-								fprintf(TeleFile, "%x", TeleData[i]);
-								fprintf(TeleFile, " ");
-								//}
-							}
-							fprintf(TeleFile,"\n");
-						}
-					}
-*/
-// final telemetry 
-//#else						
 						
+	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
 						printf("[mode: %d], [ae[0]: %d], [ae[1]: %d], [ae[2]: %d], [ae[3]: %d], [r: %d], [phi: %d], [p: %d], [theta: %d], [q: %d], [pctr: %d], [p1ct: %d], [p2ctr: %d], [flag: %x], [CHK: %x]", TeleData[0], (TeleData[1] << 8 | TeleData[2]), (TeleData[3] << 8 | TeleData[4]), (TeleData[5] << 8 | TeleData[6]), (TeleData[7] << 8 | TeleData[8]), TeleData[9], (TeleData[10] << 8 | TeleData[11]), TeleData[12], (TeleData[13] << 8 | TeleData[14]), TeleData[15], TeleData[16], TeleData[17], TeleData[18], TeleData[19], TeleData[20]);					
@@ -371,6 +313,8 @@ int main()
 							fprintf(TeleFile,"\n");
 						}
 					}
+
+	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG
 /*
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
@@ -395,8 +339,7 @@ int main()
 							fprintf(TeleFile,"\n");
 						}
 					}
-*/
-//#endif	
+*/	
 				}
 
 
