@@ -276,11 +276,6 @@ int main()
 						datacount++;
 						
 					}
-					for(i=0;i<4;i++){						
-					    ae[i] = (TeleData[2+2*i] << 8  | TeleData[3+2*i]);
-					    printf("[E%d:%d]",i,ae[i]);
-					    
-					}
 					// TELEMETRY DECODING. Only If the store data has the expected size
 
 
