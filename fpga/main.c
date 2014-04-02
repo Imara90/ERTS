@@ -709,11 +709,27 @@ void send_telemetry(void)
 
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
-		cbWrite(txcb, package[MODE], &sum);
-		cbWrite(txcb, (BYTE)(functiontime >> 8), &sum);
-		cbWrite(txcb, (BYTE)functiontime, &sum);
-		cbWrite(txcb, 0x01, &sum);
-		cbWrite(txcb, 0x02, &sum);
+		cbWrite(txcb, (BYTE)package[MODE], &sum);
+		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[0]), &sum);
+		cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[1]), &sum);
+		cbWrite(txcb, (BYTE)(ae[2] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[2]), &sum);
+		cbWrite(txcb, (BYTE)(ae[3] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[3]), &sum);
+
+		cbWrite(txcb, (BYTE)r, &sum);
+		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
+		cbWrite(txcb, (BYTE)(phi), &sum);
+		cbWrite(txcb, (BYTE)p, &sum);
+		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
+		cbWrite(txcb, (BYTE)(theta), &sum);
+		cbWrite(txcb, (BYTE)(q), &sum);
+		cbWrite(txcb, (BYTE)(pcontrol), &sum);
+		cbWrite(txcb, (BYTE)(p1control), &sum);
+		cbWrite(txcb, (BYTE)(p2control), &sum);
+
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
 		//functiontime = X32_us_clock - starttime;
@@ -721,7 +737,6 @@ void send_telemetry(void)
 // Code for the final lab
 #else
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
-		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
 		cbWrite(txcb, (BYTE)(r), &sum);
 		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
 		cbWrite(txcb, (BYTE)(phi), &sum);

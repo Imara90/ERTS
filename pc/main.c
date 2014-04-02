@@ -262,7 +262,7 @@ int main()
 			//EVALUATES IF ABORTION REQUESTED
 			if (abort == 1) keymap[0] = MODE_ABORT;
 			//MODE SELECTION
-			if(keymap[0] != 0) printf("selected mode: %d l:%d tel:%x\n ", keymap[0],jmap[0],keymap[1]);		
+			//if(keymap[0] != 0) printf("selected mode: %d l:%d tel:%x\n ", keymap[0],jmap[0],keymap[1]);		
 			mode_selection(keymap, data[0]);
 				//if(keymap[0] != 0)printf("actual mode: %d \n ", keymap[0]);
 			//SETS THE PACKAGE WITH THE DESIRED DATA
@@ -323,7 +323,7 @@ int main()
 					{
 						printf("[mode: %d], [ae[0]: %d], [ae[1]: %d], [ae[2]: %d], [ae[3]: %d], [r: %d], [phi: %d], [p: %d], [theta: %d], [q: %d], [pctr: %d], [p1ct: %d], [p2ctr: %d], [flag: %x], [CHK: %x]", TeleData[0], (TeleData[1] << 8 | TeleData[2]), (TeleData[3] << 8 | TeleData[4]), (TeleData[5] << 8 | TeleData[6]), (TeleData[7] << 8 | TeleData[8]), TeleData[9], (TeleData[10] << 8 | TeleData[11]), TeleData[12], (TeleData[13] << 8 | TeleData[14]), TeleData[15], TeleData[16], TeleData[17], TeleData[18], TeleData[19], TeleData[20]);					
 						// using the telemetry for mode switching
-						TELEMETRY_FLAG = TeleData[19];
+						TELEMETRY_FLAG = TeleData[DEBUGTELPKGLEN - 2];
 						// DECODING. Checksum proof and stores decoded values in new array DispData
 						//ChkSumOK = decode(TeleData,&DispData);
 						ChkSumOK = TeleDebugDecode(TeleData);
