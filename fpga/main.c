@@ -293,8 +293,8 @@ void Butt2Filter(void)
 {
 	int i;
 	for (i=0; i<2; i++) {
-		y0[i] = (mult(A0,x0[i]) + mult(A1,x1[i]) + mult(B1,y1[i]));
- 		x1[i] = x0[i];
+		y0[i] = (mult(A0,(x0[i] - OFFSET_x0[i])) + mult(A1,x1[i]) + mult(B1,y1[i]));
+ 		x1[i] = (x0[i] - OFFSET_x0[i]);
 		y1[i] = y0[i];
 	}
 }
@@ -309,8 +309,8 @@ void KalmanFilter(void)
 {
  // TODO rewrite to marco or position in between switch       
     //Kalman for p, phi    
-    sphi = y0[1] - OFFSET_y0[1]; //TODO CONFIRM SENSOR SIGNALS 
-    sp = y0[3] - OFFSET_y0[3];
+    sphi = y0[1] - OFFSET_x0[1]; //TODO CONFIRM SENSOR SIGNALS 
+    sp = x0[3] - OFFSET_x0[3];
     
     p = sp - p_b;
     phi = phi + mult(p,P2PHI);
@@ -318,42 +318,15 @@ void KalmanFilter(void)
     p_b = p_b + ((phi - sphi) >> C2);
  
     //Kalman for q, theta
-    stheta = y0[0] - OFFSET_y0[0]; //TODO CONFIRM SENSOR SIGNALS    
-    sq = y0[4] - OFFSET_y0[4];
+    stheta = y0[0] - OFFSET_x0[0]; //TODO CONFIRM SENSOR SIGNALS    
+    sq = x0[4] - OFFSET_x0[4];
     
     q = sq - q_b;
     theta = theta + mult(q,P2PHI);
     theta = theta - ((theta - stheta) >> C1);
     q_b = q_b + ((theta - stheta) >> C2);
-
 }
 
-
-/*------------------------------------------------------------------
- * Ramp-Up prevention function
- * Compares current - previous commanded speed and clip the current
- * value if necessary (To avoid sudden changes -> motor ramp-up)
- * By Daniel Lemus
- *------------------------------------------------------------------
- */
-void CheckMotorRamp(void)
-{
-	int delta,i;
-	for (i = 0; i < 4; i++) {
-		delta = ae[i]-prev_ae[i];
-		if (abs(delta) > SAFE_INCREMENT) {
-			if (delta < 0) // Negative Increment
-			{
-				ae[i] = prev_ae[i] - SAFE_INCREMENT;
-			}
-			else //POSITIVE INCREMENT
-			{
-				ae[i] = prev_ae[i] + SAFE_INCREMENT;
-			}
-		}
-		prev_ae[i] = ae[i];
-	}
-}
 
 /*------------------------------------------------------------------
  * Circular buffer initialization 
@@ -406,7 +379,7 @@ void isr_qr_link(void)
 		KalmanFilter();
     	}
    	//Yaw Rate
-    	r = y0[5] - OFFSET_y0[5];
+    	r = x0[5] - OFFSET_x0[5];
 		
 
 	// monitor presence of interrupts 
@@ -595,8 +568,7 @@ void store_data(void)
 
 		cbWritenoSum(dscb, (BYTE)STARTING_BYTE);
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-		cbWrite(dscb, (BYTE)(X32_ms_clock >> 8), &sum);
-		cbWrite(dscb, (BYTE)(X32_ms_clock), &sum);
+		cbWrite(dscb, (BYTE)(X32_ms_clock - storetime), &sum);
 		cbWrite(dscb, package[MODE], &sum);
 		cbWrite(dscb, package[LIFT], &sum);
 		cbWrite(dscb, package[ROLL], &sum);
@@ -604,45 +576,31 @@ void store_data(void)
 		cbWrite(dscb, package[YAW], &sum);
 		cbWrite(dscb, (BYTE)(ae[0] >> 8), &sum);
 		cbWrite(dscb, (BYTE)(ae[0]), &sum);
-
 		cbWrite(dscb, (BYTE)(ae[1] >> 8), &sum);
+
 		cbWrite(dscb, (BYTE)(ae[1]), &sum);
 		cbWrite(dscb, (BYTE)(ae[2] >> 8), &sum);
 		cbWrite(dscb, (BYTE)(ae[2]), &sum);
 		cbWrite(dscb, (BYTE)(ae[3] >> 8), &sum);
 		cbWrite(dscb, (BYTE)(ae[3]), &sum);
-		cbWrite(dscb, (BYTE)(x0[0] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[0]), &sum);
-		cbWrite(dscb, (BYTE)(x0[1] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[1]), &sum);
+		cbWrite(dscb, (BYTE)(x0[0] - OFFSET_x0[0]), &sum);
+		cbWrite(dscb, (BYTE)(x0[1] - OFFSET_x0[1]), &sum);
+		// dont nee x02 
+		cbWrite(dscb, (BYTE)(x0[3] - OFFSET_x0[3]), &sum);
+		cbWrite(dscb, (BYTE)(x0[4] - OFFSET_x0[4]), &sum);
+		cbWrite(dscb, (BYTE)(x0[5] - OFFSET_x0[5]), &sum);
 
-		cbWrite(dscb, (BYTE)(x0[2] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[2]), &sum);
-		cbWrite(dscb, (BYTE)(x0[3] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[3]), &sum);
-		cbWrite(dscb, (BYTE)(x0[4] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[4]), &sum);
-		cbWrite(dscb, (BYTE)(x0[5] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[5]), &sum);
 		cbWrite(dscb, (BYTE)(y0[0]), &sum);
 		cbWrite(dscb, (BYTE)(y0[1]), &sum);
-
-		cbWrite(dscb, (BYTE)(y0[2]), &sum);
-		cbWrite(dscb, (BYTE)(y0[3]), &sum);
-		cbWrite(dscb, (BYTE)(y0[4]), &sum);
-		cbWrite(dscb, (BYTE)(y0[5]), &sum);
 		cbWrite(dscb, (BYTE)(phi >> 8), &sum);
 		cbWrite(dscb, (BYTE)(phi), &sum);
 		cbWrite(dscb, (BYTE)(theta >> 8), &sum);
 		cbWrite(dscb, (BYTE)(theta), &sum);
 		cbWrite(dscb, (BYTE)(p), &sum);
 		cbWrite(dscb, (BYTE)(q), &sum);
-
-		cbWrite(dscb, (BYTE)(pcontrol >> 8), &sum);
 		cbWrite(dscb, (BYTE)(pcontrol), &sum);
-		cbWrite(dscb, (BYTE)(p1control >> 8), &sum);
 		cbWrite(dscb, (BYTE)(p1control), &sum);
-		cbWrite(dscb, (BYTE)(p2control >> 8), &sum);
+
 		cbWrite(dscb, (BYTE)(p2control), &sum);
 		cbWrite(dscb, (BYTE)(controltime), &sum);
 
