@@ -1,22 +1,8 @@
 /*------------------------------------------------------------------
- *  based on the qtest - fixing all the todos
- *
- *  reads ae[0-3] from stdin
- *  (q,w,e,r increment ae[0-3], a,s,d,f decrement)
- *
- *  prints ae[0-3],sax,say,saz,sp,sq,sr,delta_t on stdout
- *  where delta_t is the qr-isr exec time
- *
  *  Imara Speek
  *  Embedded Real Time Systems
  *
  *  Version Feb 26, 2014
-
-TODO determine priorities
-TODO control values have to be send
-TODO ask for log that is saved during running
-TODO also want telemetry set and concurring protocol
-
  *------------------------------------------------------------------
  */
 
@@ -61,6 +47,8 @@ TODO also want telemetry set and concurring protocol
 
 #define X32_button		peripherals[PERIPHERAL_BUTTONS]
 #define X32_switches		peripherals[PERIPHERAL_SWITCHES]
+#define PERIPHERAL_DISPLAY	0x05
+#define X32_display		peripherals[PERIPHERAL_DISPLAY]
 
 /*********************************************************************/
 
@@ -80,6 +68,7 @@ TODO also want telemetry set and concurring protocol
 #define FULL_CONTROL_MODE		0x05
 #define P_CONTROL_MODE			0x06
 #define ABORT_MODE					0x07
+
 #define STARTING_BYTE			0x80
 
 // Parameter list numbering
@@ -110,7 +99,6 @@ TODO also want telemetry set and concurring protocol
 #define B0		16384
 #define B1		15580*/
 
-
 ////filter temporary variables
 int   y0[6] = {0,0,0,0,0,0};
 int   y1[6] = {0,0,0,0,0,0};
@@ -133,60 +121,9 @@ int   stheta = 0;
 int   p_b = 0;
 int   q_b = 0;
 
-//DEFINE SIZE OF DATA LOGGING VARIABLES
-#define DLOGSIZE	50000 
-//data logging variables
-int   dl[DLOGSIZE];
-int   dl_count = 0;
-//#define LogParams	
-#define DATAPACKAGE	60
-
-// telemetry variables should be compliant with pc
-#define TELLEN		23
-
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
 
-/*********************************************************************/
-
-// For defining the circular buffer
-// Opaque buffer element type.  This would be defined by the application
-typedef struct { BYTE value; } ElemType;
-
-// fixed size for the buffer, no dyanmic allocation is needed
-// actual size is minus one element because of the one slot open protocol 
-#define CB_SIZE (62 + 1)
- 
-// Circular buffer object 
-typedef struct {
-	int         	start;  	/* index of oldest element              */
-	int	       	end;    	/* index at which to write new element  */
-	ElemType 	elems[CB_SIZE]; /* vector of elements                   */
-	// including extra element for one slot open protocol
-} CircularBuffer;
-
-CircularBuffer txcb, rxcb;
-
-/*********************************************************************/
-
-/*********************************************************************/
-// TODO have to modify this in onder to have good code
-
-// fixed size for the buffer, no dyanmic allocation is needed
-// actual size is minus one element because of the one slot open protocol 
-#define CBDATA_SIZE (50000 + 1)
- 
-// Circular buffer object 
-typedef struct {
-	int         	start;  	/* index of oldest element              */
-	int	       	end;    	/* index at which to write new element  */
-	ElemType 	elems[CBDATA_SIZE]; /* vector of elements                   */
-	// including extra element for one slot open protocol
-} CircularDataBuffer;
-
-CircularDataBuffer dscb;
-
-/*********************************************************************/
 
 /*********************************************************************/
 // actual size is minus one element because of the one slot open protocol 
@@ -200,12 +137,11 @@ typedef struct {
 	// including extra element for one slot open protocol
 } CBuffer;
 
-CBuffer testcb;
+CBuffer testcb, txcb, rxcb, dscb;
 
 /*********************************************************************/
 
 // Globals
-char	c;
 int	program_done;
 int	ae[4];
 int	s0, s1, s2, s3, s4, s5, timestamp;
@@ -213,6 +149,7 @@ int	isr_qr_counter;
 int	isr_qr_time;
 int	button;
 int	inst;
+int 	sumae;
 
 void	toggle_led(int);
 void	delay_ms(int);
@@ -235,27 +172,26 @@ int 	pollthres = 15;
 long 	polltime = 0;
 BYTE	telemetry_flag = 0x00;
 
-long 	controltime;
+// Profiling variables
+long 	controltime = 0;
+long 	maxtime = 0;
+long 	storetime = 0;
+long	functiontime = 0;
+long	starttime = 0;
 
+// array to save rx packet in 
 BYTE 	package[nParams];
 
-// Can be changed?
-
-BYTE 	sel_mode, roll, pitch, yaw, lift, checksum;
-BYTE 	prev_mode = 0;//VARIABLE TO SAVE PREVIOUS MODE
-BYTE	mode = 0;//ACTUAL OPERATING MODE
-BYTE	last_control_mode = 0;//VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
-
 //GLOBALS FOR CONTROL MODES
-long int Z = 0;//LIFT FORCE
-long int L = 0;//ROLL MOMENTUM
-long int M = 0;//PICTH MOMENTU
-long int N = 0;//YAW MOMENTUM
-int phi = 0; //ROLL ANGLE
-int theta = 0; //PITCH ANGLE
-int p = 0; //ROLL RATE
-int q = 0; //PITCH RATE
-int r = 0; //YAW RATE
+long int Z = 0;		// LIFT FORCE
+long int L = 0;		// ROLL MOMENTUM
+long int M = 0;		// PICTH MOMENTU
+long int N = 0;		// YAW MOMENTUM
+int 	phi = 0; 	// ROLL ANGLE
+int 	theta = 0; 	// PITCH ANGLE
+int 	p = 0; 		// ROLL RATE
+int 	q = 0; 		// PITCH RATE
+int 	r = 0; 		// YAW RATE
 long int ww[4] = {0, 0, 0, 0};
 
 // Own written functions
@@ -273,35 +209,96 @@ int t1 = 0;
 int dt = 0;
 int integral[3] = {0,0,0};
 
+// initialize arrays to which the circular buffers are going to point
+#define DLOGSIZE	50000 
+#define TXSIZE		32
+#define RXSIZE		64
+
+BYTE txelems[TXSIZE];
+BYTE rxelems[RXSIZE];
+BYTE   dl[DLOGSIZE];
+
+// polling time to determine frequency for telemetry and datastoring
+#define DATASTORETIMEMS	150
+#define POLLTIMEMS	200
+
+// variable to save buffer return in
+BYTE 	c;
+
+#define DEBUGGING
+
+
+/******************************MACROS*****************************************/
+
+/*------------------------------------------------------------------
+ * Write an element, overwriting oldest element if buffer is full. 
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */ 
+#define cbWrite(CB, VAL, sum){ 				\
+	CB.elems[CB.end] = VAL; 				\
+	CB.end = (CB.end + 1) % CB.size;			\
+	if (CB.end == CB.start)				\
+	{        					\
+		CB.start = (CB.start + 1) % CB.size; 	\
+	}						\
+	*sum ^= VAL;					\
+}
+
+/*------------------------------------------------------------------
+ * Write an element, overwriting oldest element if buffer is full. 
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */ 
+#define cbWritenoSum(CB, VAL){ 				\
+	CB.elems[CB.end] = VAL; 				\
+	CB.end = (CB.end + 1) % CB.size;			\
+	if (CB.end == CB.start)				\
+	{        					\
+		CB.start = (CB.start + 1) % CB.size; 	\
+	}						\
+}
+
+
+/*------------------------------------------------------------------
+ * get oldest element from buffer 
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------  
+ */
+#define cbGet(CB, c) {						\
+	*c = CB.elems[CB.start];				\
+	CB.start = (CB.start + 1) % CB.size;			\
+}
+
+
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
- * Multiplies the values and then shift them right by 14 bits
- * By Daniel Lemus
+ * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
-int mult(int a, int b)
-{
-	unsigned int result;
-	result = a * b;
-	result = (result >> 14);
-//	printf("\nresult(%i * %i) = %i,",a,b,result );
- 	return result;
-}
+#define mult(a, b) (((a) * (b)) >> 14)	
+
+
+
+/*****************************************************************************/
+
 
 /*------------------------------------------------------------------
  * 1st Order Butterworth filter
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
+// TODO rewrite to marco or position in between switch
 void Butt2Filter(void)
 {
 	int i;
-	for (i=0; i<6; i++) {
+	for (i=0; i<2; i++) {
 		y0[i] = (mult(A0,x0[i]) + mult(A1,x1[i]) + mult(B1,y1[i]));
  		x1[i] = x0[i];
 		y1[i] = y0[i];
 	}
 }
+
 
 /*------------------------------------------------------------------
  * Kalman Filter
@@ -310,7 +307,7 @@ void Butt2Filter(void)
  */
 void KalmanFilter(void)
 {
-        
+ // TODO rewrite to marco or position in between switch       
     //Kalman for p, phi    
     sphi = y0[1] - OFFSET_y0[1]; //TODO CONFIRM SENSOR SIGNALS 
     sp = y0[3] - OFFSET_y0[3];
@@ -364,41 +361,11 @@ void CheckMotorRamp(void)
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
-void cbInit(CircularBuffer *cb) {
-    cb->start = 0;
-    cb->end   = 0;
-}
-void dscbInit(CircularDataBuffer *cb) {
-    cb->start = 0;
-    cb->end   = 0;
-}
-
-void testcbInit(CBuffer *cb, int size) {
+void cbInit(CBuffer *cb, int size, BYTE* array) {
 	cb->size  = size + 1;
 	cb->start = 0;
 	cb->end   = 0;
-}
-
-/*------------------------------------------------------------------
- * Check if circular buffer is full - not used
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */ 
-int cbIsFull(CircularBuffer *cb) {
-    return (cb->end + 1) % CB_SIZE == cb->start;
-}
-
-
-/*------------------------------------------------------------------
- * Check if circular buffer is empty - not used
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */ 
-int cbIsEmpty(CircularBuffer *cb) {
-    return cb->end == cb->start;
-}
-int testcbIsEmpty(CBuffer *cb) {
-    return cb->end == cb->start;
+	cb->elems = array;
 }
 
 /*------------------------------------------------------------------
@@ -406,157 +373,50 @@ int testcbIsEmpty(CBuffer *cb) {
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */ 
-void cbClean(CircularBuffer *cb) {
-	memset(cb->elems, 0, sizeof(ElemType) * CB_SIZE); 	
-}
-void dscbClean(CircularDataBuffer *cb) {
-	memset(cb->elems, 0, sizeof(ElemType) * CBDATA_SIZE); 	
-}
-
-void testcbClean(CBuffer *cb) {
-	memset(cb->elems, 0, sizeof(ElemType) * cb->size); 	
-}
-
-
-/*------------------------------------------------------------------
- * Write an elemtype to buffer
- * Write an element, overwriting oldest element if buffer is full. App can
- * choose to avoid the overwrite by checking cbIsFull(). 
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */ 
-void cbWrite(CircularBuffer *cb, ElemType *elem) {
-    cb->elems[cb->end] = *elem;
-    cb->end = (cb->end + 1) % CB_SIZE;
-    if (cb->end == cb->start)
-	{        
-		cb->start = (cb->start + 1) % CB_SIZE; /* full, overwrite */
-	}
-// TODO determine if we want it to overwrite
-}
-void dscbWrite(CircularDataBuffer *cb, ElemType *elem) {
-    cb->elems[cb->end] = *elem;
-    cb->end = (cb->end + 1) % CBDATA_SIZE;
-    if (cb->end == cb->start)
-	{        
-		cb->start = (cb->start + 1) % CBDATA_SIZE; /* full, overwrite */
-	}
-// TODO determine if we want it to overwrite
-}
-
-/*------------------------------------------------------------------
- * Read from buffer and store in elem
- * Read oldest element. App must ensure !cbIsEmpty() first. 
- * By Imara Speek 1506374 - not used
- *------------------------------------------------------------------  
- */
-void cbRead(CircularBuffer *cb, ElemType *elem) {
-    *elem = cb->elems[cb->start];
-    cb->start = (cb->start + 1) % CB_SIZE;
-}
-
-/*------------------------------------------------------------------
- * get char from buffer 
- * Read oldest element. App must ensure !cbIsEmpty() first. 
- * By Imara Speek 1506374
- *------------------------------------------------------------------  
- */
-BYTE cbGet(CircularBuffer *cb) {
-	BYTE c;	
-
-	c = cb->elems[cb->start].value;
-	// Whenever the starting byte is read, the package is decoded
-	// To make sure the same package isn't read twice, we overwrite
-	// the starting byte. The package will still decode because of c
-	// and it will not be recognized again. 
-	if (c == STARTING_BYTE)
-	{
-		cb->elems[cb->start].value = 0;	
-	}
-	cb->start = (cb->start + 1) % CB_SIZE;
-
-	return c;
-}
-
-BYTE dscbGet(CircularDataBuffer *cb) {
-	BYTE c;	
-
-	c = cb->elems[cb->start].value;
-	// Whenever the starting byte is read, the package is decoded
-	// To make sure the same package isn't read twice, we overwrite
-	// the starting byte. The package will still decode because of c
-	// and it will not be recognized again. 
-	cb->start = (cb->start + 1) % CBDATA_SIZE;
-
-	return c;
-}
-
-/*------------------------------------------------------------------
- * isr_qr_timer -- QR timer interrupt handler - not used
- * By Imara Speek - 1506374
- *------------------------------------------------------------------
- */
-void isr_qr_timer(void)
-{
-
+void cbClean(CBuffer *cb) {
+	memset(cb->elems, 0, sizeof(BYTE) * cb->size); 	
 }
 
 /*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
- *------------------------------------------------------------------
- */
-void isr_button(void)
-{
-	button = 1;
-}
-
-/*------------------------------------------------------------------
- * isr_qr_link -- QR link rx interrupt handler
+ * By Daniel Lemus
  *------------------------------------------------------------------
  */
 void isr_qr_link(void)
 {
 	int	ae_index;
 	int     i, max[6],min[6];
+
+	//starttime = X32_us_clock;
 	
 	// record time
 	isr_qr_time = X32_us_clock;
         inst = X32_instruction_counter;
 
 	// get sensor and timestamp values
-	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; x0[2] = X32_QR_s2; 
+	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
 	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
 	//in case of erros, sensors must go to the main function
+
+	// TODO remove this from the qr IR
 	if(calibration_done)
-    {
-        Butt2Filter();
-	    KalmanFilter();
-    }
+    	{
+        	Butt2Filter();
+		KalmanFilter();
+    	}
    	//Yaw Rate
-    r = y0[5] - OFFSET_y0[5];
-
-
-	//Gets the maximum value
-	/*for (i=0;i<6;i++)
-	{
-		if (x0[i] > max[i])
-		{
-			max[i] = x0[i];
-		}
-		if (x0[i] < min[i])
-		{
-			min[i] = x0[i];
-		}
-	}*/
+    	r = y0[5] - OFFSET_y0[5];
 		
 
 	// monitor presence of interrupts 
 	isr_qr_counter++;
+/*	
 	if (isr_qr_counter % 500 == 0) 
 	{
 		toggle_led(2);
 	}	
+*/
 
 	// Clip engine values to be positive and 10 bits.
 	for (ae_index = 0; ae_index < 4; ae_index++) 
@@ -579,6 +439,8 @@ void isr_qr_link(void)
 	// record isr execution time (ignore overflow)
         inst = X32_instruction_counter - inst;
 	isr_qr_time = X32_us_clock - isr_qr_time;
+
+	//functiontime = X32_us_clock - starttime;
 }
 
 /*------------------------------------------------------------------
@@ -597,12 +459,7 @@ void isr_rs232_rx(void)
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
 	{
-		rxcb.elems[rxcb.end].value = (BYTE)X32_rs232_data;
-		rxcb.end = (rxcb.end + 1) % CB_SIZE;
-		if (rxcb.end == rxcb.start)
-		{
-			rxcb.start = (rxcb.start + 1) % CB_SIZE; /* full, overwrite */
-		}	
+		cbWritenoSum(rxcb, (BYTE)X32_rs232_data)
 	}
 }
 
@@ -615,7 +472,6 @@ void isr_rs232_tx(void)
 {
 	// signal interrupt
 	toggle_led(4);
-
 }
 
 /*------------------------------------------------------------------
@@ -651,6 +507,7 @@ void toggle_led(int i)
 
 /*------------------------------------------------------------------
  * led on 
+ * by Imara Speek 1506374
  *------------------------------------------------------------------
  */
 void on_led(int i) 
@@ -659,7 +516,8 @@ void on_led(int i)
 }
 
 /*------------------------------------------------------------------
-led off
+ * led off
+ * by Imara Speek 1506374
  *------------------------------------------------------------------
  */
 void off_led(int i) 
@@ -668,8 +526,7 @@ void off_led(int i)
 }
 
 /*------------------------------------------------------------------
- * Decoding function with a higher execution level
- * Function called in the timer ISR 
+ * Decoding function
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
@@ -682,12 +539,10 @@ void decode(void)
 
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	// Take the value from the buffer and reset the elem
-	// buffer value to make sure it isn't read multiple times
 	// Changing of the mode is taken care of in the pc part
 	for (i = 0; i < nParams; i++)
 	{
-		package[i] = cbGet(&rxcb);
+		 cbGet(rxcb, &package[i]);
 	}
 	
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
@@ -723,9 +578,6 @@ int check_sum(void)
 		return 1;
 }
 
-#define storenosensor 12
-#define storeall 24
-
 /*------------------------------------------------------------------
  * Data Logging Storage
  * Store each parameter individually in arrays
@@ -735,111 +587,74 @@ int check_sum(void)
 void store_data(void)
 {
 	BYTE sum;
-	int i, j;
-	BYTE storing[DATAPACKAGE];
 	sum = 0;
 
-
-	// TODO find a way to save P values if the mode has changed
-	
-	j = 0;
-	storing[j++] = STARTING_BYTE;
-	// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-	storing[j++] = (BYTE)(X32_ms_clock >> 8);
-	storing[j++] = (BYTE)(X32_ms_clock);
-	storing[j++] = package[MODE];
-	storing[j++] = package[LIFT];
-	storing[j++] = package[ROLL];
-	storing[j++] = package[PITCH];
-	storing[j++] = package[YAW];
-	storing[j++] = (BYTE)(ae[0] >> 8);
-	storing[j++] = (BYTE)(ae[0]);
-
-	storing[j++] = (BYTE)(ae[1] >> 8);
-	storing[j++] = (BYTE)(ae[1]);
-	storing[j++] = (BYTE)(ae[2] >> 8);
-	storing[j++] = (BYTE)(ae[2]);
-	storing[j++] = (BYTE)(ae[3] >> 8);
-	storing[j++] = (BYTE)(ae[3]);
-	storing[j++] = (BYTE)(x0[0] >> 8);
-	storing[j++] = (BYTE)(x0[0]);
-	storing[j++] = (BYTE)(x0[1] >> 8);
-	storing[j++] = (BYTE)(x0[1]);
-
-	storing[j++] = (BYTE)(x0[2] >> 8);
-	storing[j++] = (BYTE)(x0[2]);
-	storing[j++] = (BYTE)(x0[3] >> 8);
-	storing[j++] = (BYTE)(x0[3]);
-	storing[j++] = (BYTE)(x0[4] >> 8);
-	storing[j++] = (BYTE)(x0[4]);
-	storing[j++] = (BYTE)(x0[5] >> 8);
-	storing[j++] = (BYTE)(x0[5]);
-	storing[j++] = (BYTE)(y0[0]);
-	storing[j++] = (BYTE)(y0[1]);
-
-	storing[j++] = (BYTE)(y0[2]);
-	storing[j++] = (BYTE)(y0[3]);
-	storing[j++] = (BYTE)(y0[4]);
-	storing[j++] = (BYTE)(y0[5]);
-	storing[j++] = (BYTE)(phi >> 8);
-	storing[j++] = (BYTE)(phi);
-	storing[j++] = (BYTE)(theta >> 8);
-	storing[j++] = (BYTE)(theta);
-	storing[j++] = (BYTE)(p);
-	storing[j++] = (BYTE)(q);
-
-	storing[j++] = (BYTE)(Z >> 16);
-	storing[j++] = (BYTE)(Z >> 8);
-	storing[j++] = (BYTE)(Z);
-	storing[j++] = (BYTE)(L >> 16);
-	storing[j++] = (BYTE)(L >> 8);
-	storing[j++] = (BYTE)(L);
-	storing[j++] = (BYTE)(M >> 16);
-	storing[j++] = (BYTE)(M >> 8);
-	storing[j++] = (BYTE)(M);
-	storing[j++] = (BYTE)(N >> 16);
-
-	storing[j++] = (BYTE)(N >> 8);
-	storing[j++] = (BYTE)(N);	
-	storing[j++] = (BYTE)(pcontrol >> 8);
-	storing[j++] = (BYTE)(pcontrol);
-	storing[j++] = (BYTE)(p1control >> 8);
-	storing[j++] = (BYTE)(p1control);
-	storing[j++] = (BYTE)(p2control >> 8);
-	storing[j++] = (BYTE)(p2control);
-	storing[j++] = 0xff;
-	//storing[j++] = (BYTE)(controltime);
-
-    // calculate the checksum, dont include starting byte
-	for (i = 1; i < j ; i++)
+	if (X32_ms_clock - storetime >= DATASTORETIMEMS)
 	{
-		sum += storing[i];
-	}
-	sum = ~sum;
-   	if (sum == 0x80)
-	{
-        	sum = 0;
-    	}
-	
-	storing[j++] = sum;
+		//starttime = X32_ms_clock;
 
-	// TODO CHECK IF THIS STILL WORKS
-	for (i = 0; i < j; i++)
-	{
-		// TODO IS THIS CAUSING ANY ERROS
-		// make sure only starting byte can be 0x80
-		if ((i != 0) && (storing[i] == 0x80))
+		cbWritenoSum(dscb, (BYTE)STARTING_BYTE);
+		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
+		cbWrite(dscb, (BYTE)(X32_ms_clock >> 8), &sum);
+		cbWrite(dscb, (BYTE)(X32_ms_clock), &sum);
+		cbWrite(dscb, package[MODE], &sum);
+		cbWrite(dscb, package[LIFT], &sum);
+		cbWrite(dscb, package[ROLL], &sum);
+		cbWrite(dscb, package[PITCH], &sum);
+		cbWrite(dscb, package[YAW], &sum);
+		cbWrite(dscb, (BYTE)(ae[0] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(ae[0]), &sum);
+
+		cbWrite(dscb, (BYTE)(ae[1] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(ae[1]), &sum);
+		cbWrite(dscb, (BYTE)(ae[2] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(ae[2]), &sum);
+		cbWrite(dscb, (BYTE)(ae[3] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(ae[3]), &sum);
+		cbWrite(dscb, (BYTE)(x0[0] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(x0[0]), &sum);
+		cbWrite(dscb, (BYTE)(x0[1] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(x0[1]), &sum);
+
+		cbWrite(dscb, (BYTE)(x0[2] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(x0[2]), &sum);
+		cbWrite(dscb, (BYTE)(x0[3] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(x0[3]), &sum);
+		cbWrite(dscb, (BYTE)(x0[4] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(x0[4]), &sum);
+		cbWrite(dscb, (BYTE)(x0[5] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(x0[5]), &sum);
+		cbWrite(dscb, (BYTE)(y0[0]), &sum);
+		cbWrite(dscb, (BYTE)(y0[1]), &sum);
+
+		cbWrite(dscb, (BYTE)(y0[2]), &sum);
+		cbWrite(dscb, (BYTE)(y0[3]), &sum);
+		cbWrite(dscb, (BYTE)(y0[4]), &sum);
+		cbWrite(dscb, (BYTE)(y0[5]), &sum);
+		cbWrite(dscb, (BYTE)(phi >> 8), &sum);
+		cbWrite(dscb, (BYTE)(phi), &sum);
+		cbWrite(dscb, (BYTE)(theta >> 8), &sum);
+		cbWrite(dscb, (BYTE)(theta), &sum);
+		cbWrite(dscb, (BYTE)(p), &sum);
+		cbWrite(dscb, (BYTE)(q), &sum);
+
+		cbWrite(dscb, (BYTE)(pcontrol >> 8), &sum);
+		cbWrite(dscb, (BYTE)(pcontrol), &sum);
+		cbWrite(dscb, (BYTE)(p1control >> 8), &sum);
+		cbWrite(dscb, (BYTE)(p1control), &sum);
+		cbWrite(dscb, (BYTE)(p2control >> 8), &sum);
+		cbWrite(dscb, (BYTE)(p2control), &sum);
+		cbWrite(dscb, (BYTE)(controltime), &sum);
+
+		// check whether the checksum  is the same as the starting byte
+	   	if (sum == 0x80)
 		{
-			// if the value is -128, correct it to -127
-			storing[i] = 0x81;
-		}
-		// Write to the circular buffer and overwrite if necesary
-		dscb.elems[dscb.end].value = storing[i];
-		dscb.end = (dscb.end + 1) % CBDATA_SIZE;
-		if (dscb.end == dscb.start)
-		{
-			dscb.start = (dscb.start + 1) % CBDATA_SIZE; // full, overwrite 
-		}
+			sum = 0;
+	    	}
+		cbWritenoSum(dscb, (BYTE)(sum));
+	
+		storetime = X32_ms_clock;
+		//functiontime = X32_ms_clock - starttime;
 	}
 	
 }
@@ -852,18 +667,20 @@ void store_data(void)
  */
 void send_data(void)
 {
-
-DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// send data from the data log untill it is empty
 	while (dscb.end != dscb.start)
 	{
 
 		while ( !X32_rs232_txready ) ;
 
-		X32_rs232_data = dscb.elems[dscb.start].value;
-		dscb.start = (dscb.start + 1) % CBDATA_SIZE;	
+		X32_rs232_data = dscb.elems[dscb.start];
+		dscb.start = (dscb.start + 1) % dscb.size;	
+
+		// DEBUG DEBUG
+		X32_display = (dscb.end - dscb.start) % dscb.size;
+		//delay_ms(500);
+		on_led(6);
 	}
-ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
 /*------------------------------------------------------------------
@@ -873,132 +690,64 @@ ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
  */
 void send_telemetry(void)
 {
-	BYTE telem[TELLEN];
-	int j, i, sum;
-	sum = 0;
+	BYTE sum;
 
 	// Checks if more than or 100 ms have passed since the last 
 	// telemetry
-/* final telemetry
-	if (X32_ms_clock - polltime >= 100)
+	if (X32_ms_clock - polltime >= POLLTIMEMS)
 	{
-		j = 0;
-		telem[j++] = STARTING_BYTE;
-		telem[j++] = (BYTE)(X32_ms_clock >> 8);
-		telem[j++] = package[MODE];
-		telem[j++] = package[LIFT];
-		telem[j++] = package[ROLL];
-		telem[j++] = package[PITCH];
-		telem[j++] = package[YAW];
-		telem[j++] = telemetry_flag;
+		// initialize checksum
+		sum = 0;
 
-		// calculate the checksum, dont include starting byte
-		for (i = 1; i < j ; i++)
-		{
-			sum += telem[i];
-		}
-		sum = ~sum;
-        if (sum == 0x80){
-            sum = 0;
-        }
-        
-		telem[j++] = sum;
+		// set a flag when the sum is biger than 0
+		sumae = ae[0] + ae[1] + ae[2] + ae[3];
+		(sumae > 0) ? (telemetry_flag |= 0x04) : (telemetry_flag &= 0x03); 
 
-		// send the data
-		for (i = 0; i < j; i++)
-		{
-			// wait untill tx is ready to send
-			while ( !X32_rs232_txready ) ;
+#ifdef DEBUGGING
+		// profiling
+		//starttime = X32_us_clock;
 
-			X32_rs232_data = telem[i];
-			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
-		}
-		polltime = X32_ms_clock;
-	}
-*/
-	// telemetry for the last lab
-	if (X32_ms_clock - polltime >= 100)
-	{
-		j = 0;
+		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
+		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
+		cbWrite(txcb, package[MODE], &sum);
+		cbWrite(txcb, (BYTE)(functiontime >> 8), &sum);
+		cbWrite(txcb, (BYTE)functiontime, &sum);
+		cbWrite(txcb, 0x01, &sum);
+		cbWrite(txcb, 0x02, &sum);
+		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
-		//DON'T CHANGE
-		telem[j++] = STARTING_BYTE;
-		telem[j++] = (BYTE)(X32_ms_clock >> 8);
-		telem[j++] = package[MODE];
-        telem[j++] = (BYTE)(ae[0] >> 8);
-		telem[j++] = (BYTE)(ae[0]);
-        telem[j++] = (BYTE)(ae[1] >> 8);
-		telem[j++] = (BYTE)(ae[1]);
-        telem[j++] = (BYTE)(ae[2] >> 8);
-		telem[j++] = (BYTE)(ae[2]);
-        telem[j++] = (BYTE)(ae[3] >> 8);
-		telem[j++] = (BYTE)(ae[3]);  
-		//ABLE TO CHANGE
-        telem[j++] = r;
-        telem[j++] = (BYTE)phi >> 8;        
-        telem[j++] = (BYTE)phi;
-        telem[j++] = p;
-        telem[j++] = (BYTE)theta >> 8; 
-		telem[j++] = (BYTE)theta;
-        telem[j++] = q;
-        telem[j++] = pcontrol;
-        telem[j++] = p1control;
-        telem[j++] = p2control;
-        telem[j++] = telemetry_flag;
-		// INCLUDE THE CHECKSUM IN THE COUNT
+		//functiontime = X32_us_clock - starttime;
+		
+// Code for the final lab
+#else
+		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
+		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
+		cbWrite(txcb, (BYTE)(r), &sum);
+		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
+		cbWrite(txcb, (BYTE)(phi), &sum);
+		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
+		cbWrite(txcb, (BYTE)(theta), &sum);
+		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
-		/*telem[j++] = (BYTE)(ae[3]);
-		telem[j++] = (BYTE)(phi >> 8);
-		telem[j++] = (BYTE)(phi);
-		telem[j++] = (BYTE)(theta >> 8);
-		telem[j++] = (BYTE)(theta);
-		telem[j++] = (BYTE)(r >> 8);
-		telem[j++] = (BYTE)(r);
-		telem[j++] = (BYTE)(Z >> 16);
-		telem[j++] = (BYTE)(Z >> 8);
-		telem[j++] = (BYTE)(Z);
-
-		telem[j++] = (BYTE)(L >> 16);
-		telem[j++] = (BYTE)(L >> 8);
-		telem[j++] = (BYTE)(L);
-        //telem[j++] = (BYTE)(package[ROLL] >> 16);
-		//telem[j++] = (BYTE)(package[ROLL] >> 8);
-		//telem[j++] = (BYTE)(package[ROLL]);		
-        telem[j++] = (BYTE)(M >> 16);
-		telem[j++] = (BYTE)(M >> 8);
-		telem[j++] = (BYTE)(M);
-		telem[j++] = (BYTE)(N >> 16);
-		telem[j++] = (BYTE)(N >> 8);
-		telem[j++] = (BYTE)(N);		
-		telem[j++] = telemetry_flag;
-		//telem[j++] = 0xff;*/
-		// STILL INCLUDE THE CHECKSUM IN THE COUNT
-
-
-		// calculate the checksum, dont include starting byte
-		for (i = 1; i < j ; i++)
-		{
-			sum += telem[i];
-		}
-		sum = ~sum;
-		if (sum == 0x80)
+#endif
+		// make sure the checksum isn't the starting byte 0x80
+		if (sum == STARTING_BYTE)
 		{
 			sum = 0x00;
 		}
-		telem[j++] = sum;
 
-		// send the data
-		for (i = 0; i < j; i++)
+		cbWritenoSum(txcb, (BYTE)sum);
+		
+		// Send the data untill the buffer is empty
+		while (txcb.end != txcb.start)
 		{
 			// wait untill tx is ready to send
 			while ( !X32_rs232_txready ) ;
 
-			X32_rs232_data = telem[i];
-			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
+			cbGet(txcb, &X32_rs232_data);	
 		}
 		polltime = X32_ms_clock;
 	}
-	
 }
 
 /*------------------------------------------------------------------
@@ -1009,12 +758,10 @@ void send_telemetry(void)
 int main() 
 {
 	int i;	
-	// Character to store bytes from buffer	
-	BYTE c;
-	// Initialize the Circular buffer and elem to write from
-	ElemType elem;
 
-	BYTE testelems[8];
+
+	/**********************************************************/
+	/*              INTERRUPT INITIALIZING                    */
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -1029,12 +776,6 @@ int main()
         //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 18);
         //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
-	// prepare button interrupt handler
-        SET_INTERRUPT_VECTOR(INTERRUPT_BUTTONS, &isr_button);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_BUTTONS, 8);
-	button = 0;
-        ENABLE_INTERRUPT(INTERRUPT_BUTTONS);	
-
 	// prepare rs232 rx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
@@ -1044,52 +785,34 @@ int main()
 	// prepare rs232 tx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_TX, &isr_rs232_tx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 15);
-        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);        
+        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);       
 
-        // prepare wireless rx interrupt and getchar handler
-        //SET_INTERRUPT_VECTOR(INTERRUPT_WIRELESS_RX, &isr_wireless_rx);
-        //SET_INTERRUPT_PRIORITY(INTERRUPT_WIRELESS_RX, 19);
-        //while (X32_wireless_char) c = X32_wireless_data; // empty buffer
-        //ENABLE_INTERRUPT(INTERRUPT_WIRELESS_RX);
+	/**********************************************************/
+	
 
 	// initialize some other stuff
 	X32_leds = 0;
 	program_done = 0;
 
-	// clean the buffer
-	cbClean(&rxcb);
+	// initializing of the buffers
+	cbInit(&txcb, (TXSIZE - 1), txelems);
+	cbInit(&rxcb, (RXSIZE - 1), rxelems);
+	cbInit(&dscb, (DLOGSIZE - 1), dl);
+
+	// clean the buffers
 	cbClean(&txcb);
-	dscbClean(&dscb);
-	// initialize the buffer
-	cbInit(&rxcb);
-	cbInit(&txcb);
-	dscbInit(&dscb);
+	cbClean(&rxcb);
+	cbClean(&dscb);
 
-
-	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
-	testcbInit(&testcb, 7);
-	testcb.elems = testelems;
-	testcbClean(&testcb);
-
-	// Initialize value to write
-	//elem.value = 0;
-
-	
-	for (i = 0; i < nParams; i++)
-	{
-		package[i] = 0;
-	}
-
-	// Print to indicate start
-	//printf("Hello! \nMode, Parameter 1, Parameter 2, Parameter 3, Parameter 4, Checksum");
+	// profiling variables
+	controltime = 0;
+	maxtime = 0;
 
 	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
-	while (! program_done) {		
-		// profiling the control time	
-		controltime = X32_ms_clock;
-
+	while (! program_done) 
+	{		
 		// reset the commflag to check communication
 		if (commflag++ > commthres)
 		{
@@ -1098,7 +821,8 @@ int main()
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
-		c = cbGet(&rxcb);
+		cbGet(rxcb, &c);
+
 		if (c == STARTING_BYTE)
 		{
 			decode();
@@ -1107,67 +831,90 @@ int main()
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
+						//starttime = X32_us_clock;
 						safe_mode();
-                        calibration_counter = 0;
-						on_led(0);
-						// safe
+						//functiontime = X32_us_clock - starttime;
+                       				calibration_counter = 0;
+						//on_led(0);
 						break;
 					case PANIC_MODE:
-						on_led(1);
+						//on_led(1);
 						panic_mode();	
-						// panic
 						break;
 					case MANUAL_MODE:
-						on_led(2);
+						//on_led(2);
 						manual_mode();
-						// manual
 						break;
 					case CALIBRATION_MODE:
-                        if(calibration_counter < CALIBRATION_THRESHOLD) {						    toggle_led(5);
-                            calibration_mode();
-                        }
-						// calibrate
+                       				if(calibration_counter < CALIBRATION_THRESHOLD) 
+						{	
+							//toggle_led(5);
+                            				calibration_mode();
+                        			}
 						break;
 					case YAW_CONTROL_MODE:
 						yaw_control_mode();		
-						// yaw
 						break;
 					case FULL_CONTROL_MODE:
 						full_control_mode();
-							
-						// full
 						break;
 					case P_CONTROL_MODE:
-                        			p_control_mode();						
-                        			// p
-						break;
+                        			p_control_mode();						break;
 					case ABORT_MODE:
 						program_done++;
-// TODO, doesn't it has to change into panic mode? Maybe abort mode is not the right word
-// if this needs to be done, it has to be done as in the panic mode, with care, not force
-						for (i=0; i < 4; i++) ae[i]=0;
+						for (i = 0; i < 4; i++)
+						{
+							ae[i]=0;
+						}
 						break;					
 					default :
-						// safe
 						break;
 				}
 				
-				// if the package was correct, store the correct data
-				controltime = X32_ms_clock - controltime;
+				// TODO put these in main code where they are necessary
+				//starttime = X32_us_clock;
 
+		        	Butt2Filter();
+
+				//functiontime = X32_us_clock - starttime;
+
+				KalmanFilter();
+				//CheckMotorRamp();
+				
+				
+				// if the package was correct, store the correct data
 				store_data();
+
+				// Current time of the control loop
+				controltime = X32_us_clock - controltime;
+
+				if ((functiontime > maxtime) && controltime < 5000)
+				{
+					maxtime = functiontime;
+				}
+
 				// sends the telemetry at 10Hz
-				send_telemetry();	
-				X32_leds = 0;		
+				starttime = X32_us_clock;
+				send_telemetry();
+				functiontime = X32_us_clock - starttime;
+	
+				//X32_display = maxtime;
+
+				// profiling the control time	
+				controltime = X32_us_clock;
+				
+				// turn l the leds off
+				// X32_leds = 0;		
 			}
 		}
 	}
-	on_led(7);
-
 	// send the data log to the pc
 	send_data();	
+	
+	DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 
-        DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
+	// turn on led 7 when program is finished
+	on_led(7);
 
 	return 0;
 }

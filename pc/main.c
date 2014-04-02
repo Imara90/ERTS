@@ -27,14 +27,16 @@
 #include "mode_selection.h"	// Diogos mode selection function
 
 #define START_BYTE 0x80
-#define TELLEN	      	23
+#define TELLEN	      	8
 #define TELPKGLEN     	TELLEN - 1 
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DATALEN		60
+#define DATALEN		48
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
+
+#define DEBUGGING
 
 //DEBUG
 int sumglobal = 0;
@@ -45,14 +47,15 @@ int telclose = -1;
 int TeleDecode(int* TelPkg/*, int* Output*/){
 	
 	int i;
-	int sum = 0;
-	int ChkSum = TelPkg[TELPKGCHKSUM];
+	BYTE sum = 0;
+	BYTE ChkSum = TelPkg[TELPKGCHKSUM];
 	//CHECKSUM CHECK
 	for(i = 0; i < TELPKGCHKSUM ; i++)
 	{
-		sum += TelPkg[i];
+		//sum += TelPkg[i];
+		sum ^= TelPkg[i];
 	}
-	sum = (BYTE)~sum;
+	//sum = (BYTE)~sum;
    	if (sum == 0x80)
 	{
         	sum = 0x00;
@@ -74,19 +77,20 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 int DLDecode(int* DLPkg/*, int* Output*/){
 	
 	int i;
-	int sum = 0;
-	int ChkSum = DLPkg[DLPKGCHKSUM];
+	BYTE sum = 0;
+	BYTE ChkSum = DLPkg[DLPKGCHKSUM];
 	//CHECKSUM CHECK
 	for(i = 0; i < DLPKGCHKSUM ; i++)
 	{
-		sum += DLPkg[i];
+		//sum += DLPkg[i];
+		sum ^= DLPkg[i];
 	}
-	sum = (BYTE)~sum;
+	//sum = (BYTE)~sum;
     	if (sum == 0x80)
 	{
         	sum = 0x00;
     	}
-	sumglobal = sum;
+	//sumglobal = sum;
 	if (ChkSum == sum)
 	{
 		//DECODING PART
@@ -183,10 +187,6 @@ int main()
 	}
 	
 	while (key != 43) {// + key
-//	printf("%zu", sizeof(int));
-//    	printf("%zu", sizeof(short));
-//    	printf("%zu", sizeof(long));
-		
 		//reads data from the joystick ...comment if joystick is not connected
 		// abort = read_js(jmap);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
@@ -274,68 +274,37 @@ int main()
 						datacount++;
 					}
 					// TELEMETRY DECODING. Only If the store data has the expected size
+
+
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
-					/*	//Prints the stored package
-						for (i = 0; i < TELPKGLEN; i++) {
-							printf("[%x]",TeleData[i]);
-						}
-					*/
-						printf("[%d]",TeleData[0]);
-						printf("[%x]",TeleData[1]);
-                        
-						// ae[0 - 3] - DON'T CHANGE
-                        for(i=0;i<4;i++){						
-                            ae[i] = (TeleData[2+2*i] << 8  | TeleData[3+2*i]);
-                            printf("[E%d:%d]",i,ae[i]);
-                            
-                        }						
-                        //r                        
-                        printf("[r:%d]",(char)TeleData[10]); 
-                        //phi                 
-                        printf("[phi:%d]",(short)(TeleData[11] << 8 | TeleData[12])); 
-                        //phi                 
-                        printf("[p:%d]",(char)TeleData[13]); 
-                        //the                
-                        printf("[the:%d]",(short)(TeleData[14] << 8 | TeleData[15])); 
-                        //q                       
-                        printf("[q:%d]",(char)TeleData[16]); 
-                        //pcontrol                       
-                        printf("[pc:%d]",(char)TeleData[17]); 
-                        //q p1control                     
-                        printf("[p1c:%d]",(char)TeleData[18]); 
-                        //p2control                      
-                        printf("[p2c:%d]",(char)TeleData[19]); 
-						
+#ifdef DEBUGGING
+						printf("[%d], [functiontime: %d], [flag: %x], [CHK: %x]",TeleData[0], (TeleData[1] << 8 | TeleData[2]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);
 
-                        /*// Z - N
-						printf("[%i]", (int)((TeleData[16] << 16) | (TeleData[17] << 8) | TeleData[18]));
-						printf("[%i]", (int)((TeleData[19] << 16) | (TeleData[20] << 8) | TeleData[21]));
-						printf("[%i]", (int)((TeleData[22] << 16) | (TeleData[23] << 8) | TeleData[24]));
-						printf("[%i]", (int)((TeleData[25] << 16) | (TeleData[26] << 8) | TeleData[27]));*/
-						// telemetry flag
-						printf("[%x]",TeleData[TELPKGLEN - 2]);
-						
-
-					/*	for (i = 0; i < TELPKGLEN; i++) {
-							printf("[%x]",TeleData[i]);
-						}
-					*/
-
+// final telemetry 
+#else						
+						printf("\n[r: %d], [phi: %d], [theta: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+#endif						
 						// using the telemetry for mode switching
 						TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
-						
-				
 						// DECODING. Checksum proof and stores decoded values in new array DispData
 						//ChkSumOK = decode(TeleData,&DispData);
 						ChkSumOK = TeleDecode(TeleData);
+						// checksum
+						//printf("[CalcCheck: %x]", sumglobal);
 						printf(" Chksum OK = %i \n",ChkSumOK);
 						//Saves data only if the pkg is complete
-						if (ChkSumOK){
+						if (ChkSumOK)
+						{
 							
 							//Writes the telemetry in a Txt file
-							for (i = 0; i < TELPKGLEN; i++) {
-								fprintf(TeleFile, "%x ", TeleData[i]);
+							for (i = 0; i < TELPKGLEN; i++) 
+							{
+								//if (TeleFile != NULL)
+								//{
+								fprintf(TeleFile, "%x", TeleData[i]);
+								fprintf(TeleFile, " ");
+								//}
 							}
 							fprintf(TeleFile,"\n");
 						}
@@ -349,25 +318,28 @@ int main()
 						//TeleData[datacount] = readbuff;
 						DLData[datacount] = readbuff;
 						datacount++;
+						//printf("storeeeeee");
 					}
 					// DATA LOGGING DECODING. Only If the stored data has the expected size
 					if (datacount == DLPKGLEN) //Complete Pkg Received
 					{
-						printf("DL ");
+						printf("\nDL, ");
 						//Prints the stored package
 						for (i = 0; i < DLPKGLEN; i++) {
 							printf("[%x]",DLData[i]);
 						}
-						//printf("    [%x]", sumglobal);
-						//DECODING. Checksum proof and stores decoded values in new array DispData
-						//ChkSumOK = decode(TeleData,&DispData);
+
 						ChkSumOK = DLDecode(DLData);
 						printf(" Chksum OK = %i \n",ChkSumOK);
 						//Saves data only if the pkg is complete
 						if (ChkSumOK){
 							//Writes the datalog in a Txt file
 							for (i = 0; i < DLPKGLEN; i++) {
-								fprintf(DLfile, "%x ", DLData[i]);
+								//if (DLfile != NULL)
+								//{
+								fprintf(DLfile, "%x", DLData[i]);
+								fprintf(DLfile, " ");
+								//}
 							}
 							fprintf(DLfile,"\n");
 						}
@@ -378,18 +350,25 @@ int main()
 			}
 		} while (nbrx > 0);
 
-		if( (dltimeout++ > 200000) && writeflag == 0){
+		// I increased the time out
+		if( (dltimeout++ > 2000000) && writeflag == 0){
 			rs232_close();
 			printf("Data Login Downloaded... \n");
-			
-			telclose = fclose(TeleFile);
+		
+			if (TeleFile != NULL)
+			{	
+				telclose = fclose(TeleFile);
+			}
 			if (telclose == 0)
 			{
 				printf("\nTelemetry file closed correctly");
 			}
 			else printf("\nTelemetry file closed wrong");
 
-			dataclose = fclose(DLfile);
+			if (DLfile != NULL)
+			{	
+				dataclose = fclose(DLfile);
+			}
 			if (dataclose == 0)
 			{
 				printf("\nDatalog closed correctly");
@@ -397,8 +376,9 @@ int main()
 			else printf("\nDatalog closed wrong");
 		    	
 		    	return 0;
+
 		}
-		
+	
 		
 	}
 	//fclose(DLfile);
