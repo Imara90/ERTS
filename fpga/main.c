@@ -135,20 +135,6 @@ int   stheta = 0;
 int   p_b = 0;
 int   q_b = 0;
 
-//DEFINE SIZE OF DATA LOGGING VARIABLES
-#define DLOGSIZE	50000 
-//data logging variables
-int   dl[DLOGSIZE];
-int   dl_count = 0;
-//#define LogParams	
-#define DATAPACKAGE	48
-
-// telemetry variables should be compliant with pc
-#define TELLEN		8
-
-#define DATASTORETIMEMS	150
-#define POLLTIMEMS	200
-
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
 
@@ -170,7 +156,7 @@ typedef struct {
 	// including extra element for one slot open protocol
 } CircularBuffer;
 
-CircularBuffer rxcb;
+//CircularBuffer rxcb;
 
 /*********************************************************************/
 
@@ -205,7 +191,7 @@ typedef struct {
 	// including extra element for one slot open protocol
 } CBuffer;
 
-CBuffer testcb, txcb, testrxcb;
+CBuffer testcb, txcb, rxcb, testdscb;
 
 /*********************************************************************/
 
@@ -281,6 +267,22 @@ int t0 = 0;
 int t1 = 0;
 int dt = 0;
 int integral[3] = {0,0,0};
+
+// initialize arrays to which the circular buffers are going to point
+BYTE txelems[32];
+BYTE rxelems[64];
+
+//DEFINE SIZE OF DATA LOGGING VARIABLES
+#define DLOGSIZE	50000 
+BYTE   dl[DLOGSIZE];
+int   dl_count = 0;
+//#define LogParams	
+#define DATAPACKAGE	48
+
+// telemetry variables should be compliant with pc
+#define TELLEN		8
+#define DATASTORETIMEMS	150
+#define POLLTIMEMS	200
 
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
@@ -477,19 +479,6 @@ void cbRead(CircularBuffer *cb, ElemType *elem) {
  * By Imara Speek 1506374
  *------------------------------------------------------------------  
  */
-BYTE cbGet(CircularBuffer *cb) {
-	BYTE c;	
-
-	c = cb->elems[cb->start].value;
-	// Whenever the starting byte is read, the package is decoded
-	// To make sure the same package isn't read twice, we overwrite
-	// the starting byte. The package will still decode because of c
-	// and it will not be recognized again. 
-	cb->start = (cb->start + 1) % CB_SIZE;
-
-	return c;
-}
-
 BYTE dscbGet(CircularDataBuffer *cb) {
 	BYTE c;	
 
@@ -591,15 +580,13 @@ void isr_rs232_rx(void)
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
 	{
-		testcbWrite(&testrxcb, (BYTE)X32_rs232_data);
-/*
-		rxcb.elems[rxcb.end].value = (BYTE)X32_rs232_data;
-		rxcb.end = (rxcb.end + 1) % CB_SIZE;
+
+		rxcb.elems[rxcb.end] = (BYTE)X32_rs232_data;
+		rxcb.end = (rxcb.end + 1) % rxcb.size;
 		if (rxcb.end == rxcb.start)
 		{
-			rxcb.start = (rxcb.start + 1) % CB_SIZE; 
+			rxcb.start = (rxcb.start + 1) % rxcb.size; 
 		}	
-*/
 
 	}
 }
@@ -684,7 +671,7 @@ void decode(void)
 	// Changing of the mode is taken care of in the pc part
 	for (i = 0; i < nParams; i++)
 	{
-		package[i] = testcbGet(&testrxcb);
+		package[i] = testcbGet(&rxcb);
 		//package[i] = cbGet(&rxcb);
 	}
 	
@@ -889,7 +876,7 @@ void send_telemetry(void)
 			while ( !X32_rs232_txready ) ;
 
 			X32_rs232_data = testcbGet(&txcb);
-			toggle_led(6);
+			//toggle_led(6);
 		}
 		polltime = X32_ms_clock;
 
@@ -913,10 +900,6 @@ int main()
 	BYTE c;
 	// Initialize the Circular buffer and elem to write from
 	ElemType elem;
-
-	// initialize arrays to which the circular buffers are going to point
-	BYTE txelems[32];
-	BYTE rxelems[32];
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -947,25 +930,29 @@ int main()
 	program_done = 0;
 
 	// clean the buffer
-	cbClean(&rxcb);
+	//cbClean(&rxcb);
 	//cbClean(&txcb);
 	dscbClean(&dscb);
 	// initialize the buffer
-	cbInit(&rxcb);
+	//cbInit(&rxcb);
 	//cbInit(&txcb);
 	dscbInit(&dscb);
 
 
 	// initializing of the buffers
 	testcbInit(&txcb, 31);
-	testcbInit(&testrxcb, 31);
+	testcbInit(&rxcb, 63);
+	testcbInit(&testdscb, (DLOGSIZE - 1));
 	// vector of elements now points to startaddress of txelems
 	txcb.elems = txelems;
-	testrxcb.elems = rxelems;
+	rxcb.elems = rxelems;
+	testdscb.elems = dl;
 
 	// clean the buffers
 	testcbClean(&txcb);
-	testcbClean(&testrxcb);
+	testcbClean(&rxcb);
+	testcbClean(&testdscb);
+
 
 	// profiling variables
 	controltime = 0;
@@ -986,9 +973,7 @@ int main()
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
-		//c = cbGet(&rxcb);
-
-		c = testcbGet(&testrxcb);
+		c = testcbGet(&rxcb);
 
 		if (c == STARTING_BYTE)
 		{
@@ -1047,10 +1032,10 @@ int main()
 				}
 				
 				
-		        	Butt2Filter();
+		        	//Butt2Filter();
 				//starttime = X32_us_clock;
 				
-				KalmanFilter();
+				//KalmanFilter();
 				//functiontime = X32_us_clock - starttime;
 
 				

@@ -283,6 +283,8 @@ int main()
 					*/
 						// time in ms
 						printf("[%d]",TeleData[0]);
+					
+						printf("[mode sent: %d]", mPkg.Pkg[1]);
 
 						printf("[%x]",TeleData[1]);
 
