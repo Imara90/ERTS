@@ -726,58 +726,58 @@ void store_data(void)
 	
 		j = 0;
 
-		dscbWrite(&dscb, (BYTE)STARTING_BYTE);
+		testcbWrite(&testdscb, (BYTE)STARTING_BYTE);
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-		dscbWrite(&dscb, (BYTE)(X32_ms_clock >> 8));
-		dscbWrite(&dscb, (BYTE)(X32_ms_clock));
-		dscbWrite(&dscb, package[MODE]);
-		dscbWrite(&dscb, package[LIFT]);
-		dscbWrite(&dscb, package[ROLL]);
-		dscbWrite(&dscb, package[PITCH]);
-		dscbWrite(&dscb, package[YAW]);
-		dscbWrite(&dscb, (BYTE)(ae[0] >> 8));
-		dscbWrite(&dscb, (BYTE)(ae[0]));
+		testcbWrite(&testdscb, (BYTE)(X32_ms_clock >> 8));
+		testcbWrite(&testdscb, (BYTE)(X32_ms_clock));
+		testcbWrite(&testdscb, package[MODE]);
+		testcbWrite(&testdscb, package[LIFT]);
+		testcbWrite(&testdscb, package[ROLL]);
+		testcbWrite(&testdscb, package[PITCH]);
+		testcbWrite(&testdscb, package[YAW]);
+		testcbWrite(&testdscb, (BYTE)(ae[0] >> 8));
+		testcbWrite(&testdscb, (BYTE)(ae[0]));
 
-		dscbWrite(&dscb, (BYTE)(ae[1] >> 8));
-		dscbWrite(&dscb, (BYTE)(ae[1]));
-		dscbWrite(&dscb, (BYTE)(ae[2] >> 8));
-		dscbWrite(&dscb, (BYTE)(ae[2]));
-		dscbWrite(&dscb, (BYTE)(ae[3] >> 8));
-		dscbWrite(&dscb, (BYTE)(ae[3]));
-		dscbWrite(&dscb, (BYTE)(x0[0] >> 8));
-		dscbWrite(&dscb, (BYTE)(x0[0]));
-		dscbWrite(&dscb, (BYTE)(x0[1] >> 8));
-		dscbWrite(&dscb, (BYTE)(x0[1]));
+		testcbWrite(&testdscb, (BYTE)(ae[1] >> 8));
+		testcbWrite(&testdscb, (BYTE)(ae[1]));
+		testcbWrite(&testdscb, (BYTE)(ae[2] >> 8));
+		testcbWrite(&testdscb, (BYTE)(ae[2]));
+		testcbWrite(&testdscb, (BYTE)(ae[3] >> 8));
+		testcbWrite(&testdscb, (BYTE)(ae[3]));
+		testcbWrite(&testdscb, (BYTE)(x0[0] >> 8));
+		testcbWrite(&testdscb, (BYTE)(x0[0]));
+		testcbWrite(&testdscb, (BYTE)(x0[1] >> 8));
+		testcbWrite(&testdscb, (BYTE)(x0[1]));
 
-		dscbWrite(&dscb, (BYTE)(x0[2] >> 8));
-		dscbWrite(&dscb, (BYTE)(x0[2]));
-		dscbWrite(&dscb, (BYTE)(x0[3] >> 8));
-		dscbWrite(&dscb, (BYTE)(x0[3]));
-		dscbWrite(&dscb, (BYTE)(x0[4] >> 8));
-		dscbWrite(&dscb, (BYTE)(x0[4]));
-		dscbWrite(&dscb, (BYTE)(x0[5] >> 8));
-		dscbWrite(&dscb, (BYTE)(x0[5]));
-		dscbWrite(&dscb, (BYTE)(y0[0]));
-		dscbWrite(&dscb, (BYTE)(y0[1]));
+		testcbWrite(&testdscb, (BYTE)(x0[2] >> 8));
+		testcbWrite(&testdscb, (BYTE)(x0[2]));
+		testcbWrite(&testdscb, (BYTE)(x0[3] >> 8));
+		testcbWrite(&testdscb, (BYTE)(x0[3]));
+		testcbWrite(&testdscb, (BYTE)(x0[4] >> 8));
+		testcbWrite(&testdscb, (BYTE)(x0[4]));
+		testcbWrite(&testdscb, (BYTE)(x0[5] >> 8));
+		testcbWrite(&testdscb, (BYTE)(x0[5]));
+		testcbWrite(&testdscb, (BYTE)(y0[0]));
+		testcbWrite(&testdscb, (BYTE)(y0[1]));
 
-		dscbWrite(&dscb, (BYTE)(y0[2]));
-		dscbWrite(&dscb, (BYTE)(y0[3]));
-		dscbWrite(&dscb, (BYTE)(y0[4]));
-		dscbWrite(&dscb, (BYTE)(y0[5]));
-		dscbWrite(&dscb, (BYTE)(phi >> 8));
-		dscbWrite(&dscb, (BYTE)(phi));
-		dscbWrite(&dscb, (BYTE)(theta >> 8));
-		dscbWrite(&dscb, (BYTE)(theta));
-		dscbWrite(&dscb, (BYTE)(p));
-		dscbWrite(&dscb, (BYTE)(q));
+		testcbWrite(&testdscb, (BYTE)(y0[2]));
+		testcbWrite(&testdscb, (BYTE)(y0[3]));
+		testcbWrite(&testdscb, (BYTE)(y0[4]));
+		testcbWrite(&testdscb, (BYTE)(y0[5]));
+		testcbWrite(&testdscb, (BYTE)(phi >> 8));
+		testcbWrite(&testdscb, (BYTE)(phi));
+		testcbWrite(&testdscb, (BYTE)(theta >> 8));
+		testcbWrite(&testdscb, (BYTE)(theta));
+		testcbWrite(&testdscb, (BYTE)(p));
+		testcbWrite(&testdscb, (BYTE)(q));
 
-		dscbWrite(&dscb, (BYTE)(pcontrol >> 8));
-		dscbWrite(&dscb, (BYTE)(pcontrol));
-		dscbWrite(&dscb, (BYTE)(p1control >> 8));
-		dscbWrite(&dscb, (BYTE)(p1control));
-		dscbWrite(&dscb, (BYTE)(p2control >> 8));
-		dscbWrite(&dscb, (BYTE)(p2control));
-		dscbWrite(&dscb, (BYTE)(controltime));
+		testcbWrite(&testdscb, (BYTE)(pcontrol >> 8));
+		testcbWrite(&testdscb, (BYTE)(pcontrol));
+		testcbWrite(&testdscb, (BYTE)(p1control >> 8));
+		testcbWrite(&testdscb, (BYTE)(p1control));
+		testcbWrite(&testdscb, (BYTE)(p2control >> 8));
+		testcbWrite(&testdscb, (BYTE)(p2control));
+		testcbWrite(&testdscb, (BYTE)(controltime));
 
 /*
 		startpointer = (dscb.end - (DATAPACKAGE - 1)) % CBDATA_SIZE;
@@ -794,12 +794,16 @@ void store_data(void)
 		}
 	*/
 		sum = ~sum;
+
+		// DEBUG DEBUG DEBUG DEBUG
 		sum = 0xff;
+
+		// check whether the checksum  is the same as the starting byte
 	   	if (sum == 0x80)
 		{
 			sum = 0;
 	    	}
-		dscbWrite(&dscb, (BYTE)(sum));
+		testcbWrite(&testdscb, (BYTE)(sum));
 	
 		storetime = X32_ms_clock;
 		//functiontime = X32_ms_clock - starttime;
@@ -818,6 +822,7 @@ void send_data(void)
 
 DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// send data from the data log untill it is empty
+/*
 	while (dscb.end != dscb.start)
 	{
 
@@ -825,6 +830,15 @@ DISABLE_INTERRUPT(INTERRUPT_GLOBAL);
 
 		X32_rs232_data = dscb.elems[dscb.start].value;
 		dscb.start = (dscb.start + 1) % CBDATA_SIZE;	
+	}
+*/
+	while (testdscb.end != testdscb.start)
+	{
+
+		while ( !X32_rs232_txready ) ;
+
+		X32_rs232_data = testdscb.elems[testdscb.start];
+		testdscb.start = (testdscb.start + 1) % testdscb.size;	
 	}
 ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
@@ -895,11 +909,10 @@ void send_telemetry(void)
 int main() 
 {
 	int i;	
-	// Character to store bytes from buffer	. has incompatible type `pointer to CBuffer'
-
 	BYTE c;
-	// Initialize the Circular buffer and elem to write from
-	ElemType elem;
+
+	/**********************************************************/
+	/*              INTERRUPT INITIALIZING                    */
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -932,18 +945,19 @@ int main()
 	// clean the buffer
 	//cbClean(&rxcb);
 	//cbClean(&txcb);
-	dscbClean(&dscb);
+	//dscbClean(&dscb);
 	// initialize the buffer
 	//cbInit(&rxcb);
 	//cbInit(&txcb);
-	dscbInit(&dscb);
+	//dscbInit(&dscb);
 
 
 	// initializing of the buffers
 	testcbInit(&txcb, 31);
 	testcbInit(&rxcb, 63);
 	testcbInit(&testdscb, (DLOGSIZE - 1));
-	// vector of elements now points to startaddress of txelems
+
+	// vector of elements now points defined arrays
 	txcb.elems = txelems;
 	rxcb.elems = rxelems;
 	testdscb.elems = dl;
