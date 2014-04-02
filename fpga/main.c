@@ -1,22 +1,8 @@
 /*------------------------------------------------------------------
- *  based on the qtest - fixing all the todos
- *
- *  reads ae[0-3] from stdin
- *  (q,w,e,r increment ae[0-3], a,s,d,f decrement)
- *
- *  prints ae[0-3],sax,say,saz,sp,sq,sr,delta_t on stdout
- *  where delta_t is the qr-isr exec time
- *
  *  Imara Speek
  *  Embedded Real Time Systems
  *
  *  Version Feb 26, 2014
-
-TODO determine priorities
-TODO control values have to be send
-TODO ask for log that is saved during running
-TODO also want telemetry set and concurring protocol
-
  *------------------------------------------------------------------
  */
 
@@ -82,6 +68,7 @@ TODO also want telemetry set and concurring protocol
 #define FULL_CONTROL_MODE		0x05
 #define P_CONTROL_MODE			0x06
 #define ABORT_MODE					0x07
+
 #define STARTING_BYTE			0x80
 
 // Parameter list numbering
@@ -162,6 +149,7 @@ int	isr_qr_counter;
 int	isr_qr_time;
 int	button;
 int	inst;
+int 	sumae;
 
 void	toggle_led(int);
 void	delay_ms(int);
@@ -230,7 +218,6 @@ BYTE txelems[TXSIZE];
 BYTE rxelems[RXSIZE];
 BYTE   dl[DLOGSIZE];
 
-
 // polling time to determine frequency for telemetry and datastoring
 #define DATASTORETIMEMS	150
 #define POLLTIMEMS	200
@@ -238,7 +225,9 @@ BYTE   dl[DLOGSIZE];
 // variable to save buffer return in
 BYTE 	c;
 
-/*****************************************************************************/
+#define DEBUGGING
+
+
 /******************************MACROS*****************************************/
 
 /*------------------------------------------------------------------
@@ -274,7 +263,7 @@ BYTE 	c;
 #define mult(a, b) (((a) * (b)) >> 14)	
 
 
-/******************************MACROS*****************************************/
+
 /*****************************************************************************/
 
 
@@ -287,7 +276,7 @@ BYTE 	c;
 void Butt2Filter(void)
 {
 	int i;
-	for (i=0; i<6; i++) {
+	for (i=0; i<2; i++) {
 		y0[i] = (mult(A0,x0[i]) + mult(A1,x1[i]) + mult(B1,y1[i]));
  		x1[i] = x0[i];
 		y1[i] = y0[i];
@@ -389,7 +378,7 @@ void isr_qr_link(void)
         inst = X32_instruction_counter;
 
 	// get sensor and timestamp values
-	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; x0[2] = X32_QR_s2; 
+	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
 	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
 	//in case of erros, sensors must go to the main function
@@ -406,10 +395,12 @@ void isr_qr_link(void)
 
 	// monitor presence of interrupts 
 	isr_qr_counter++;
+/*	
 	if (isr_qr_counter % 500 == 0) 
 	{
 		toggle_led(2);
 	}	
+*/
 
 	// Clip engine values to be positive and 10 bits.
 	for (ae_index = 0; ae_index < 4; ae_index++) 
@@ -690,32 +681,52 @@ ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
  */
 void send_telemetry(void)
 {
-	int j, i, sum, sumae;
+	int sum;
 
 	// Checks if more than or 100 ms have passed since the last 
 	// telemetry
 	if (X32_ms_clock - polltime >= POLLTIMEMS)
 	{
-		
-
-		j = 0;
+		starttime = X32_us_clock;
 		sum = 0;
 		sumae = ae[0] + ae[1] + ae[2] + ae[3];
-		
+		(sumae > 0) ? (telemetry_flag | 0x04) : (telemetry_flag & 0x03); 
+
+		functiontime = X32_us_clock - starttime;
+
+#ifdef DEBUGGING
+		// profiling
+		//starttime = X32_us_clock;
+
 		cbWrite(txcb, (BYTE)STARTING_BYTE);
 		cbWrite(txcb, (BYTE)(X32_ms_clock >> 8));
-		//cbWrite(&txcb, (BYTE)package[MODE]);
+		cbWrite(txcb, package[MODE]);
 		cbWrite(txcb, (BYTE)(functiontime >> 8));
-		cbWrite(txcb, (BYTE)(sumae >> 8));
-		cbWrite(txcb, (BYTE)(sumae));
 		cbWrite(txcb, (BYTE)functiontime);
+		cbWrite(txcb, 0x01);
+		cbWrite(txcb, 0x02);
 		cbWrite(txcb, (BYTE)telemetry_flag);
-	
 
+		//functiontime = X32_us_clock - starttime;
 
 		// determining the checksum
-		//sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
-		sum = (BYTE)(X32_ms_clock >> 8) + (BYTE)(functiontime >> 8) + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
+		sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(functiontime >> 8) + (BYTE)(functiontime) + (BYTE)(sumae >> 8) + (BYTE)(sumae) + 0x01 + 0x02 + telemetry_flag;
+		
+// Code for the final lab
+#else
+		cbWrite(txcb, (BYTE)STARTING_BYTE);
+		cbWrite(txcb, (BYTE)(X32_ms_clock >> 8));
+		cbWrite(txcb, (BYTE)(r));
+		cbWrite(txcb, (BYTE)(phi >> 8));
+		cbWrite(txcb, (BYTE)(phi));
+		cbWrite(txcb, (BYTE)(theta >> 8));
+		cbWrite(txcb, (BYTE)(theta));
+		cbWrite(txcb, (BYTE)telemetry_flag);
+
+		sum = (BYTE)(X32_ms_clock >> 8) + (BYTE)(r) + (BYTE)(phi >> 8)) + (BYTE)(phi)) + (BYTE)(theta >> 8)) + (BYTE)(theta)) + telemetry_flag;
+
+
+#endif
 		sum = ~sum;
 
 		// make sure the checksum isn't the starting byte 0x80
@@ -732,15 +743,7 @@ void send_telemetry(void)
 			// wait untill tx is ready to send
 			while ( !X32_rs232_txready ) ;
 
-			// profiling
-			//starttime = X32_us_clock;
-
 			cbGet(txcb, &X32_rs232_data);	
-			// profiling
-			//functiontime = X32_us_clock - starttime;
-			
-	
-			//toggle_led(6);
 		}
 		polltime = X32_ms_clock;
 
@@ -831,9 +834,9 @@ int main()
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
-						starttime = X32_us_clock;
+						//starttime = X32_us_clock;
 						safe_mode();
-						functiontime = X32_us_clock - starttime;
+						//functiontime = X32_us_clock - starttime;
                        				calibration_counter = 0;
 						//on_led(0);
 						break;
@@ -872,7 +875,12 @@ int main()
 				}
 				
 				// TODO put these in main code where they are necessary
+				//starttime = X32_us_clock;
+
 		        	Butt2Filter();
+
+				//functiontime = X32_us_clock - starttime;
+
 				KalmanFilter();
 				//CheckMotorRamp();
 				
@@ -889,7 +897,9 @@ int main()
 				}
 
 				// sends the telemetry at 10Hz
+				//starttime = X32_us_clock;
 				send_telemetry();
+				//functiontime = X32_us_clock - starttime;
 	
 				X32_display = maxtime;
 

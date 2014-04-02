@@ -14,6 +14,17 @@ telemetry sending, no macro us
 
 	0x037C				892 us
 
+		sending 3 bytes more (now 10)
+
+	0x0488				1160 us
+
+		Determining the sum
+	0x0058				88 us
+
+		Currently sending 8 + checksum
+
+	0x03D8				984 us
+
 calculating the checksum in telemetry
 
 	0x0055 - 			85 us
@@ -42,6 +53,11 @@ Butterworth filter 	\\TODO TOOOOO LONG MAN Is this necessary for all variables?
 
 	0x02B2				690 us
 
+		after only doing for 2 values
+
+	0x00FC				252 us
+		
+
 Kalman filter using the mult macro \\ Also too long!
 
 	0x0138				312 us
@@ -53,4 +69,13 @@ Checkmotorramp 			\\ TOO long
 Storing the Data (when it executes)
 
 	0x062A  			1578 us
+
+Current Safe mode
+
+	0x00F7				247 us
+
+Shifting a bit
+
+	0x0037				55 us
+
 
