@@ -112,7 +112,6 @@ TODO also want telemetry set and concurring protocol
 #define B0		16384
 #define B1		15580*/
 
-
 ////filter temporary variables
 int   y0[6] = {0,0,0,0,0,0};
 int   y1[6] = {0,0,0,0,0,0};
@@ -138,46 +137,6 @@ int   q_b = 0;
 //initialize previous state (To prevent ramp-up)
 int   prev_ae[4] = {0, 0, 0, 0};
 
-/*********************************************************************/
-
-// For defining the circular buffer
-// Opaque buffer element type.  This would be defined by the application
-typedef struct { BYTE value; } ElemType;
-
-// fixed size for the buffer, no dyanmic allocation is needed
-// actual size is minus one element because of the one slot open protocol 
-#define CB_SIZE (62 + 1)
- 
-// Circular buffer object 
-typedef struct {
-	int         	start;  	/* index of oldest element              */
-	int	       	end;    	/* index at which to write new element  */
-	ElemType 	elems[CB_SIZE]; /* vector of elements                   */
-	// including extra element for one slot open protocol
-} CircularBuffer;
-
-//CircularBuffer rxcb;
-
-/*********************************************************************/
-
-/*********************************************************************/
-// TODO have to modify this in onder to have good code
-
-// fixed size for the buffer, no dyanmic allocation is needed
-// actual size is minus one element because of the one slot open protocol 
-#define CBDATA_SIZE (50000 + 1)
- 
-// Circular buffer object 
-typedef struct {
-	int         	start;  	/* index of oldest element              */
-	int	       	end;    	/* index at which to write new element  */
-	ElemType 	elems[CBDATA_SIZE]; /* vector of elements                   */
-	// including extra element for one slot open protocol
-} CircularDataBuffer;
-
-CircularDataBuffer dscb;
-
-/*********************************************************************/
 
 /*********************************************************************/
 // actual size is minus one element because of the one slot open protocol 
@@ -191,7 +150,7 @@ typedef struct {
 	// including extra element for one slot open protocol
 } CBuffer;
 
-CBuffer testcb, txcb, rxcb, testdscb;
+CBuffer testcb, txcb, rxcb, dscb;
 
 /*********************************************************************/
 
@@ -225,20 +184,15 @@ int 	pollthres = 15;
 long 	polltime = 0;
 BYTE	telemetry_flag = 0x00;
 
+// Profiling variables
 long 	controltime = 0;
 long 	maxtime = 0;
 long 	storetime = 0;
 long	functiontime = 0;
 long	starttime = 0;
 
+// array to save rx packet in 
 BYTE 	package[nParams];
-
-// Can be changed?
-
-BYTE 	sel_mode, roll, pitch, yaw, lift, checksum;
-BYTE 	prev_mode = 0;		// VARIABLE TO SAVE PREVIOUS MODE
-BYTE	mode = 0;		// ACTUAL OPERATING MODE
-BYTE	last_control_mode = 0;	// VARIABLE TO SAVE LAST_CONTROL_MODE( 4 || 5)
 
 //GLOBALS FOR CONTROL MODES
 long int Z = 0;		// LIFT FORCE
@@ -268,18 +222,14 @@ int dt = 0;
 int integral[3] = {0,0,0};
 
 // initialize arrays to which the circular buffers are going to point
-BYTE txelems[32];
-BYTE rxelems[64];
-
-//DEFINE SIZE OF DATA LOGGING VARIABLES
 #define DLOGSIZE	50000 
-BYTE   dl[DLOGSIZE];
-int   dl_count = 0;
-//#define LogParams	
-#define DATAPACKAGE	48
+#define TXSIZE		32
+#define RXSIZE		64
 
-// telemetry variables should be compliant with pc
-#define TELLEN		8
+BYTE txelems[TXSIZE];
+BYTE rxelems[RXSIZE];
+BYTE   dl[DLOGSIZE];
+
 
 // polling time to determine frequency for telemetry and datastoring
 #define DATASTORETIMEMS	150
@@ -639,58 +589,58 @@ void store_data(void)
 	
 		j = 0;
 
-		cbWrite(testdscb, (BYTE)STARTING_BYTE);
+		cbWrite(dscb, (BYTE)STARTING_BYTE);
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-		cbWrite(testdscb, (BYTE)(X32_ms_clock >> 8));
-		cbWrite(testdscb, (BYTE)(X32_ms_clock));
-		cbWrite(testdscb, package[MODE]);
-		cbWrite(testdscb, package[LIFT]);
-		cbWrite(testdscb, package[ROLL]);
-		cbWrite(testdscb, package[PITCH]);
-		cbWrite(testdscb, package[YAW]);
-		cbWrite(testdscb, (BYTE)(ae[0] >> 8));
-		cbWrite(testdscb, (BYTE)(ae[0]));
+		cbWrite(dscb, (BYTE)(X32_ms_clock >> 8));
+		cbWrite(dscb, (BYTE)(X32_ms_clock));
+		cbWrite(dscb, package[MODE]);
+		cbWrite(dscb, package[LIFT]);
+		cbWrite(dscb, package[ROLL]);
+		cbWrite(dscb, package[PITCH]);
+		cbWrite(dscb, package[YAW]);
+		cbWrite(dscb, (BYTE)(ae[0] >> 8));
+		cbWrite(dscb, (BYTE)(ae[0]));
 
-		cbWrite(testdscb, (BYTE)(ae[1] >> 8));
-		cbWrite(testdscb, (BYTE)(ae[1]));
-		cbWrite(testdscb, (BYTE)(ae[2] >> 8));
-		cbWrite(testdscb, (BYTE)(ae[2]));
-		cbWrite(testdscb, (BYTE)(ae[3] >> 8));
-		cbWrite(testdscb, (BYTE)(ae[3]));
-		cbWrite(testdscb, (BYTE)(x0[0] >> 8));
-		cbWrite(testdscb, (BYTE)(x0[0]));
-		cbWrite(testdscb, (BYTE)(x0[1] >> 8));
-		cbWrite(testdscb, (BYTE)(x0[1]));
+		cbWrite(dscb, (BYTE)(ae[1] >> 8));
+		cbWrite(dscb, (BYTE)(ae[1]));
+		cbWrite(dscb, (BYTE)(ae[2] >> 8));
+		cbWrite(dscb, (BYTE)(ae[2]));
+		cbWrite(dscb, (BYTE)(ae[3] >> 8));
+		cbWrite(dscb, (BYTE)(ae[3]));
+		cbWrite(dscb, (BYTE)(x0[0] >> 8));
+		cbWrite(dscb, (BYTE)(x0[0]));
+		cbWrite(dscb, (BYTE)(x0[1] >> 8));
+		cbWrite(dscb, (BYTE)(x0[1]));
 
-		cbWrite(testdscb, (BYTE)(x0[2] >> 8));
-		cbWrite(testdscb, (BYTE)(x0[2]));
-		cbWrite(testdscb, (BYTE)(x0[3] >> 8));
-		cbWrite(testdscb, (BYTE)(x0[3]));
-		cbWrite(testdscb, (BYTE)(x0[4] >> 8));
-		cbWrite(testdscb, (BYTE)(x0[4]));
-		cbWrite(testdscb, (BYTE)(x0[5] >> 8));
-		cbWrite(testdscb, (BYTE)(x0[5]));
-		cbWrite(testdscb, (BYTE)(y0[0]));
-		cbWrite(testdscb, (BYTE)(y0[1]));
+		cbWrite(dscb, (BYTE)(x0[2] >> 8));
+		cbWrite(dscb, (BYTE)(x0[2]));
+		cbWrite(dscb, (BYTE)(x0[3] >> 8));
+		cbWrite(dscb, (BYTE)(x0[3]));
+		cbWrite(dscb, (BYTE)(x0[4] >> 8));
+		cbWrite(dscb, (BYTE)(x0[4]));
+		cbWrite(dscb, (BYTE)(x0[5] >> 8));
+		cbWrite(dscb, (BYTE)(x0[5]));
+		cbWrite(dscb, (BYTE)(y0[0]));
+		cbWrite(dscb, (BYTE)(y0[1]));
 
-		cbWrite(testdscb, (BYTE)(y0[2]));
-		cbWrite(testdscb, (BYTE)(y0[3]));
-		cbWrite(testdscb, (BYTE)(y0[4]));
-		cbWrite(testdscb, (BYTE)(y0[5]));
-		cbWrite(testdscb, (BYTE)(phi >> 8));
-		cbWrite(testdscb, (BYTE)(phi));
-		cbWrite(testdscb, (BYTE)(theta >> 8));
-		cbWrite(testdscb, (BYTE)(theta));
-		cbWrite(testdscb, (BYTE)(p));
-		cbWrite(testdscb, (BYTE)(q));
+		cbWrite(dscb, (BYTE)(y0[2]));
+		cbWrite(dscb, (BYTE)(y0[3]));
+		cbWrite(dscb, (BYTE)(y0[4]));
+		cbWrite(dscb, (BYTE)(y0[5]));
+		cbWrite(dscb, (BYTE)(phi >> 8));
+		cbWrite(dscb, (BYTE)(phi));
+		cbWrite(dscb, (BYTE)(theta >> 8));
+		cbWrite(dscb, (BYTE)(theta));
+		cbWrite(dscb, (BYTE)(p));
+		cbWrite(dscb, (BYTE)(q));
 
-		cbWrite(testdscb, (BYTE)(pcontrol >> 8));
-		cbWrite(testdscb, (BYTE)(pcontrol));
-		cbWrite(testdscb, (BYTE)(p1control >> 8));
-		cbWrite(testdscb, (BYTE)(p1control));
-		cbWrite(testdscb, (BYTE)(p2control >> 8));
-		cbWrite(testdscb, (BYTE)(p2control));
-		cbWrite(testdscb, (BYTE)(controltime));
+		cbWrite(dscb, (BYTE)(pcontrol >> 8));
+		cbWrite(dscb, (BYTE)(pcontrol));
+		cbWrite(dscb, (BYTE)(p1control >> 8));
+		cbWrite(dscb, (BYTE)(p1control));
+		cbWrite(dscb, (BYTE)(p2control >> 8));
+		cbWrite(dscb, (BYTE)(p2control));
+		cbWrite(dscb, (BYTE)(controltime));
 
 		// TODO determine the right checksum use xor?
 		sum = ~sum;
@@ -703,7 +653,7 @@ void store_data(void)
 		{
 			sum = 0;
 	    	}
-		cbWrite(testdscb, (BYTE)(sum));
+		cbWrite(dscb, (BYTE)(sum));
 	
 		storetime = X32_ms_clock;
 		//functiontime = X32_ms_clock - starttime;
@@ -722,13 +672,13 @@ void send_data(void)
 
 DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// send data from the data log untill it is empty
-	while (testdscb.end != testdscb.start)
+	while (dscb.end != dscb.start)
 	{
 
 		while ( !X32_rs232_txready ) ;
 
-		X32_rs232_data = testdscb.elems[testdscb.start];
-		testdscb.start = (testdscb.start + 1) % testdscb.size;	
+		X32_rs232_data = dscb.elems[dscb.start];
+		dscb.start = (dscb.start + 1) % dscb.size;	
 	}
 ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
@@ -755,17 +705,17 @@ void send_telemetry(void)
 		cbWrite(txcb, (BYTE)STARTING_BYTE);
 		cbWrite(txcb, (BYTE)(X32_ms_clock >> 8));
 		//cbWrite(&txcb, (BYTE)package[MODE]);
-		cbWrite(txcb, (BYTE)(functiontime >> 8));
+		cbWrite(txcb, (BYTE)(controltime >> 8));
 		cbWrite(txcb, (BYTE)(sumae >> 8));
 		cbWrite(txcb, (BYTE)(sumae));
-		cbWrite(txcb, (BYTE)functiontime);
+		cbWrite(txcb, (BYTE)controltime);
 		cbWrite(txcb, (BYTE)telemetry_flag);
 	
 
 
 		// determining the checksum
-		//sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
-		sum = (BYTE)(X32_ms_clock >> 8) + (BYTE)(functiontime >> 8) + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
+		//sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)controltime + telemetry_flag;
+		sum = (BYTE)(X32_ms_clock >> 8) + (BYTE)(controltime >> 8) + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)controltime + telemetry_flag;
 		sum = ~sum;
 
 		// make sure the checksum isn't the starting byte 0x80
@@ -835,21 +785,24 @@ int main()
 	// prepare rs232 tx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_TX, &isr_rs232_tx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 15);
-        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);        
+        ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);       
+
+	/**********************************************************/
+	
 
 	// initialize some other stuff
 	X32_leds = 0;
 	program_done = 0;
 
 	// initializing of the buffers
-	cbInit(&txcb, 31, txelems);
-	cbInit(&rxcb, 63, rxelems);
-	cbInit(&testdscb, (DLOGSIZE - 1), dl);
+	cbInit(&txcb, (TXSIZE - 1), txelems);
+	cbInit(&rxcb, (RXSIZE - 1), rxelems);
+	cbInit(&dscb, (DLOGSIZE - 1), dl);
 
 	// clean the buffers
 	cbClean(&txcb);
 	cbClean(&rxcb);
-	cbClean(&testdscb);
+	cbClean(&dscb);
 
 	// profiling variables
 	controltime = 0;
@@ -928,9 +881,9 @@ int main()
 				// Current time of the control loop
 				controltime = X32_us_clock - controltime;
 
-				if ((functiontime > maxtime) && controltime < 5000)
+				if ((controltime > maxtime) && controltime < 5000)
 				{
-					maxtime = functiontime;
+					maxtime = controltime;
 				}
 
 				starttime = X32_us_clock;
