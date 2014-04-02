@@ -422,7 +422,7 @@ void dscbClean(CircularDataBuffer *cb) {
 }
 
 void testcbClean(CBuffer *cb) {
-	memset(cb->elems, 0, sizeof(ElemType) * cb->size); 	
+	memset(cb->elems, 0, sizeof(BYTE) * cb->size); 	
 }
 
 
@@ -499,6 +499,16 @@ BYTE dscbGet(CircularDataBuffer *cb) {
 	// the starting byte. The package will still decode because of c
 	// and it will not be recognized again. 
 	cb->start = (cb->start + 1) % CBDATA_SIZE;
+
+	return c;
+}
+
+BYTE testcbGet(CBuffer *cb) {
+	BYTE c;	
+
+	// Get the last element in the buffer and return
+	c = cb->elems[cb->start];
+	cb->start = (cb->start + 1) % cb->size;
 
 	return c;
 }
@@ -581,8 +591,6 @@ void isr_rs232_rx(void)
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
 	{
-
-		
 
 		rxcb.elems[rxcb.end].value = (BYTE)X32_rs232_data;
 		rxcb.end = (rxcb.end + 1) % CB_SIZE;
@@ -838,65 +846,18 @@ ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
  */
 void send_telemetry(void)
 {
-	BYTE telem[TELLEN];
 	int j, i, sum, sumae;
 
 	// Checks if more than or 100 ms have passed since the last 
 	// telemetry
-/* final telemetry
-	if (X32_ms_clock - polltime >= 100)
-	{
-		j = 0;
-		telem[j++] = STARTING_BYTE;
-		telem[j++] = (BYTE)(X32_ms_clock >> 8);
-		telem[j++] = package[MODE];
-		telem[j++] = package[LIFT];
-		telem[j++] = package[ROLL];
-		telem[j++] = package[PITCH];
-		telem[j++] = package[YAW];
-		telem[j++] = telemetry_flag;
-
-		// calculate the checksum, dont include starting byte
-		for (i = 1; i < j ; i++)
-		{
-			sum += telem[i];
-		}
-		sum = ~sum;
-        if (sum == 0x80){
-            sum = 0;
-        }
-        . has incompatible type `pointer to CBuffer'
-
-		telem[j++] = sum;
-
-		// send the data
-		for (i = 0; i < j; i++)
-		{
-			// wait untill tx is ready to send
-			while ( !X32_rs232_txready ) ;
-
-			X32_rs232_data = telem[i];
-			dscb.start = (dscb.start + 1) % CBDATA_SIZE;
-		}
-		polltime = X32_ms_clock;
-	}
-*/
-	// telemetry for the last lab
 	if (X32_ms_clock - polltime >= POLLTIMEMS)
 	{
+		// profiling
 		//starttime = X32_ms_clock;
+
 		j = 0;
 		sum = 0;
 		sumae = ae[0] + ae[1] + ae[2] + ae[3];
-/*
-		cbWrite(&txcb, (BYTE)STARTING_BYTE);
-		cbWrite(&txcb, (BYTE)(X32_ms_clock >> 8));
-		cbWrite(&txcb, (BYTE)package[MODE]);
-		cbWrite(&txcb, (BYTE)(sumae >> 8));
-		cbWrite(&txcb, (BYTE)(sumae));
-		cbWrite(&txcb, (BYTE)functiontime);
-		cbWrite(&txcb, (BYTE)telemetry_flag);
-*/
 
 		testcbWrite(&txcb, (BYTE)STARTING_BYTE);
 		testcbWrite(&txcb, (BYTE)(X32_ms_clock >> 8));
@@ -905,84 +866,31 @@ void send_telemetry(void)
 		testcbWrite(&txcb, (BYTE)(sumae));
 		testcbWrite(&txcb, (BYTE)functiontime);
 		testcbWrite(&txcb, (BYTE)telemetry_flag);
-		
-		//ABLE TO CHANGE
-        //telem[j++] = r;
-        //telem[j++] = (BYTE)(phi >> 8);        
-        //telem[j++] = (BYTE)phi;
-        //telem[j++] = p;
-        //telem[j++] = (BYTE)(theta >> 8); 
-	//telem[j++] = (BYTE)theta;
-        //telem[j++] = q;
-        //telem[j++] = pcontrol;
-        //telem[j++] = p1control;
-	//telem[j++] = (BYTE)(controltime >> 8);
-        //telem[j++] = p2control;
 	
-		// INCLUDE THE CHECKSUM IN THE COUNT
-
-		/*telem[j++] = (BYTE)(ae[3]);
-		telem[j++] = (BYTE)(phi >> 8);
-		telem[j++] = (BYTE)(phi);
-		telem[j++] = (BYTE)(theta >> 8);
-		telem[j++] = (BYTE)(theta);
-		telem[j++] = (BYTE)(r >> 8);
-		telem[j++] = (BYTE)(r);
-		telem[j++] = (BYTE)(Z >> 16);
-		telem[j++] = (BYTE)(Z >> 8);
-		telem[j++] = (BYTE)(Z);
-
-		telem[j++] = (BYTE)(L >> 16);
-		telem[j++] = (BYTE)(L >> 8);
-		telem[j++] = (BYTE)(L);
-        //telem[j++] = (BYTE)(package[ROLL] >> 16);
-		//telem[j++] = (BYTE)(package[ROLL] >> 8);
-		//telem[j++] = (BYTE)(package[ROLL]);		
-        telem[j++] = (BYTE)(M >> 16);
-		telem[j++] = (BYTE)(M >> 8);
-		telem[j++] = (BYTE)(M);
-		telem[j++] = (BYTE)(N >> 16);
-		telem[j++] = (BYTE)(N >> 8);
-		telem[j++] = (BYTE)(N);		
-		telem[j++] = telemetry_flag;
-		//telem[j++] = 0xff;*/
-		// STILL INCLUDE THE CHECKSUM IN THE COUNT
-
+		// determining the checksum
 		sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
 		sum = ~sum;
-		if (sum == 0x80)
+
+		// make sure the checksum isn't the starting byte 0x80
+		if (sum == STARTING_BYTE)
 		{
 			sum = 0x00;
 		}
 
-		//cbWrite(&txcb, (BYTE)sum);
-
 		testcbWrite(&txcb, (BYTE)sum);
-
-/*
-		// send the data
+		
+		// Send the data untill the buffer is empty
 		while (txcb.end != txcb.start)
 		{
 			// wait untill tx is ready to send
 			while ( !X32_rs232_txready ) ;
 
-			X32_rs232_data = txcb.elems[txcb.start].value;
-			txcb.start = (txcb.start + 1) % CB_SIZE;	
-		}
-*/
-		
-		
-		// DEBUG DEBUG DEBUG DEBUG DEBUG
-		while (txcb.end != txcb.start)
-		{
-			// wait untill tx is ready to send
-			while ( !X32_rs232_txready ) ;
-
-			X32_rs232_data = txcb.elems[txcb.start];
-			txcb.start = (txcb.start + 1) % txcb.size;	
+			X32_rs232_data = testcbGet(&txcb);
 			toggle_led(6);
 		}
 		polltime = X32_ms_clock;
+
+		// profiling
 		//functiontime = X32_ms_clock - starttime;
 
 	}
@@ -1003,7 +911,8 @@ int main()
 	// Initialize the Circular buffer and elem to write from
 	ElemType elem;
 
-	BYTE testelems[10];
+	// initialize arrays to which the circular buffers are going to point
+	BYTE txelems[32];
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -1018,14 +927,6 @@ int main()
         //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 18);
         //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
-	// prepare button interrupt handler
-/*
-        SET_INTERRUPT_VECTOR(INTERRUPT_BUTTONS, &isr_button);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_BUTTONS, 8);
-	button = 0;
-        ENABLE_INTERRUPT(INTERRUPT_BUTTONS);	
-*/
-
 	// prepare rs232 rx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_RX, 20);
@@ -1036,12 +937,6 @@ int main()
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_TX, &isr_rs232_tx);
         SET_INTERRUPT_PRIORITY(INTERRUPT_PRIMARY_TX, 15);
         ENABLE_INTERRUPT(INTERRUPT_PRIMARY_TX);        
-
-        // prepare wireless rx interrupt and getchar handler
-        //SET_INTERRUPT_VECTOR(INTERRUPT_WIRELESS_RX, &isr_wireless_rx);
-        //SET_INTERRUPT_PRIORITY(INTERRUPT_WIRELESS_RX, 19);
-        //while (X32_wireless_char) c = X32_wireless_data; // empty buffer
-        //ENABLE_INTERRUPT(INTERRUPT_WIRELESS_RX);
 
 	// initialize some other stuff
 	X32_leds = 0;
@@ -1057,24 +952,15 @@ int main()
 	dscbInit(&dscb);
 
 
-	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
-	testcbInit(&txcb, 10);
-	//testcb.elems = testelems;
+	// initializing of the buffers
+	testcbInit(&txcb, 31);
+	// vector of elements now points to startaddress of txelems
+	txcb.elems = txelems;
 	testcbClean(&txcb);
-	//ElemType elem = {0};
 
+	// profiling variables
 	controltime = 0;
 	maxtime = 0;
-
-	// Initialize value to write
-	//elem.value = 0;
-
-	/*
-	for (i = 0; i < 6; i++)
-	{
-		cbWrite(&testcb, i);
-	}
-	*/
 
 	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
