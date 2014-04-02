@@ -300,7 +300,11 @@ int main()
 							//Writes the telemetry in a Txt file
 							for (i = 0; i < TELPKGLEN; i++) 
 							{
-								fprintf(TeleFile, "%x ", TeleData[i]);
+								//if (TeleFile != NULL)
+								//{
+								fprintf(TeleFile, "%x", TeleData[i]);
+								fprintf(TeleFile, " ");
+								//}
 							}
 							fprintf(TeleFile,"\n");
 						}
@@ -324,15 +328,18 @@ int main()
 						for (i = 0; i < DLPKGLEN; i++) {
 							printf("[%x]",DLData[i]);
 						}
-						//DECODING. Checksum proof and stores decoded values in new array DispData
-						//ChkSumOK = decode(TeleData,&DispData);
+
 						ChkSumOK = DLDecode(DLData);
 						printf(" Chksum OK = %i \n",ChkSumOK);
 						//Saves data only if the pkg is complete
 						if (ChkSumOK){
 							//Writes the datalog in a Txt file
 							for (i = 0; i < DLPKGLEN; i++) {
-								fprintf(DLfile, "%x ", DLData[i]);
+								//if (DLfile != NULL)
+								//{
+								fprintf(DLfile, "%x", DLData[i]);
+								fprintf(DLfile, " ");
+								//}
 							}
 							fprintf(DLfile,"\n");
 						}
@@ -347,15 +354,21 @@ int main()
 		if( (dltimeout++ > 2000000) && writeflag == 0){
 			rs232_close();
 			printf("Data Login Downloaded... \n");
-			
-			telclose = fclose(TeleFile);
+		
+			if (TeleFile != NULL)
+			{	
+				telclose = fclose(TeleFile);
+			}
 			if (telclose == 0)
 			{
 				printf("\nTelemetry file closed correctly");
 			}
 			else printf("\nTelemetry file closed wrong");
 
-			dataclose = fclose(DLfile);
+			if (DLfile != NULL)
+			{	
+				dataclose = fclose(DLfile);
+			}
 			if (dataclose == 0)
 			{
 				printf("\nDatalog closed correctly");
@@ -363,6 +376,7 @@ int main()
 			else printf("\nDatalog closed wrong");
 		    	
 		    	return 0;
+
 		}
 	
 		
