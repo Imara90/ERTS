@@ -205,7 +205,7 @@ typedef struct {
 	// including extra element for one slot open protocol
 } CBuffer;
 
-CBuffer testcb, txcb;
+CBuffer testcb, txcb, testrxcb;
 
 /*********************************************************************/
 
@@ -591,13 +591,15 @@ void isr_rs232_rx(void)
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
 	{
-
+		testcbWrite(&testrxcb, (BYTE)X32_rs232_data);
+/*
 		rxcb.elems[rxcb.end].value = (BYTE)X32_rs232_data;
 		rxcb.end = (rxcb.end + 1) % CB_SIZE;
 		if (rxcb.end == rxcb.start)
 		{
 			rxcb.start = (rxcb.start + 1) % CB_SIZE; 
 		}	
+*/
 
 	}
 }
@@ -682,7 +684,8 @@ void decode(void)
 	// Changing of the mode is taken care of in the pc part
 	for (i = 0; i < nParams; i++)
 	{
-		package[i] = cbGet(&rxcb);
+		package[i] = testcbGet(&testrxcb);
+		//package[i] = cbGet(&rxcb);
 	}
 	
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
@@ -913,6 +916,7 @@ int main()
 
 	// initialize arrays to which the circular buffers are going to point
 	BYTE txelems[32];
+	BYTE rxelems[32];
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -954,9 +958,14 @@ int main()
 
 	// initializing of the buffers
 	testcbInit(&txcb, 31);
+	testcbInit(&testrxcb, 31);
 	// vector of elements now points to startaddress of txelems
 	txcb.elems = txelems;
+	testrxcb.elems = rxelems;
+
+	// clean the buffers
 	testcbClean(&txcb);
+	testcbClean(&testrxcb);
 
 	// profiling variables
 	controltime = 0;
@@ -977,7 +986,10 @@ int main()
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
-		c = cbGet(&rxcb);
+		//c = cbGet(&rxcb);
+
+		c = testcbGet(&testrxcb);
+
 		if (c == STARTING_BYTE)
 		{
 			decode();
@@ -1036,10 +1048,10 @@ int main()
 				
 				
 		        	Butt2Filter();
-				starttime = X32_us_clock;
+				//starttime = X32_us_clock;
 				
 				KalmanFilter();
-				functiontime = X32_us_clock - starttime;
+				//functiontime = X32_us_clock - starttime;
 
 				
 
