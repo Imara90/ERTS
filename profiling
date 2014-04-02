@@ -10,6 +10,10 @@ telemetry sending, no macro us
 	0x051E for entire telemetry - 	1310 us
 	0x0040 for a single byte - 	64 us
 
+		using sending macro
+
+	0x037C				892 us
+
 calculating the checksum in telemetry
 
 	0x0055 - 			85 us
@@ -30,10 +34,23 @@ toggleing a led
 
 	0x0041				65 us
 
-Butterworth filter
+Butterworth filter 	\\TODO TOOOOO LONG MAN Is this necessary for all variables?
 
 	0x04C5				1221 us
 	
-		using a macro
+		using a mult macro
 
 	0x02B2				690 us
+
+Kalman filter using the mult macro \\ Also too long!
+
+	0x0138				312 us
+
+Checkmotorramp 			\\ TOO long
+	
+	0x019B				411 us
+
+Storing the Data (when it executes)
+
+	0x062A  			1578 us
+

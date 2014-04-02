@@ -292,9 +292,7 @@ BYTE 	c;
 /******************************MACROS*****************************************/
 
 /*------------------------------------------------------------------
- * Write an elemtype to buffer
- * Write an element, overwriting oldest element if buffer is full. App can
- * choose to avoid the overwrite by checking cbIsFull(). 
+ * Write an element, overwriting oldest element if buffer is full. 
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */ 
@@ -308,8 +306,7 @@ BYTE 	c;
 }
 
 /*------------------------------------------------------------------
- * get char from buffer 
- * Read oldest element. App must ensure !cbIsEmpty() first. 
+ * get oldest element from buffer 
  * By Imara Speek 1506374
  *------------------------------------------------------------------  
  */
@@ -321,7 +318,6 @@ BYTE 	c;
 
 /*------------------------------------------------------------------
  * Fixed Point Multiplication
- * Multiplies the values and then shift them right by 14 bits
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
@@ -337,6 +333,7 @@ BYTE 	c;
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
+// TODO rewrite to marco or position in between switch
 void Butt2Filter(void)
 {
 	int i;
@@ -347,6 +344,7 @@ void Butt2Filter(void)
 	}
 }
 
+
 /*------------------------------------------------------------------
  * Kalman Filter
  * By Diogo Monteiro (21-03-2014)
@@ -354,7 +352,7 @@ void Butt2Filter(void)
  */
 void KalmanFilter(void)
 {
-        
+ // TODO rewrite to marco or position in between switch       
     //Kalman for p, phi    
     sphi = y0[1] - OFFSET_y0[1]; //TODO CONFIRM SENSOR SIGNALS 
     sp = y0[3] - OFFSET_y0[3];
@@ -424,39 +422,6 @@ void cbClean(CBuffer *cb) {
 	memset(cb->elems, 0, sizeof(BYTE) * cb->size); 	
 }
 
-
-/*------------------------------------------------------------------
- * Write an elemtype to buffer
- * Write an element, overwriting oldest element if buffer is full. App can
- * choose to avoid the overwrite by checking cbIsFull(). 
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */ 
-
-void dscbWrite(CircularDataBuffer *cb, BYTE para) {
-    cb->elems[cb->end].value = para;
-    cb->end = (cb->end + 1) % CB_SIZE;
-    if (cb->end == cb->start)
-	{        
-		cb->start = (cb->start + 1) % CB_SIZE; 
-	}
-}
-
-/*------------------------------------------------------------------
- * get char from buffer 
- * Read oldest element. App must ensure !cbIsEmpty() first. 
- * By Imara Speek 1506374
- *------------------------------------------------------------------  
- */
-BYTE dscbGet(CircularDataBuffer *cb) {
-	BYTE c;	
-
-	c = cb->elems[cb->start].value;
-	cb->start = (cb->start + 1) % CBDATA_SIZE;
-
-	return c;
-}
-
 /*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
  * By Daniel Lemus
@@ -478,6 +443,8 @@ void isr_qr_link(void)
 	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
 	timestamp = X32_QR_timestamp;
 	//in case of erros, sensors must go to the main function
+
+	// TODO remove this from the qr IR
 	if(calibration_done)
     	{
         	Butt2Filter();
@@ -725,7 +692,7 @@ void store_data(void)
 		cbWrite(testdscb, (BYTE)(p2control));
 		cbWrite(testdscb, (BYTE)(controltime));
 
-		// TODO determinen the right checksum
+		// TODO determine the right checksum use xor?
 		sum = ~sum;
 
 		// DEBUG DEBUG DEBUG DEBUG
@@ -949,15 +916,12 @@ int main()
 						break;
 				}
 				
-				starttime = X32_us_clock;
+				// TODO put these in main code where they are necessary
 		        	Butt2Filter();
-				functiontime = X32_us_clock - starttime;
+				KalmanFilter();
+				//CheckMotorRamp();
 				
-				//KalmanFilter();
 				
-
-				
-
 				// if the package was correct, store the correct data
 				store_data();
 
@@ -969,8 +933,12 @@ int main()
 					maxtime = functiontime;
 				}
 
+				starttime = X32_us_clock;
 				// sends the telemetry at 10Hz
-				send_telemetry();	
+				send_telemetry();
+				functiontime = X32_us_clock - starttime;
+
+	
 				X32_display = maxtime;
 
 				// profiling the control time	
