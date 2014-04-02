@@ -293,7 +293,6 @@ int mult(int a, int b)
 	unsigned int result;
 	result = a * b;
 	result = (result >> 14);
-//	printf("\nresult(%i * %i) = %i,",a,b,result );
  	return result;
 }
 
@@ -434,29 +433,6 @@ void testcbClean(CBuffer *cb) {
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */ 
-/*
-void cbWrite(CircularBuffer *cb, ElemType *elem) {
-    cb->elems[cb->end] = *elem;
-    cb->end = (cb->end + 1) % CB_SIZE;
-    if (cb->end == cb->start)
-	{        
-		cb->start = (cb->start + 1) % CB_SIZE; 
-	}
-// TODO determine if we want it to overwrite
-}
-*/
-/*
-void dscbWrite(CircularDataBuffer *cb, ElemType *elem) {
-    cb->elems[cb->end] = *elem;
-    cb->end = (cb->end + 1) % CBDATA_SIZE;
-    if (cb->end == cb->start)
-	{        
-		cb->start = (cb->start + 1) % CBDATA_SIZE; 
-	}
-// TODO determine if we want it to overwrite
-}
-*/
-
 void cbWrite(CircularBuffer *cb, BYTE para) {
     cb->elems[cb->end].value = para;
     cb->end = (cb->end + 1) % CB_SIZE;
@@ -472,6 +448,15 @@ void dscbWrite(CircularDataBuffer *cb, BYTE para) {
     if (cb->end == cb->start)
 	{        
 		cb->start = (cb->start + 1) % CB_SIZE; 
+	}
+}
+
+void testcbWrite(CBuffer *cb, BYTE para) {
+    cb->elems[cb->end] = para;
+    cb->end = (cb->end + 1) % cb->size;
+    if (cb->end == cb->start)
+	{        
+		cb->start = (cb->start + 1) % cb->size; 
 	}
 }
 
@@ -500,10 +485,6 @@ BYTE cbGet(CircularBuffer *cb) {
 	// To make sure the same package isn't read twice, we overwrite
 	// the starting byte. The package will still decode because of c
 	// and it will not be recognized again. 
-	//if (c == STARTING_BYTE)
-	//{
-	//	cb->elems[cb->start].value = 0;	
-	//}
 	cb->start = (cb->start + 1) % CB_SIZE;
 
 	return c;
@@ -524,15 +505,7 @@ BYTE dscbGet(CircularDataBuffer *cb) {
 
 /*------------------------------------------------------------------
  * isr_qr_link -- QR link rx interrupt handler
- *------------------------------------------------------------------
- */
-void isr_button(void)
-{
-	button = 1;
-}
-
-/*------------------------------------------------------------------
- * isr_qr_link -- QR link rx interrupt handler
+ * By Daniel Lemus
  *------------------------------------------------------------------
  */
 void isr_qr_link(void)
@@ -608,12 +581,14 @@ void isr_rs232_rx(void)
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
 	{
+/*
 		rxcb.elems[rxcb.end].value = (BYTE)X32_rs232_data;
 		rxcb.end = (rxcb.end + 1) % CB_SIZE;
 		if (rxcb.end == rxcb.start)
 		{
 			rxcb.start = (rxcb.start + 1) % CB_SIZE; 
 		}	
+*/
 	}
 }
 
@@ -662,6 +637,7 @@ void toggle_led(int i)
 
 /*------------------------------------------------------------------
  * led on 
+ * by Imara Speek 1506374
  *------------------------------------------------------------------
  */
 void on_led(int i) 
@@ -670,7 +646,8 @@ void on_led(int i)
 }
 
 /*------------------------------------------------------------------
-led off
+ * led off
+ * by Imara Speek 1506374
  *------------------------------------------------------------------
  */
 void off_led(int i) 
@@ -679,8 +656,7 @@ void off_led(int i)
 }
 
 /*------------------------------------------------------------------
- * Decoding function with a higher execution level
- * Function called in the timer ISR 
+ * Decoding function
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
@@ -887,7 +863,8 @@ void send_telemetry(void)
         if (sum == 0x80){
             sum = 0;
         }
-        
+        . has incompatible type `pointer to CBuffer'
+
 		telem[j++] = sum;
 
 		// send the data
@@ -909,7 +886,7 @@ void send_telemetry(void)
 		j = 0;
 		sum = 0;
 		sumae = ae[0] + ae[1] + ae[2] + ae[3];
-
+/*
 		cbWrite(&txcb, (BYTE)STARTING_BYTE);
 		cbWrite(&txcb, (BYTE)(X32_ms_clock >> 8));
 		cbWrite(&txcb, (BYTE)package[MODE]);
@@ -917,6 +894,15 @@ void send_telemetry(void)
 		cbWrite(&txcb, (BYTE)(sumae));
 		cbWrite(&txcb, (BYTE)functiontime);
 		cbWrite(&txcb, (BYTE)telemetry_flag);
+*/
+
+		testcbWrite(&testcb, (BYTE)STARTING_BYTE);
+		testcbWrite(&testcb, (BYTE)(X32_ms_clock >> 8));
+		testcbWrite(&testcb, (BYTE)package[MODE]);
+		testcbWrite(&testcb, (BYTE)(sumae >> 8));
+		testcbWrite(&testcb, (BYTE)(sumae));
+		testcbWrite(&testcb, (BYTE)functiontime);
+		testcbWrite(&testcb, (BYTE)telemetry_flag);
 		
 		//ABLE TO CHANGE
         //telem[j++] = r;
@@ -967,8 +953,11 @@ void send_telemetry(void)
 			sum = 0x00;
 		}
 
-		cbWrite(&txcb, (BYTE)sum);
+		//cbWrite(&txcb, (BYTE)sum);
 
+		testcbWrite(&testcb, (BYTE)sum);
+
+/*
 		// send the data
 		while (txcb.end != txcb.start)
 		{
@@ -978,9 +967,22 @@ void send_telemetry(void)
 			X32_rs232_data = txcb.elems[txcb.start].value;
 			txcb.start = (txcb.start + 1) % CB_SIZE;	
 		}
+*/
+		
+		
+		// DEBUG DEBUG DEBUG DEBUG DEBUG
+		while (testcb.end != testcb.start)
+		{
+			// wait untill tx is ready to send
+			while ( !X32_rs232_txready ) ;
+
+			X32_rs232_data = testcb.elems[testcb.start];
+			testcb.start = (testcb.start + 1) % testcb.size;	
+			toggle_led(6);
+		}
 		polltime = X32_ms_clock;
 		//functiontime = X32_ms_clock - starttime;
-		
+
 	}
 	
 }
@@ -993,12 +995,13 @@ void send_telemetry(void)
 int main() 
 {
 	int i;	
-	// Character to store bytes from buffer	
+	// Character to store bytes from buffer	. has incompatible type `pointer to CBuffer'
+
 	BYTE c;
 	// Initialize the Circular buffer and elem to write from
 	ElemType elem;
 
-	BYTE testelems[8];
+	BYTE testelems[10];
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
@@ -1014,10 +1017,12 @@ int main()
         //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	// prepare button interrupt handler
+/*
         SET_INTERRUPT_VECTOR(INTERRUPT_BUTTONS, &isr_button);
         SET_INTERRUPT_PRIORITY(INTERRUPT_BUTTONS, 8);
 	button = 0;
         ENABLE_INTERRUPT(INTERRUPT_BUTTONS);	
+*/
 
 	// prepare rs232 rx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
@@ -1051,8 +1056,8 @@ int main()
 
 
 	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
-	testcbInit(&testcb, 7);
-	testcb.elems = testelems;
+	testcbInit(&testcb, 10);
+	//testcb.elems = testelems;
 	testcbClean(&testcb);
 	//ElemType elem = {0};
 
@@ -1062,11 +1067,12 @@ int main()
 	// Initialize value to write
 	//elem.value = 0;
 
-	
-	for (i = 0; i < nParams; i++)
+	/*
+	for (i = 0; i < 6; i++)
 	{
-		package[i] = 0;
+		cbWrite(&testcb, i);
 	}
+	*/
 
 	// Enable all interrupts, starting the system
         ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
@@ -1078,6 +1084,7 @@ int main()
 		{
 			package[MODE] = PANIC_MODE;
 		}	
+
 
 
 		// See if there is a character in the buffer
@@ -1139,15 +1146,24 @@ int main()
 						break;
 				}
 				
+				
+		        	Butt2Filter();
+				starttime = X32_us_clock;
+				
+				KalmanFilter();
+				functiontime = X32_us_clock - starttime;
+
+				
+
 				// if the package was correct, store the correct data
 				store_data();
 
 				// Current time of the control loop
 				controltime = X32_ms_clock - controltime;
 
-				if ((controltime > maxtime) && controltime < 100)
+				if ((functiontime > maxtime) && controltime < 100)
 				{
-					maxtime = controltime;
+					maxtime = functiontime;
 				}
 
 				// sends the telemetry at 10Hz
