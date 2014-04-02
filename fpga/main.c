@@ -319,25 +319,18 @@ BYTE 	c;
 }
 
 
+/*------------------------------------------------------------------
+ * Fixed Point Multiplication
+ * Multiplies the values and then shift them right by 14 bits
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+#define mult(a, b) (((a) * (b)) >> 14)	
+
 
 /******************************MACROS*****************************************/
 /*****************************************************************************/
 
-
-
-/*------------------------------------------------------------------
- * Fixed Point Multiplication
- * Multiplies the values and then shift them right by 14 bits
- * By Daniel Lemus
- *------------------------------------------------------------------
- */
-int mult(int a, int b)
-{
-	unsigned int result;
-	result = a * b;
-	result = (result >> 14);
- 	return result;
-}
 
 /*------------------------------------------------------------------
  * 1st Order Butterworth filter
@@ -415,41 +408,11 @@ void CheckMotorRamp(void)
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
-void cbInit(CircularBuffer *cb) {
-    cb->start = 0;
-    cb->end   = 0;
-}
-void dscbInit(CircularDataBuffer *cb) {
-    cb->start = 0;
-    cb->end   = 0;
-}
-
-void testcbInit(CBuffer *cb, int size) {
+void cbInit(CBuffer *cb, int size, BYTE* array) {
 	cb->size  = size + 1;
 	cb->start = 0;
 	cb->end   = 0;
-}
-
-/*------------------------------------------------------------------
- * Check if circular buffer is full - not used
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */ 
-int cbIsFull(CircularBuffer *cb) {
-    return (cb->end + 1) % CB_SIZE == cb->start;
-}
-
-
-/*------------------------------------------------------------------
- * Check if circular buffer is empty - not used
- * By Imara Speek 1506374
- *------------------------------------------------------------------
- */ 
-int cbIsEmpty(CircularBuffer *cb) {
-    return cb->end == cb->start;
-}
-int testcbIsEmpty(CBuffer *cb) {
-    return cb->end == cb->start;
+	cb->elems = array;
 }
 
 /*------------------------------------------------------------------
@@ -457,14 +420,7 @@ int testcbIsEmpty(CBuffer *cb) {
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */ 
-void cbClean(CircularBuffer *cb) {
-	memset(cb->elems, 0, sizeof(ElemType) * CB_SIZE); 	
-}
-void dscbClean(CircularDataBuffer *cb) {
-	memset(cb->elems, 0, sizeof(ElemType) * CBDATA_SIZE); 	
-}
-
-void testcbClean(CBuffer *cb) {
+void cbClean(CBuffer *cb) {
 	memset(cb->elems, 0, sizeof(BYTE) * cb->size); 	
 }
 
@@ -486,18 +442,6 @@ void dscbWrite(CircularDataBuffer *cb, BYTE para) {
 	}
 }
 
-
-/*------------------------------------------------------------------
- * Read from buffer and store in elem
- * Read oldest element. App must ensure !cbIsEmpty() first. 
- * By Imara Speek 1506374 - not used
- *------------------------------------------------------------------  
- */
-void cbRead(CircularBuffer *cb, ElemType *elem) {
-    *elem = cb->elems[cb->start];
-    cb->start = (cb->start + 1) % CB_SIZE;
-}
-
 /*------------------------------------------------------------------
  * get char from buffer 
  * Read oldest element. App must ensure !cbIsEmpty() first. 
@@ -508,10 +452,6 @@ BYTE dscbGet(CircularDataBuffer *cb) {
 	BYTE c;	
 
 	c = cb->elems[cb->start].value;
-	// Whenever the starting byte is read, the package is decoded
-	// To make sure the same package isn't read twice, we overwrite
-	// the starting byte. The package will still decode because of c
-	// and it will not be recognized again. 
 	cb->start = (cb->start + 1) % CBDATA_SIZE;
 
 	return c;
@@ -595,14 +535,7 @@ void isr_rs232_rx(void)
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
 	{
-
-		rxcb.elems[rxcb.end] = (BYTE)X32_rs232_data;
-		rxcb.end = (rxcb.end + 1) % rxcb.size;
-		if (rxcb.end == rxcb.start)
-		{
-			rxcb.start = (rxcb.start + 1) % rxcb.size; 
-		}	
-
+		cbWrite(rxcb, (BYTE)X32_rs232_data)
 	}
 }
 
@@ -615,7 +548,6 @@ void isr_rs232_tx(void)
 {
 	// signal interrupt
 	toggle_led(4);
-
 }
 
 /*------------------------------------------------------------------
@@ -687,7 +619,6 @@ void decode(void)
 	for (i = 0; i < nParams; i++)
 	{
 		 cbGet(rxcb, &package[i]);
-		//package[i] = cbGet(&rxcb);
 	}
 	
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
@@ -794,20 +725,7 @@ void store_data(void)
 		cbWrite(testdscb, (BYTE)(p2control));
 		cbWrite(testdscb, (BYTE)(controltime));
 
-/*
-		startpointer = (dscb.end - (DATAPACKAGE - 1)) % CBDATA_SIZE;
-		for ( ; startpointer == dscb.end ; (startpointer++) % CBDATA_SIZE)
-		{  
-			sum += dscb.elems[startpointer].value;
-		}
-*/
-
-	    	// calculate the checksum, dont include starting byte
-	/*	for (i = 1; i < j ; i++)
-		{
-			sum += storing[i];
-		}
-	*/
+		// TODO determinen the right checksum
 		sum = ~sum;
 
 		// DEBUG DEBUG DEBUG DEBUG
@@ -837,16 +755,6 @@ void send_data(void)
 
 DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	// send data from the data log untill it is empty
-/*
-	while (dscb.end != dscb.start)
-	{
-
-		while ( !X32_rs232_txready ) ;
-
-		X32_rs232_data = dscb.elems[dscb.start].value;
-		dscb.start = (dscb.start + 1) % CBDATA_SIZE;	
-	}
-*/
 	while (testdscb.end != testdscb.start)
 	{
 
@@ -908,11 +816,11 @@ void send_telemetry(void)
 			while ( !X32_rs232_txready ) ;
 
 			// profiling
-			starttime = X32_us_clock;
+			//starttime = X32_us_clock;
 
 			cbGet(txcb, &X32_rs232_data);	
 			// profiling
-			functiontime = X32_us_clock - starttime;
+			//functiontime = X32_us_clock - starttime;
 			
 	
 			//toggle_led(6);
@@ -966,31 +874,15 @@ int main()
 	X32_leds = 0;
 	program_done = 0;
 
-	// clean the buffer
-	//cbClean(&rxcb);
-	//cbClean(&txcb);
-	//dscbClean(&dscb);
-	// initialize the buffer
-	//cbInit(&rxcb);
-	//cbInit(&txcb);
-	//dscbInit(&dscb);
-
-
 	// initializing of the buffers
-	testcbInit(&txcb, 31);
-	testcbInit(&rxcb, 63);
-	testcbInit(&testdscb, (DLOGSIZE - 1));
-
-	// vector of elements now points defined arrays
-	txcb.elems = txelems;
-	rxcb.elems = rxelems;
-	testdscb.elems = dl;
+	cbInit(&txcb, 31, txelems);
+	cbInit(&rxcb, 63, rxelems);
+	cbInit(&testdscb, (DLOGSIZE - 1), dl);
 
 	// clean the buffers
-	testcbClean(&txcb);
-	testcbClean(&rxcb);
-	testcbClean(&testdscb);
-
+	cbClean(&txcb);
+	cbClean(&rxcb);
+	cbClean(&testdscb);
 
 	// profiling variables
 	controltime = 0;
@@ -1021,40 +913,31 @@ int main()
 					case SAFE_MODE:
 						safe_mode();
                        				calibration_counter = 0;
-						on_led(0);
-						// safe
+						//on_led(0);
 						break;
 					case PANIC_MODE:
-						on_led(1);
+						//on_led(1);
 						panic_mode();	
-						// panic
 						break;
 					case MANUAL_MODE:
-						on_led(2);
+						//on_led(2);
 						manual_mode();
-						// manual
 						break;
 					case CALIBRATION_MODE:
                        				if(calibration_counter < CALIBRATION_THRESHOLD) 
 						{	
-							toggle_led(5);
+							//toggle_led(5);
                             				calibration_mode();
                         			}
-						// calibrate
 						break;
 					case YAW_CONTROL_MODE:
 						yaw_control_mode();		
-						// yaw
 						break;
 					case FULL_CONTROL_MODE:
 						full_control_mode();
-							
-						// full
 						break;
 					case P_CONTROL_MODE:
-                        			p_control_mode();						
-                        			// p
-						break;
+                        			p_control_mode();						break;
 					case ABORT_MODE:
 						program_done++;
 						for (i = 0; i < 4; i++)
@@ -1063,16 +946,15 @@ int main()
 						}
 						break;					
 					default :
-						// safe
 						break;
 				}
 				
-				
-		        	//Butt2Filter();
-				//starttime = X32_us_clock;
+				starttime = X32_us_clock;
+		        	Butt2Filter();
+				functiontime = X32_us_clock - starttime;
 				
 				//KalmanFilter();
-				//functiontime = X32_us_clock - starttime;
+				
 
 				
 
@@ -1080,9 +962,9 @@ int main()
 				store_data();
 
 				// Current time of the control loop
-				controltime = X32_ms_clock - controltime;
+				controltime = X32_us_clock - controltime;
 
-				if ((functiontime > maxtime) && controltime < 100)
+				if ((functiontime > maxtime) && controltime < 5000)
 				{
 					maxtime = functiontime;
 				}
@@ -1092,7 +974,7 @@ int main()
 				X32_display = maxtime;
 
 				// profiling the control time	
-				controltime = X32_ms_clock;
+				controltime = X32_us_clock;
 				
 				// turn l the leds off
 				X32_leds = 0;		

@@ -1,4 +1,4 @@
-Profiling times per function
+Profiling times per function, all maximum times
 
 telemetry sending, no macro us
 
@@ -21,3 +21,19 @@ Sending a single byte with get
 		using the macro
 
 	0x0053 for single byte		83 us
+
+receiving the characters in rx
+
+	for a single byte		24 us				
+
+toggleing a led
+
+	0x0041				65 us
+
+Butterworth filter
+
+	0x04C5				1221 us
+	
+		using a macro
+
+	0x02B2				690 us
