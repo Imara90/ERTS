@@ -224,8 +224,10 @@ int main()
 		
 			//EVALUATES IF ABORTION REQUESTED
 			if (abort == 1) keymap[0] = MODE_ABORT;
-			//MODE SELECTIONA		
+			//MODE SELECTIONA
+				//printf("selected mode: %d ", keymap[0]);		
 			mode_selection(keymap, data[0]);
+				//printf("actual mode: %d \n ", keymap[0]);
 			//SETS THE PACKAGE WITH THE DESIRED DATA
 			SetPkgMode(&mPkg, keymap[0]);
 			SetPkgData(&mPkg, data);
