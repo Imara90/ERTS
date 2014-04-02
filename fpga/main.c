@@ -705,17 +705,17 @@ void send_telemetry(void)
 		cbWrite(txcb, (BYTE)STARTING_BYTE);
 		cbWrite(txcb, (BYTE)(X32_ms_clock >> 8));
 		//cbWrite(&txcb, (BYTE)package[MODE]);
-		cbWrite(txcb, (BYTE)(controltime >> 8));
+		cbWrite(txcb, (BYTE)(functiontime >> 8));
 		cbWrite(txcb, (BYTE)(sumae >> 8));
 		cbWrite(txcb, (BYTE)(sumae));
-		cbWrite(txcb, (BYTE)controltime);
+		cbWrite(txcb, (BYTE)functiontime);
 		cbWrite(txcb, (BYTE)telemetry_flag);
 	
 
 
 		// determining the checksum
-		//sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)controltime + telemetry_flag;
-		sum = (BYTE)(X32_ms_clock >> 8) + (BYTE)(controltime >> 8) + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)controltime + telemetry_flag;
+		//sum = (BYTE)(X32_ms_clock >> 8) + package[MODE] + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
+		sum = (BYTE)(X32_ms_clock >> 8) + (BYTE)(functiontime >> 8) + (BYTE)(sumae >> 8) + (BYTE)(sumae) + (BYTE)functiontime + telemetry_flag;
 		sum = ~sum;
 
 		// make sure the checksum isn't the starting byte 0x80
@@ -831,7 +831,9 @@ int main()
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
+						starttime = X32_us_clock;
 						safe_mode();
+						functiontime = X32_us_clock - starttime;
                        				calibration_counter = 0;
 						//on_led(0);
 						break;
@@ -881,16 +883,13 @@ int main()
 				// Current time of the control loop
 				controltime = X32_us_clock - controltime;
 
-				if ((controltime > maxtime) && controltime < 5000)
+				if ((functiontime > maxtime) && controltime < 5000)
 				{
-					maxtime = controltime;
+					maxtime = functiontime;
 				}
 
-				starttime = X32_us_clock;
 				// sends the telemetry at 10Hz
 				send_telemetry();
-				functiontime = X32_us_clock - starttime;
-
 	
 				X32_display = maxtime;
 
