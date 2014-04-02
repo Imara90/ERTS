@@ -1,11 +1,23 @@
-Profiling times pepr function
+Profiling times per function
 
 telemetry sending, no macro us
 
-	0x06CA for entire telemetry 
-	0x005B for a single byte
+	0x06CA for entire telemetry -	1738 us
+	0x005B for a single byte - 	91 us
 
-using the marco
+		using the marco
 
-	0x0040 for a single byte
+	0x051E for entire telemetry - 	1310 us
+	0x0040 for a single byte - 	64 us
 
+calculating the checksum in telemetry
+
+	0x0055 - 			85 us
+
+Sending a single byte with get
+
+	0x0096 for single byte		150 us
+	
+		using the macro
+
+	0x0053 for single byte		83 us
