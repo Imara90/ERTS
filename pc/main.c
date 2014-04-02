@@ -27,7 +27,8 @@
 #include "mode_selection.h"	// Diogos mode selection function
 
 #define START_BYTE 0x80
-#define TELLEN	      	8
+//#define TELLEN	      	8
+#define TELLEN	      	22
 #define TELPKGLEN     	TELLEN - 1 
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
@@ -86,7 +87,6 @@ int TeleDebugDecode(int* TelPkg/*, int* Output*/){
 	//CHECKSUM CHECK
 	for(i = 0; i < DEBUGTELPKGCHKSUM ; i++)
 	{
-		//sum += TelPkg[i];
 		sum ^= TelPkg[i];
 	}
 	//sum = (BYTE)~sum;
@@ -94,9 +94,6 @@ int TeleDebugDecode(int* TelPkg/*, int* Output*/){
 	{
         	sum = 0x00;
     	}
-	// DEBUG
-	//sumglobal = sum;
-//	printf("[%x][%x]",,ChkSum);
 	if (ChkSum == sum)
 	{
 		//DECODING PART
@@ -141,8 +138,8 @@ int main()
 	term_nonblocking();
 	keyboard_nonblocking();
     
-    //Engine Values for mode selection
-    int ae[4]={0,0,0,0};
+    	//Engine Values for mode selection
+    	int ae[4]={0,0,0,0};
 	//Initializes the keymap from the keyboarde
 	int keymap[8] = {MODE_SAFE,0,0,0,0,0,0,0};
 	//Initializes the keymap from the keyboard
@@ -234,14 +231,14 @@ int main()
 			DLreq = 1;
 			datacount = 0; // Resets the counter (Reading new data)
 		}
-		jmap[0]=0;
+		
 		
 		if (writeflag == 1)
 		{
 			
 			// Handle the pressed key and joystick commands
 			if (key != -1) abort = read_kb(keymap,(char*)&key);
-		
+			
 			switch (keymap[0]) 
 			{
 				case MODE_P: //CONTROL GAINS, Starting from the second place in data array (First place is reserved for lift value)
@@ -263,11 +260,11 @@ int main()
 			if (abort == 1) keymap[0] = MODE_ABORT;
 			//MODE SELECTION
 			//if(keymap[0] != 0) printf("selected mode: %d l:%d tel:%x\n ", keymap[0],jmap[0],keymap[1]);		
-			mode_selection(keymap, data[0]);
+			mode_selection(keymap, data[0]); 
 				//if(keymap[0] != 0)printf("actual mode: %d \n ", keymap[0]);
 			//SETS THE PACKAGE WITH THE DESIRED DATA
 			SetPkgMode(&mPkg, keymap[0]);
-			SetPkgData(&mPkg, data);
+			SetPkgData(&mPkg, data); 
 			//Prints the package
 			/*for (i = 0; i < PKGLEN; i++) {
 				printf("[%x]",mPkg.Pkg[i]);
@@ -318,7 +315,8 @@ int main()
 					}
 					// TELEMETRY DECODING. Only If the store data has the expected size
 
-#ifdef DEBUGGING
+//#ifdef DEBUGGING
+/*
 					if (datacount == DEBUGTELPKGLEN) //Complete Pkg Received
 					{
 						printf("[mode: %d], [ae[0]: %d], [ae[1]: %d], [ae[2]: %d], [ae[3]: %d], [r: %d], [phi: %d], [p: %d], [theta: %d], [q: %d], [pctr: %d], [p1ct: %d], [p2ctr: %d], [flag: %x], [CHK: %x]", TeleData[0], (TeleData[1] << 8 | TeleData[2]), (TeleData[3] << 8 | TeleData[4]), (TeleData[5] << 8 | TeleData[6]), (TeleData[7] << 8 | TeleData[8]), TeleData[9], (TeleData[10] << 8 | TeleData[11]), TeleData[12], (TeleData[13] << 8 | TeleData[14]), TeleData[15], TeleData[16], TeleData[17], TeleData[18], TeleData[19], TeleData[20]);					
@@ -346,10 +344,34 @@ int main()
 							fprintf(TeleFile,"\n");
 						}
 					}
-
+*/
 // final telemetry 
-#else						
+//#else						
 						
+					if (datacount == TELPKGLEN) //Complete Pkg Received
+					{
+						printf("[mode: %d], [ae[0]: %d], [ae[1]: %d], [ae[2]: %d], [ae[3]: %d], [r: %d], [phi: %d], [p: %d], [theta: %d], [q: %d], [pctr: %d], [p1ct: %d], [p2ctr: %d], [flag: %x], [CHK: %x]", TeleData[0], (TeleData[1] << 8 | TeleData[2]), (TeleData[3] << 8 | TeleData[4]), (TeleData[5] << 8 | TeleData[6]), (TeleData[7] << 8 | TeleData[8]), TeleData[9], (TeleData[10] << 8 | TeleData[11]), TeleData[12], (TeleData[13] << 8 | TeleData[14]), TeleData[15], TeleData[16], TeleData[17], TeleData[18], TeleData[19], TeleData[20]);					
+
+						// using the telemetry for mode switching
+						TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
+						// DECODING. Checksum proof and stores decoded values in new array DispData
+						ChkSumOK = TeleDecode(TeleData);
+						// checksum
+						printf(" Chksum OK = %i \n",ChkSumOK);
+						//Saves data only if the pkg is complete
+						if (ChkSumOK)
+						{
+							
+							//Writes the telemetry in a Txt file
+							for (i = 0; i < TELPKGLEN; i++) 
+							{
+								fprintf(TeleFile, "%x", TeleData[i]);
+								fprintf(TeleFile, " ");
+							}
+							fprintf(TeleFile,"\n");
+						}
+					}
+/*
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
 						printf("\n[r: %d], [phi: %d], [theta: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
@@ -373,7 +395,8 @@ int main()
 							fprintf(TeleFile,"\n");
 						}
 					}
-#endif	
+*/
+//#endif	
 				}
 
 
