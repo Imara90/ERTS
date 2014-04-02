@@ -170,7 +170,7 @@ typedef struct {
 	// including extra element for one slot open protocol
 } CircularBuffer;
 
-CircularBuffer txcb, rxcb;
+CircularBuffer rxcb;
 
 /*********************************************************************/
 
@@ -205,7 +205,7 @@ typedef struct {
 	// including extra element for one slot open protocol
 } CBuffer;
 
-CBuffer testcb;
+CBuffer testcb, txcb;
 
 /*********************************************************************/
 
@@ -581,14 +581,16 @@ void isr_rs232_rx(void)
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
 	{
-/*
+
+		
+
 		rxcb.elems[rxcb.end].value = (BYTE)X32_rs232_data;
 		rxcb.end = (rxcb.end + 1) % CB_SIZE;
 		if (rxcb.end == rxcb.start)
 		{
 			rxcb.start = (rxcb.start + 1) % CB_SIZE; 
 		}	
-*/
+
 	}
 }
 
@@ -896,13 +898,13 @@ void send_telemetry(void)
 		cbWrite(&txcb, (BYTE)telemetry_flag);
 */
 
-		testcbWrite(&testcb, (BYTE)STARTING_BYTE);
-		testcbWrite(&testcb, (BYTE)(X32_ms_clock >> 8));
-		testcbWrite(&testcb, (BYTE)package[MODE]);
-		testcbWrite(&testcb, (BYTE)(sumae >> 8));
-		testcbWrite(&testcb, (BYTE)(sumae));
-		testcbWrite(&testcb, (BYTE)functiontime);
-		testcbWrite(&testcb, (BYTE)telemetry_flag);
+		testcbWrite(&txcb, (BYTE)STARTING_BYTE);
+		testcbWrite(&txcb, (BYTE)(X32_ms_clock >> 8));
+		testcbWrite(&txcb, (BYTE)package[MODE]);
+		testcbWrite(&txcb, (BYTE)(sumae >> 8));
+		testcbWrite(&txcb, (BYTE)(sumae));
+		testcbWrite(&txcb, (BYTE)functiontime);
+		testcbWrite(&txcb, (BYTE)telemetry_flag);
 		
 		//ABLE TO CHANGE
         //telem[j++] = r;
@@ -955,7 +957,7 @@ void send_telemetry(void)
 
 		//cbWrite(&txcb, (BYTE)sum);
 
-		testcbWrite(&testcb, (BYTE)sum);
+		testcbWrite(&txcb, (BYTE)sum);
 
 /*
 		// send the data
@@ -971,13 +973,13 @@ void send_telemetry(void)
 		
 		
 		// DEBUG DEBUG DEBUG DEBUG DEBUG
-		while (testcb.end != testcb.start)
+		while (txcb.end != txcb.start)
 		{
 			// wait untill tx is ready to send
 			while ( !X32_rs232_txready ) ;
 
-			X32_rs232_data = testcb.elems[testcb.start];
-			testcb.start = (testcb.start + 1) % testcb.size;	
+			X32_rs232_data = txcb.elems[txcb.start];
+			txcb.start = (txcb.start + 1) % txcb.size;	
 			toggle_led(6);
 		}
 		polltime = X32_ms_clock;
@@ -1047,18 +1049,18 @@ int main()
 
 	// clean the buffer
 	cbClean(&rxcb);
-	cbClean(&txcb);
+	//cbClean(&txcb);
 	dscbClean(&dscb);
 	// initialize the buffer
 	cbInit(&rxcb);
-	cbInit(&txcb);
+	//cbInit(&txcb);
 	dscbInit(&dscb);
 
 
 	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
-	testcbInit(&testcb, 10);
+	testcbInit(&txcb, 10);
 	//testcb.elems = testelems;
-	testcbClean(&testcb);
+	testcbClean(&txcb);
 	//ElemType elem = {0};
 
 	controltime = 0;
