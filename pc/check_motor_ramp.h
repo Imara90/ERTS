@@ -43,4 +43,5 @@ void check_motor_ramp(int *actual_lift) {
 			} 
         }
     }    
+prev_lift = *actual_lift;
 }

@@ -224,11 +224,11 @@ int main()
 		
 			//EVALUATES IF ABORTION REQUESTED
 			if (abort == 1) keymap[0] = MODE_ABORT;
-			//MODE SELECTIONA
-				//printf("selected mode: %d ", keymap[0]);		
+			
+			//MODE SELECTIONA		
 			mode_selection(keymap, data[0]);
-            check_motor_ramp(data);
-				//printf("actual mode: %d \n ", keymap[0]);
+            		check_motor_ramp(data);
+				
 			//SETS THE PACKAGE WITH THE DESIRED DATA
 			SetPkgMode(&mPkg, keymap[0]);
 			SetPkgData(&mPkg, data);
@@ -287,7 +287,8 @@ int main()
 
 // final telemetry 
 #else						
-						printf("\n[r: %d], [phi: %d], [theta: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+						//printf("\n[r: %d], [phi: %d], [theta: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+printf("\n[r: %d], [ae[0]: %d], [pcontrol: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (char)(TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
 #endif						
 						// using the telemetry for mode switching
 						TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
@@ -327,6 +328,7 @@ int main()
 					// DATA LOGGING DECODING. Only If the stored data has the expected size
 					if (datacount == DLPKGLEN) //Complete Pkg Received
 					{
+						datacount = 0;
 						printf("\nDL, ");
 						//Prints the stored package
 						for (i = 0; i < DLPKGLEN; i++) {
@@ -341,7 +343,7 @@ int main()
 							for (i = 0; i < DLPKGLEN; i++) {
 								//if (DLfile != NULL)
 								//{
-								fprintf(DLfile, "%x", DLData[i]);
+								fprintf(DLfile, "%d", DLData[i]);
 								fprintf(DLfile, " ");
 								//}
 							}
@@ -353,6 +355,7 @@ int main()
 				dltimeout = 0;
 			}
 		} while (nbrx > 0);
+
 
 		// I increased the time out
 		if( (dltimeout++ > 2000000) && writeflag == 0){
@@ -381,8 +384,7 @@ int main()
 		    	
 		    	return 0;
 
-		}
-	
+		}	
 		
 	}
 	//fclose(DLfile);

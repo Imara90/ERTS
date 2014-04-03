@@ -416,12 +416,12 @@ void isr_qr_link(void)
 	// Send actuator values
 	// (Need to supply a continous stream, otherwise
 	// QR will go to safe mode, so just send every ms)
-/*
+
 	X32_QR_a0 = ae[0];
 	X32_QR_a1 = ae[1];
 	X32_QR_a2 = ae[2];
 	X32_QR_a3 = ae[3];
-*/
+
 
 	//functiontime = X32_us_clock - starttime;
 }
@@ -633,7 +633,7 @@ void store_data(void)
 		cbWrite(dscb, (BYTE)(controltime), &sum);*/
 
         //FINAL DATALOG
-        cbWrite(dscb, (BYTE)(X32_ms_clock - storetime), &sum);
+        	cbWrite(dscb, (BYTE)(X32_ms_clock - storetime), &sum);
 		cbWrite(dscb, package[MODE], &sum);
 		cbWrite(dscb, package[LIFT], &sum);
 		cbWrite(dscb, package[ROLL], &sum);
@@ -737,8 +737,10 @@ void send_telemetry(void)
 		//cbWrite(txcb, (BYTE)controltime, &sum);
 		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
 		cbWrite(txcb, (BYTE)(ae[0]), &sum);
-		cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
-		cbWrite(txcb, (BYTE)(ae[1]), &sum);
+		//cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(0x00), &sum);
+		cbWrite(txcb, (BYTE)(0x01), &sum);
+		//cbWrite(txcb, (BYTE)(ae[1]), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
 		//functiontime = X32_us_clock - starttime;
@@ -746,12 +748,20 @@ void send_telemetry(void)
 // Code for the final lab
 #else
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
-		//cbWrite(txcb, (BYTE)(package[MODE]), &sum);
 		cbWrite(txcb, (BYTE)(r), &sum);
-		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
-		cbWrite(txcb, (BYTE)(phi), &sum);
-		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
-		cbWrite(txcb, (BYTE)(theta), &sum);
+
+		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[0]), &sum);
+		//cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
+		//cbWrite(txcb, (BYTE)(ae[1]), &sum);
+
+		cbWrite(txcb, (BYTE)(0x00), &sum);
+		cbWrite(txcb, (BYTE)(pcontrol), &sum);
+
+		//cbWrite(txcb, (BYTE)(phi >> 8), &sum);
+		//cbWrite(txcb, (BYTE)(phi), &sum);
+		//cbWrite(txcb, (BYTE)(theta >> 8), &sum);
+		//cbWrite(txcb, (BYTE)(theta), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
 #endif
@@ -793,7 +803,7 @@ int main()
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 18);
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
@@ -867,7 +877,51 @@ int main()
 						break;
 					case MANUAL_MODE:
 						//on_led(2);
-						manual_mode();
+						//manual_mode();
+						//LIFT
+							for(i = 0; i < 4; i++) {
+
+								if(package[LIFT]<=75) {
+			
+									ae[i] = package[LIFT]*LOW_LIFT_CONVERSION;
+								}
+								else {
+
+									ae[i] = (package[LIFT]-255)*HIGH_LIFT_CONVERSION+LIFT_ENGINE_LIMIT;
+								}
+							}
+
+							//ROLL
+								if(package[ROLL]<=127) {
+									ae[3] += package[ROLL]*ROLLPITCHYAW_CONVERSION;
+								}
+								else {
+									ae[1] += -(package[ROLL]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+								}
+
+							//PITCH
+							if(package[PITCH]<=127) {
+									ae[0] += package[PITCH]*ROLLPITCHYAW_CONVERSION;
+								}
+								else {
+									ae[2] += -(package[PITCH]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+								}
+
+							//YAW
+							if(package[YAW]<=127) {
+								ae[0] += package[YAW]*ROLLPITCHYAW_CONVERSION;
+								ae[2] += package[YAW]*ROLLPITCHYAW_CONVERSION;
+		
+								ae[1] -= package[YAW]*ROLLPITCHYAW_CONVERSION;
+								ae[3]	-= package[YAW]*ROLLPITCHYAW_CONVERSION;	
+							}
+							else {
+								ae[1] += -(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+								ae[3] += -(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+		
+								ae[0] -= -(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+								ae[2] -= -(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;	
+							}
 						break;
 					case CALIBRATION_MODE:
 					       	if(calibration_counter < CALIBRATION_THRESHOLD) 
@@ -921,25 +975,25 @@ int main()
 				//functiontime = X32_us_clock - starttime;
 
 				// Current time of the control loop
-				controltime = X32_us_clock - controltime;
+				//controltime = X32_us_clock - controltime;
 				
 				
 				// if the package was correct, store the correct data
 				store_data();
 
-				
-
+				/*
 				if ((controltime > maxtime) && controltime < 5000)
 				{
 					maxtime = controltime;
 				}
 				X32_display = maxtime;
+				*/
 
 				// sends the telemetry at 10Hz
 				send_telemetry();
 
 				// profiling the control time	
-				controltime = X32_us_clock;
+				//controltime = X32_us_clock;
 				
 				// turn l the leds off
 				// X32_leds = 0;		
