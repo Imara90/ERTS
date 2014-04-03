@@ -25,18 +25,18 @@
 #define FALSE 	0
 #define TRUE 	1
 #include "mode_selection.h"	// Diogos mode selection function
-
+#include "check_motor_ramp.h"
 #define START_BYTE 0x80
 #define TELLEN	      	8
 #define TELPKGLEN     	TELLEN - 1 
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DATALEN		48
+#define DATALEN		    33
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
 
-#define DEBUGGING
+//#define DEBUGGING
 
 //DEBUG
 int sumglobal = 0;
@@ -121,8 +121,8 @@ int main()
 		return 0;
 	}
 	//Joystick buffer clearence and calibration of yaw axis
-//	clear_js_buffer();
-// 	js_calibration();
+	clear_js_buffer();
+ 	js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
 	 *(P,P1,P2,0 for Control Gains Mode)*/
@@ -188,7 +188,7 @@ int main()
 	
 	while (key != 43) {// + key
 		//reads data from the joystick ...comment if joystick is not connected
-		// abort = read_js(jmap);
+		abort = read_js(jmap);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		//printf("key %i\n",key);
@@ -224,10 +224,11 @@ int main()
 		
 			//EVALUATES IF ABORTION REQUESTED
 			if (abort == 1) keymap[0] = MODE_ABORT;
-			//MODE SELECTIONA
-				//printf("selected mode: %d ", keymap[0]);		
+			
+			//MODE SELECTIONA		
 			mode_selection(keymap, data[0]);
-				//printf("actual mode: %d \n ", keymap[0]);
+            		check_motor_ramp(data);
+				
 			//SETS THE PACKAGE WITH THE DESIRED DATA
 			SetPkgMode(&mPkg, keymap[0]);
 			SetPkgData(&mPkg, data);
@@ -282,11 +283,13 @@ int main()
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
 #ifdef DEBUGGING
-						printf("[%d], [functiontime: %d], [flag: %x], [CHK: %x]",TeleData[0], (TeleData[1] << 8 | TeleData[2]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);
+						printf("[%d], [ae0: %d], [ae0: %d], [flag: %x], [CHK: %x]", (char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]),  TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);
 
 // final telemetry 
 #else						
-						printf("\n[r: %d], [phi: %d], [theta: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+						//printf("\n[r: %d], [phi: %d], [theta: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+printf("\n[r: %d], [phi: %d], [SP: %d], [sphi: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (char)(TeleData[3]), (char)(TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+//printf("\n[r: %d], [ae[0]: %d], [pcontrol: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (char)(TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
 #endif						
 						// using the telemetry for mode switching
 						TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
@@ -326,6 +329,7 @@ int main()
 					// DATA LOGGING DECODING. Only If the stored data has the expected size
 					if (datacount == DLPKGLEN) //Complete Pkg Received
 					{
+						datacount = 0;
 						printf("\nDL, ");
 						//Prints the stored package
 						for (i = 0; i < DLPKGLEN; i++) {
@@ -340,7 +344,7 @@ int main()
 							for (i = 0; i < DLPKGLEN; i++) {
 								//if (DLfile != NULL)
 								//{
-								fprintf(DLfile, "%x", DLData[i]);
+								fprintf(DLfile, "%d", DLData[i]);
 								fprintf(DLfile, " ");
 								//}
 							}
@@ -352,6 +356,7 @@ int main()
 				dltimeout = 0;
 			}
 		} while (nbrx > 0);
+
 
 		// I increased the time out
 		if( (dltimeout++ > 2000000) && writeflag == 0){
@@ -380,8 +385,7 @@ int main()
 		    	
 		    	return 0;
 
-		}
-	
+		}	
 		
 	}
 	//fclose(DLfile);

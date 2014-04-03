@@ -89,10 +89,16 @@
 
 //BUTTERWORTH LOW PASS FILTER CONSTANTS
 //for 25Hz cut-off frequency and 1266.5 Hz sampling freq.
+/*
 #define A0		969
 #define A1		969
 #define B0		16384
 #define B1		14444
+*/
+#define A0		2041
+#define A1		2041
+#define B0		16384
+#define B1		12301
 //for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
 /*#define A0		401
 #define A1		401
@@ -110,8 +116,8 @@ int   x2[6] = {0,0,0,0,0,0};
 
 //KALMAN FILTER CONSTANTS
 #define P2PHI   8192 //0.5 * 2¹⁴
-#define C1      7 // 2⁷ = 123
-#define C2      10 // 2¹⁰ = 1023
+#define C1      5 // 2⁷ = 123
+#define C2      5 // 2¹⁰ = 1023
 
 //KALMAN FILTER GLOBAL VARIABLES
 int   sp = 0;
@@ -195,10 +201,10 @@ int 	r = 0; 		// YAW RATE
 long int ww[4] = {0, 0, 0, 0};
 
 // Own written functions
-#include "safe_mode.h"
+#include "calibration_mode.h"
 #include "manual_mode.h"
 #include "panic_mode.h"
-#include "calibration_mode.h"
+#include "safe_mode.h"
 #include "p_control_mode.h"
 #include "yaw_control_mode.h"
 #include "full_control_mode.h"
@@ -225,7 +231,7 @@ BYTE   dl[DLOGSIZE];
 // variable to save buffer return in
 BYTE 	c;
 
-#define DEBUGGING
+//#define DEBUGGING
 
 
 /******************************MACROS*****************************************/
@@ -278,6 +284,17 @@ BYTE 	c;
  */
 #define mult(a, b) (((a) * (b)) >> 14)	
 
+/*------------------------------------------------------------------
+ * Check whether checksum is starting byte and if so change
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+#define checkcheck(sum){ 			\
+	if (*sum == (BYTE)STARTING_BYTE){	\
+	 *sum = 0; 				\
+	}					\
+}
+
 
 
 /*****************************************************************************/
@@ -293,8 +310,8 @@ void Butt2Filter(void)
 {
 	int i;
 	for (i=0; i<2; i++) {
-		y0[i] = (mult(A0,x0[i]) + mult(A1,x1[i]) + mult(B1,y1[i]));
- 		x1[i] = x0[i];
+		y0[i] = (mult(A0,x0[i]-OFFSET_x0[i]) + mult(A1,x1[i]) + mult(B1,y1[i]));
+ 		x1[i] = x0[i]-OFFSET_x0[i];
 		y1[i] = y0[i];
 	}
 }
@@ -306,20 +323,22 @@ void Butt2Filter(void)
  *------------------------------------------------------------------
  */
 void KalmanFilter(void)
-{
- // TODO rewrite to marco or position in between switch       
+{ 
     //Kalman for p, phi    
-    sphi = y0[1] - OFFSET_y0[1]; //TODO CONFIRM SENSOR SIGNALS 
-    sp = y0[3] - OFFSET_y0[3];
+    sphi = -y0[1];
+	//phi = -(x0[1]- OFFSET_x0[1]);
+    sp = -(x0[3] - OFFSET_x0[3]);
     
     p = sp - p_b;
-    phi = phi + mult(p,P2PHI);
+    //phi = phi + mult(p,P2PHI);
+	phi = phi + (p>>5);
     phi = phi - ((phi - sphi) >> C1);
     p_b = p_b + ((phi - sphi) >> C2);
  
     //Kalman for q, theta
-    stheta = y0[0] - OFFSET_y0[0]; //TODO CONFIRM SENSOR SIGNALS    
-    sq = y0[4] - OFFSET_y0[4];
+    stheta = y0[0]; 
+	//stheta = x0[0]-OFFSET_x0[0];   
+    sq = x0[4] - OFFSET_x0[4];
     
     q = sq - q_b;
     theta = theta + mult(q,P2PHI);
@@ -328,33 +347,32 @@ void KalmanFilter(void)
 
 }
 
-
 /*------------------------------------------------------------------
- * Ramp-Up prevention function
- * Compares current - previous commanded speed and clip the current
- * value if necessary (To avoid sudden changes -> motor ramp-up)
- * By Daniel Lemus
+ * Sensor Handling
+ * By Diogo Monteiro (21-03-2014)
  *------------------------------------------------------------------
  */
-void CheckMotorRamp(void)
+void sensor_handling(void)
 {
-	int delta,i;
-	for (i = 0; i < 4; i++) {
-		delta = ae[i]-prev_ae[i];
-		if (abs(delta) > SAFE_INCREMENT) {
-			if (delta < 0) // Negative Increment
-			{
-				ae[i] = prev_ae[i] - SAFE_INCREMENT;
-			}
-			else //POSITIVE INCREMENT
-			{
-				ae[i] = prev_ae[i] + SAFE_INCREMENT;
-			}
-		}
-		prev_ae[i] = ae[i];
-	}
+    
+	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+    	// get sensor and timestamp values
+	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
+	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
+	// get sensor and timestamp values
+	//x0[0] = 500; x0[1] = 501; //x0[2] = X32_QR_s2; 
+	//x0[3] = 503; x0[4] = 504; x0[5] = 505;
+	
+		// TODO remove this from the qr IR
+		Butt2Filter();
+		KalmanFilter();
+	    	//Yaw Rate
+	    	r = x0[5] - OFFSET_x0[5];
+	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 	
+
 }
 
+ 
 /*------------------------------------------------------------------
  * Circular buffer initialization 
  * Point start and end to the adress of the allocated vector of elements
@@ -385,38 +403,7 @@ void cbClean(CBuffer *cb) {
 void isr_qr_link(void)
 {
 	int	ae_index;
-	int     i, max[6],min[6];
-
-	//starttime = X32_us_clock;
 	
-	// record time
-	isr_qr_time = X32_us_clock;
-        inst = X32_instruction_counter;
-
-	// get sensor and timestamp values
-	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
-	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
-	timestamp = X32_QR_timestamp;
-	//in case of erros, sensors must go to the main function
-
-	// TODO remove this from the qr IR
-	if(calibration_done)
-    	{
-        	Butt2Filter();
-		KalmanFilter();
-    	}
-   	//Yaw Rate
-    	r = y0[5] - OFFSET_y0[5];
-		
-
-	// monitor presence of interrupts 
-	isr_qr_counter++;
-/*	
-	if (isr_qr_counter % 500 == 0) 
-	{
-		toggle_led(2);
-	}	
-*/
 
 	// Clip engine values to be positive and 10 bits.
 	for (ae_index = 0; ae_index < 4; ae_index++) 
@@ -431,14 +418,13 @@ void isr_qr_link(void)
 	// Send actuator values
 	// (Need to supply a continous stream, otherwise
 	// QR will go to safe mode, so just send every ms)
+
+/*
 	X32_QR_a0 = ae[0];
 	X32_QR_a1 = ae[1];
 	X32_QR_a2 = ae[2];
 	X32_QR_a3 = ae[3];
-
-	// record isr execution time (ignore overflow)
-        inst = X32_instruction_counter - inst;
-	isr_qr_time = X32_us_clock - isr_qr_time;
+*/
 
 	//functiontime = X32_us_clock - starttime;
 }
@@ -549,7 +535,11 @@ void decode(void)
 }
 
 
-/*------------------------------------------------------------------
+/*------------------------------------------------------------------[r: 0], [phi: 4], [theta: 0], [flag: 5], [Chk: 1] Chksum OK = 1 
+
+[r: 0], [phi: 4], [theta: 0], [flag: 5], [Chk: 1] Chksum OK = 1 
+
+[r: 0], [phi: 4], [theta: 0], [flag: 5], [Chk: 1]
  * Check the checksum and return error message is package is corrupted
  * By Imara Speek 1506374
  *------------------------------------------------------------------
@@ -566,10 +556,13 @@ int check_sum(void)
 	}	
 	sum = ~sum;
 	
+	checkcheck(&sum);
+/*
 	if (sum == 0x80)
 	{
 		sum = 0x00;
 	}
+*/
 	
 	if (package[CHECKSUM] != sum) {
 		return 0;
@@ -595,7 +588,7 @@ void store_data(void)
 
 		cbWritenoSum(dscb, (BYTE)STARTING_BYTE);
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-		cbWrite(dscb, (BYTE)(X32_ms_clock >> 8), &sum);
+		/*cbWrite(dscb, (BYTE)(X32_ms_clock >> 8), &sum);
 		cbWrite(dscb, (BYTE)(X32_ms_clock), &sum);
 		cbWrite(dscb, package[MODE], &sum);
 		cbWrite(dscb, package[LIFT], &sum);
@@ -644,13 +637,53 @@ void store_data(void)
 		cbWrite(dscb, (BYTE)(p1control), &sum);
 		cbWrite(dscb, (BYTE)(p2control >> 8), &sum);
 		cbWrite(dscb, (BYTE)(p2control), &sum);
+		cbWrite(dscb, (BYTE)(controltime), &sum);*/
+
+        //FINAL DATALOG
+        	cbWrite(dscb, (BYTE)(X32_ms_clock - storetime), &sum);
+		cbWrite(dscb, package[MODE], &sum);
+		cbWrite(dscb, package[LIFT], &sum);
+		cbWrite(dscb, package[ROLL], &sum);
+		cbWrite(dscb, package[PITCH], &sum);
+		cbWrite(dscb, package[YAW], &sum);
+		cbWrite(dscb, (BYTE)(ae[0] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(ae[0]), &sum);
+		cbWrite(dscb, (BYTE)(ae[1] >> 8), &sum);
+
+		cbWrite(dscb, (BYTE)(ae[1]), &sum);
+		cbWrite(dscb, (BYTE)(ae[2] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(ae[2]), &sum);
+		cbWrite(dscb, (BYTE)(ae[3] >> 8), &sum);
+		cbWrite(dscb, (BYTE)(ae[3]), &sum);
+		cbWrite(dscb, (BYTE)(x0[0] - OFFSET_x0[0]), &sum);
+		cbWrite(dscb, (BYTE)(x0[1] - OFFSET_x0[1]), &sum);
+		// dont nee x02 
+		cbWrite(dscb, (BYTE)(x0[3] - OFFSET_x0[3]), &sum);
+		cbWrite(dscb, (BYTE)(x0[4] - OFFSET_x0[4]), &sum);
+		cbWrite(dscb, (BYTE)(x0[5] - OFFSET_x0[5]), &sum);
+
+		cbWrite(dscb, (BYTE)(y0[0]), &sum);
+		cbWrite(dscb, (BYTE)(y0[1]), &sum);
+		cbWrite(dscb, (BYTE)(phi >> 8), &sum);
+		cbWrite(dscb, (BYTE)(phi), &sum);
+		cbWrite(dscb, (BYTE)(theta >> 8), &sum);
+		cbWrite(dscb, (BYTE)(theta), &sum);
+		cbWrite(dscb, (BYTE)(p), &sum);
+		cbWrite(dscb, (BYTE)(q), &sum);
+		cbWrite(dscb, (BYTE)(pcontrol), &sum);
+		cbWrite(dscb, (BYTE)(p1control), &sum);
+
+		cbWrite(dscb, (BYTE)(p2control), &sum);
 		cbWrite(dscb, (BYTE)(controltime), &sum);
 
 		// check whether the checksum  is the same as the starting byte
+/*
 	   	if (sum == 0x80)
 		{
 			sum = 0;
 	    	}
+*/
+		checkcheck(&sum);
 		cbWritenoSum(dscb, (BYTE)(sum));
 	
 		storetime = X32_ms_clock;
@@ -675,11 +708,7 @@ void send_data(void)
 
 		X32_rs232_data = dscb.elems[dscb.start];
 		dscb.start = (dscb.start + 1) % dscb.size;	
-
-		// DEBUG DEBUG
-		X32_display = (dscb.end - dscb.start) % dscb.size;
-		//delay_ms(500);
-		on_led(6);
+		//on_led(6);
 	}
 }
 
@@ -709,11 +738,16 @@ void send_telemetry(void)
 
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
-		cbWrite(txcb, package[MODE], &sum);
-		cbWrite(txcb, (BYTE)(functiontime >> 8), &sum);
-		cbWrite(txcb, (BYTE)functiontime, &sum);
-		cbWrite(txcb, 0x01, &sum);
-		cbWrite(txcb, 0x02, &sum);
+		//cbWrite(txcb, package[MODE], &sum);
+		cbWrite(txcb, (BYTE)(r), &sum);
+		//cbWrite(txcb, (BYTE)(controltime >> 8), &sum);
+		//cbWrite(txcb, (BYTE)controltime, &sum);
+		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[0]), &sum);
+		//cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(0x00), &sum);
+		cbWrite(txcb, (BYTE)(0x01), &sum);
+		//cbWrite(txcb, (BYTE)(ae[1]), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
 		//functiontime = X32_us_clock - starttime;
@@ -721,20 +755,33 @@ void send_telemetry(void)
 // Code for the final lab
 #else
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
-		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
 		cbWrite(txcb, (BYTE)(r), &sum);
+/*
+		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[0]), &sum);
+		//cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
+		//cbWrite(txcb, (BYTE)(ae[1]), &sum);
+
+		cbWrite(txcb, (BYTE)(0x00), &sum);
+		cbWrite(txcb, (BYTE)(pcontrol), &sum);
+*/		
 		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
 		cbWrite(txcb, (BYTE)(phi), &sum);
-		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
-		cbWrite(txcb, (BYTE)(theta), &sum);
+		cbWrite(txcb, (BYTE)(sp), &sum);
+		cbWrite(txcb, (BYTE)(sphi), &sum);
+		//cbWrite(txcb, (BYTE)(theta >> 8), &sum);
+		//cbWrite(txcb, (BYTE)(theta), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
 #endif
 		// make sure the checksum isn't the starting byte 0x80
+		/*
 		if (sum == STARTING_BYTE)
 		{
 			sum = 0x00;
 		}
+		*/
+		checkcheck(&sum);
 
 		cbWritenoSum(txcb, (BYTE)sum);
 		
@@ -765,7 +812,7 @@ int main()
 
 	// prepare QR rx interrupt handler
         SET_INTERRUPT_VECTOR(INTERRUPT_XUFO, &isr_qr_link);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 21);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_XUFO, 18);
 	isr_qr_counter = isr_qr_time = 0;
 	ae[0] = ae[1] = ae[2] = ae[3] = 0;
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
@@ -831,11 +878,7 @@ int main()
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
-						//starttime = X32_us_clock;
 						safe_mode();
-						//functiontime = X32_us_clock - starttime;
-                       				calibration_counter = 0;
-						//on_led(0);
 						break;
 					case PANIC_MODE:
 						//on_led(1);
@@ -843,23 +886,85 @@ int main()
 						break;
 					case MANUAL_MODE:
 						//on_led(2);
-						manual_mode();
+						//manual_mode();
+						//LIFT
+							for(i = 0; i < 4; i++) {
+
+								if(package[LIFT]<=75) {
+			
+									ae[i] = package[LIFT]*LOW_LIFT_CONVERSION;
+								}
+								else {
+
+									ae[i] = (package[LIFT]-255)*HIGH_LIFT_CONVERSION+LIFT_ENGINE_LIMIT;
+								}
+							}
+
+							//ROLL
+								if(package[ROLL]<=127) {
+									ae[3] += package[ROLL]*ROLLPITCHYAW_CONVERSION;
+								}
+								else {
+									ae[1] += -(package[ROLL]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+								}
+
+							//PITCH
+							if(package[PITCH]<=127) {
+									ae[0] += package[PITCH]*ROLLPITCHYAW_CONVERSION;
+								}
+								else {
+									ae[2] += -(package[PITCH]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+								}
+
+							//YAW
+							if(package[YAW]<=127) {
+								ae[0] += package[YAW]*ROLLPITCHYAW_CONVERSION;
+								ae[2] += package[YAW]*ROLLPITCHYAW_CONVERSION;
+		
+								ae[1] -= package[YAW]*ROLLPITCHYAW_CONVERSION;
+								ae[3]	-= package[YAW]*ROLLPITCHYAW_CONVERSION;	
+							}
+							else {
+								ae[1] += -(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+								ae[3] += -(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+		
+								ae[0] -= -(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;
+								ae[2] -= -(package[YAW]-255)*NEG_ROLLPITCHYAW_CONVERSION;	
+							}
 						break;
 					case CALIBRATION_MODE:
-                       				if(calibration_counter < CALIBRATION_THRESHOLD) 
+					       	if(calibration_counter < CALIBRATION_THRESHOLD) 
 						{	
-							//toggle_led(5);
-                            				calibration_mode();
-                        			}
+						
+						    calibration_mode();
+						}
 						break;
 					case YAW_CONTROL_MODE:
-						yaw_control_mode();		
+                        			//sensor_handling();
+						DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+					    	// get sensor and timestamp values
+						x0[5] = X32_QR_s5;
+						    	//Yaw Rate
+						    	r = x0[5] - OFFSET_x0[5];
+                        			yaw_control_mode();	
+						ENABLE_INTERRUPT(INTERRUPT_GLOBAL);	
 						break;
 					case FULL_CONTROL_MODE:
+                        			
+						DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+					    	// get sensor and timestamp values
+						x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
+						x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
+							Butt2Filter();
+							KalmanFilter();
+						    	//Yaw Rate
+						    	r = x0[5] - OFFSET_x0[5];
 						full_control_mode();
+						ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
 						break;
 					case P_CONTROL_MODE:
-                        			p_control_mode();						break;
+               					p_control_mode();
+						break;
 					case ABORT_MODE:
 						program_done++;
 						for (i = 0; i < 4; i++)
@@ -874,34 +979,30 @@ int main()
 				// TODO put these in main code where they are necessary
 				//starttime = X32_us_clock;
 
-		        	Butt2Filter();
+		        	
 
 				//functiontime = X32_us_clock - starttime;
 
-				KalmanFilter();
-				//CheckMotorRamp();
+				// Current time of the control loop
+				//controltime = X32_us_clock - controltime;
 				
 				
 				// if the package was correct, store the correct data
 				store_data();
 
-				// Current time of the control loop
-				controltime = X32_us_clock - controltime;
-
-				if ((functiontime > maxtime) && controltime < 5000)
+				/*
+				if ((controltime > maxtime) && controltime < 5000)
 				{
-					maxtime = functiontime;
+					maxtime = controltime;
 				}
+				X32_display = maxtime;
+				*/
 
 				// sends the telemetry at 10Hz
-				starttime = X32_us_clock;
 				send_telemetry();
-				functiontime = X32_us_clock - starttime;
-	
-				//X32_display = maxtime;
 
 				// profiling the control time	
-				controltime = X32_us_clock;
+				//controltime = X32_us_clock;
 				
 				// turn l the leds off
 				// X32_leds = 0;		

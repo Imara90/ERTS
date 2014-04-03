@@ -14,8 +14,11 @@ void safe_mode(void)
 		ae[i] = ae[i] - SAFE_JUMP;
 		if (ae[i] < 0)
 		{
-			ae[i] = 0;
-		}
+		    ae[i] = 0;
+		    //Reset Angles Data
+		    phi = theta = p = q = r = sp = sphi = sq = stheta = p_b = q_b = 0;
+		    calibration_counter = 0; 	
+	    	}
 	}
 }
 

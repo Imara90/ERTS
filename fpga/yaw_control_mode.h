@@ -52,7 +52,12 @@ void yaw_control_mode(void) {
 	else {
 		N = pcontrol*(package[YAW] - 255)*YAWRATE_SCALING - pcontrol*r;
 	}
-    
+
+	if(package[LIFT] == 0) 
+	{
+		N = 0;
+	}   	
+
 	//INVERT DYNAMICS MATRIX
 	ww[0] = Z + 2 * M - N; 
 	ww[1] = Z - 2 * L + N;

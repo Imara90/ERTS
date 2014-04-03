@@ -7,7 +7,7 @@ Updates proportional gains of control modes
 
 */
 
-#define PCONTROL_INIT   20
+#define PCONTROL_INIT   22
 #define P1CONTROL_INIT  1
 #define P2CONTROL_INIT  2
 

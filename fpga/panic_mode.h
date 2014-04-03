@@ -16,7 +16,7 @@ void panic_mode(void) {
 	for(i = 0; i < 4; i++) mean_thrust += ae[i]/4;
 	
 	if (mean_thrust <= LIFT_THRESHOLD) reference_thrust = mean_thrust;
-	printf(" \nref_th= %d \n", mean_thrust);		
+		
 	for(i = 0; i < 4; i++) {
 	
 		if(ae[i]-reference_thrust <= ENGINE_STEP && ae[i]-reference_thrust >= -ENGINE_STEP) {
