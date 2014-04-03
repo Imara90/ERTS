@@ -95,10 +95,10 @@
 #define B0		16384
 #define B1		14444
 */
-#define A0		2240
-#define A1		2240
+#define A0		2041
+#define A1		2041
 #define B0		16384
-#define B1		11903
+#define B1		12301
 //for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
 /*#define A0		401
 #define A1		401
@@ -116,8 +116,8 @@ int   x2[6] = {0,0,0,0,0,0};
 
 //KALMAN FILTER CONSTANTS
 #define P2PHI   8192 //0.5 * 2¹⁴
-#define C1      7 // 2⁷ = 123
-#define C2      10 // 2¹⁰ = 1023
+#define C1      5 // 2⁷ = 123
+#define C2      5 // 2¹⁰ = 1023
 
 //KALMAN FILTER GLOBAL VARIABLES
 int   sp = 0;
@@ -323,19 +323,21 @@ void Butt2Filter(void)
  *------------------------------------------------------------------
  */
 void KalmanFilter(void)
-{
- // TODO rewrite to marco or position in between switch       
+{ 
     //Kalman for p, phi    
-    sphi = y0[1];//TODO CONFIRM SENSOR SIGNALS 
-    sp = x0[3] - OFFSET_x0[3];
+    sphi = -y0[1];
+	//phi = -(x0[1]- OFFSET_x0[1]);
+    sp = -(x0[3] - OFFSET_x0[3]);
     
     p = sp - p_b;
-    phi = phi + mult(p,P2PHI);
+    //phi = phi + mult(p,P2PHI);
+	phi = phi + (p>>5);
     phi = phi - ((phi - sphi) >> C1);
     p_b = p_b + ((phi - sphi) >> C2);
  
     //Kalman for q, theta
-    stheta = y0[0]; //TODO CONFIRM SENSOR SIGNALS    
+    stheta = y0[0]; 
+	//stheta = x0[0]-OFFSET_x0[0];   
     sq = x0[4] - OFFSET_x0[4];
     
     q = sq - q_b;
@@ -417,11 +419,12 @@ void isr_qr_link(void)
 	// (Need to supply a continous stream, otherwise
 	// QR will go to safe mode, so just send every ms)
 
+/*
 	X32_QR_a0 = ae[0];
 	X32_QR_a1 = ae[1];
 	X32_QR_a2 = ae[2];
 	X32_QR_a3 = ae[3];
-
+*/
 
 	//functiontime = X32_us_clock - starttime;
 }
@@ -532,7 +535,11 @@ void decode(void)
 }
 
 
-/*------------------------------------------------------------------
+/*------------------------------------------------------------------[r: 0], [phi: 4], [theta: 0], [flag: 5], [Chk: 1] Chksum OK = 1 
+
+[r: 0], [phi: 4], [theta: 0], [flag: 5], [Chk: 1] Chksum OK = 1 
+
+[r: 0], [phi: 4], [theta: 0], [flag: 5], [Chk: 1]
  * Check the checksum and return error message is package is corrupted
  * By Imara Speek 1506374
  *------------------------------------------------------------------
@@ -749,7 +756,7 @@ void send_telemetry(void)
 #else
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		cbWrite(txcb, (BYTE)(r), &sum);
-
+/*
 		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
 		cbWrite(txcb, (BYTE)(ae[0]), &sum);
 		//cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
@@ -757,9 +764,11 @@ void send_telemetry(void)
 
 		cbWrite(txcb, (BYTE)(0x00), &sum);
 		cbWrite(txcb, (BYTE)(pcontrol), &sum);
-
-		//cbWrite(txcb, (BYTE)(phi >> 8), &sum);
-		//cbWrite(txcb, (BYTE)(phi), &sum);
+*/		
+		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
+		cbWrite(txcb, (BYTE)(phi), &sum);
+		cbWrite(txcb, (BYTE)(sp), &sum);
+		cbWrite(txcb, (BYTE)(sphi), &sum);
 		//cbWrite(txcb, (BYTE)(theta >> 8), &sum);
 		//cbWrite(txcb, (BYTE)(theta), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
