@@ -89,10 +89,16 @@
 
 //BUTTERWORTH LOW PASS FILTER CONSTANTS
 //for 25Hz cut-off frequency and 1266.5 Hz sampling freq.
+/*
 #define A0		969
 #define A1		969
 #define B0		16384
 #define B1		14444
+*/
+#define A0		2240
+#define A1		2240
+#define B0		16384
+#define B1		11903
 //for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
 /*#define A0		401
 #define A1		401
@@ -225,7 +231,7 @@ BYTE   dl[DLOGSIZE];
 // variable to save buffer return in
 BYTE 	c;
 
-//#define DEBUGGING
+#define DEBUGGING
 
 
 /******************************MACROS*****************************************/
@@ -277,6 +283,17 @@ BYTE 	c;
  *------------------------------------------------------------------
  */
 #define mult(a, b) (((a) * (b)) >> 14)	
+
+/*------------------------------------------------------------------
+ * Check whether checksum is starting byte and if so change
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+#define checkcheck(sum){ 			\
+	if (*sum == (BYTE)STARTING_BYTE){	\
+	 *sum = 0; 				\
+	}					\
+}
 
 
 
@@ -336,7 +353,8 @@ void KalmanFilter(void)
 void sensor_handling(void)
 {
     
-    // get sensor and timestamp values
+	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+    	// get sensor and timestamp values
 	/*x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
 	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;*/
 	// get sensor and timestamp values
@@ -345,42 +363,19 @@ void sensor_handling(void)
 	
 	//in case of erros, sensors must go to the main function
 
-	// TODO remove this from the qr IR
-	Butt2Filter();
-	KalmanFilter();
-    //Yaw Rate
-    r = x0[5] - OFFSET_x0[5];
-		
+	//if(calibration_done)
+    	//{
+		// TODO remove this from the qr IR
+		Butt2Filter();
+		KalmanFilter();
+	    	//Yaw Rate
+	    	r = x0[5] - OFFSET_x0[5];
+	//}
+	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 	
 
 }
 
  
-/*------------------------------------------------------------------
- * Ramp-Up prevention function
- * Compares current - previous commanded speed and clip the current
- * value if necessary (To avoid sudden changes -> motor ramp-up)
- * By Daniel Lemus
- *------------------------------------------------------------------
- */
-void CheckMotorRamp(void)
-{
-	int delta,i;
-	for (i = 0; i < 4; i++) {
-		delta = ae[i]-prev_ae[i];
-		if (abs(delta) > SAFE_INCREMENT) {
-			if (delta < 0) // Negative Increment
-			{
-				ae[i] = prev_ae[i] - SAFE_INCREMENT;
-			}
-			else //POSITIVE INCREMENT
-			{
-				ae[i] = prev_ae[i] + SAFE_INCREMENT;
-			}
-		}
-		prev_ae[i] = ae[i];
-	}
-}
-
 /*------------------------------------------------------------------
  * Circular buffer initialization 
  * Point start and end to the adress of the allocated vector of elements
@@ -558,10 +553,13 @@ int check_sum(void)
 	}	
 	sum = ~sum;
 	
+	checkcheck(&sum);
+/*
 	if (sum == 0x80)
 	{
 		sum = 0x00;
 	}
+*/
 	
 	if (package[CHECKSUM] != sum) {
 		return 0;
@@ -676,10 +674,13 @@ void store_data(void)
 		cbWrite(dscb, (BYTE)(controltime), &sum);
 
 		// check whether the checksum  is the same as the starting byte
+/*
 	   	if (sum == 0x80)
 		{
 			sum = 0;
 	    	}
+*/
+		checkcheck(&sum);
 		cbWritenoSum(dscb, (BYTE)(sum));
 	
 		storetime = X32_ms_clock;
@@ -704,11 +705,7 @@ void send_data(void)
 
 		X32_rs232_data = dscb.elems[dscb.start];
 		dscb.start = (dscb.start + 1) % dscb.size;	
-
-		// DEBUG DEBUG
-		//X32_display = (dscb.end - dscb.start) % dscb.size;
-		//delay_ms(500);
-		on_led(6);
+		//on_led(6);
 	}
 }
 
@@ -739,8 +736,8 @@ void send_telemetry(void)
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
 		cbWrite(txcb, package[MODE], &sum);
-		cbWrite(txcb, (BYTE)(functiontime >> 8), &sum);
-		cbWrite(txcb, (BYTE)functiontime, &sum);
+		cbWrite(txcb, (BYTE)(controltime >> 8), &sum);
+		cbWrite(txcb, (BYTE)controltime, &sum);
 		cbWrite(txcb, 0x01, &sum);
 		cbWrite(txcb, 0x02, &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
@@ -760,10 +757,13 @@ void send_telemetry(void)
 
 #endif
 		// make sure the checksum isn't the starting byte 0x80
+		/*
 		if (sum == STARTING_BYTE)
 		{
 			sum = 0x00;
 		}
+		*/
+		checkcheck(&sum);
 
 		cbWritenoSum(txcb, (BYTE)sum);
 		
@@ -871,23 +871,23 @@ int main()
 						manual_mode();
 						break;
 					case CALIBRATION_MODE:
-                       	if(calibration_counter < CALIBRATION_THRESHOLD) 
+					       	if(calibration_counter < CALIBRATION_THRESHOLD) 
 						{	
 						
-                            calibration_mode();
-                        }
+						    calibration_mode();
+						}
 						break;
 					case YAW_CONTROL_MODE:
-                        sensor_handling();
-                        yaw_control_mode();		
+                        			sensor_handling();
+                        			yaw_control_mode();		
 						break;
 					case FULL_CONTROL_MODE:
-                        sensor_handling();
+                        			sensor_handling();
 						full_control_mode();
 						break;
 					case P_CONTROL_MODE:
-               			p_control_mode();						
-                        break;
+               					p_control_mode();
+						break;
 					case ABORT_MODE:
 						program_done++;
 						for (i = 0; i < 4; i++)
@@ -904,28 +904,25 @@ int main()
 
 		        	
 
-				functiontime = X32_us_clock - starttime;
+				//functiontime = X32_us_clock - starttime;
 
-				
+				// Current time of the control loop
+				controltime = X32_us_clock - controltime;
 				
 				
 				// if the package was correct, store the correct data
 				store_data();
 
-				// Current time of the control loop
-				controltime = X32_us_clock - controltime;
+				
 
-				if ((functiontime > maxtime) && controltime < 5000)
+				if ((controltime > maxtime) && controltime < 5000)
 				{
-					maxtime = functiontime;
+					maxtime = controltime;
 				}
+				X32_display = maxtime;
 
 				// sends the telemetry at 10Hz
-				starttime = X32_us_clock;
 				send_telemetry();
-				functiontime = X32_us_clock - starttime;
-	
-				X32_display = maxtime;
 
 				// profiling the control time	
 				controltime = X32_us_clock;

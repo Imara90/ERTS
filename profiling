@@ -45,7 +45,7 @@ toggleing a led
 
 	0x0041				65 us
 
-Butterworth filter 	\\TODO TOOOOO LONG MAN Is this necessary for all variables?
+Butterworth filter 	
 
 	0x04C5				1221 us
 	
@@ -62,10 +62,6 @@ Kalman filter using the mult macro \\ Also too long!
 
 	0x0138				312 us
 
-Checkmotorramp 			\\ TOO long
-	
-	0x019B				411 us
-
 Storing the Data (when it executes)
 
 	0x062A  			1578 us
@@ -78,4 +74,12 @@ Shifting a bit
 
 	0x0037				55 us
 
+Total control loop + telemetry and datalogging
+
+	0x0E3b				3627 us
+		is every 100 ms, so doesnt matter that much
+
+Total control loop without any telemetry and storing
+
+	0x0733				1843 us
 
