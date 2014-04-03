@@ -213,7 +213,7 @@
    <widget class="QLabel" name="QRImage">
     <property name="geometry">
      <rect>
-      <x>460</x>
+      <x>420</x>
       <y>360</y>
       <width>251</width>
       <height>231</height>
@@ -235,10 +235,10 @@
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="Pitch_2">
+   <widget class="QLCDNumber" name="ae2">
     <property name="geometry">
      <rect>
-      <x>520</x>
+      <x>480</x>
       <y>600</y>
       <width>111</width>
       <height>37</height>
@@ -254,11 +254,11 @@
      <enum>QLCDNumber::Dec</enum>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="Yaw_2">
+   <widget class="QLCDNumber" name="ae1">
     <property name="geometry">
      <rect>
-      <x>710</x>
-      <y>450</y>
+      <x>680</x>
+      <y>460</y>
       <width>111</width>
       <height>36</height>
      </rect>
@@ -273,10 +273,10 @@
      <enum>QLCDNumber::Dec</enum>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="Lift_2">
+   <widget class="QLCDNumber" name="ae0">
     <property name="geometry">
      <rect>
-      <x>520</x>
+      <x>480</x>
       <y>320</y>
       <width>111</width>
       <height>37</height>
@@ -292,10 +292,10 @@
      <enum>QLCDNumber::Dec</enum>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="Roll_2">
+   <widget class="QLCDNumber" name="ae3">
     <property name="geometry">
      <rect>
-      <x>350</x>
+      <x>310</x>
       <y>450</y>
       <width>101</width>
       <height>41</height>
@@ -314,8 +314,8 @@
    <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>380</y>
+      <x>-20</x>
+      <y>390</y>
       <width>301</width>
       <height>171</height>
      </rect>
@@ -338,6 +338,9 @@
          <property name="text">
           <string>r</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
         </widget>
        </item>
        <item>
@@ -345,12 +348,18 @@
          <property name="text">
           <string>phi</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="label_21">
          <property name="text">
           <string>theta</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
          </property>
         </widget>
        </item>
@@ -366,7 +375,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLCDNumber" name="Lift_3">
+        <widget class="QLCDNumber" name="r_ref">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
          </property>
@@ -379,7 +388,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLCDNumber" name="Roll_3">
+        <widget class="QLCDNumber" name="phi_ref">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
          </property>
@@ -392,7 +401,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLCDNumber" name="Pitch_3">
+        <widget class="QLCDNumber" name="theta_ref">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
          </property>
@@ -422,7 +431,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLCDNumber" name="Lift_4">
+        <widget class="QLCDNumber" name="r_qr">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
          </property>
@@ -435,7 +444,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLCDNumber" name="Roll_4">
+        <widget class="QLCDNumber" name="phi_qr">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
          </property>
@@ -448,7 +457,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLCDNumber" name="Pitch_4">
+        <widget class="QLCDNumber" name="theta_qr">
          <property name="frameShape">
           <enum>QFrame::StyledPanel</enum>
          </property>
@@ -468,8 +477,8 @@
     <property name="geometry">
      <rect>
       <x>320</x>
-      <y>30</y>
-      <width>431</width>
+      <y>50</y>
+      <width>481</width>
       <height>171</height>
      </rect>
     </property>
@@ -1358,17 +1367,14 @@
      </widget>
     </widget>
    </widget>
-   <zorder>Abort</zorder>
-   <zorder>RunButt</zorder>
+   <zorder>splitter_3</zorder>
    <zorder>groupBox</zorder>
    <zorder>QRImage</zorder>
-   <zorder>Pitch_2</zorder>
-   <zorder>Yaw_2</zorder>
-   <zorder>Lift_2</zorder>
-   <zorder>Roll_2</zorder>
+   <zorder>ae2</zorder>
+   <zorder>ae1</zorder>
+   <zorder>ae0</zorder>
+   <zorder>ae3</zorder>
    <zorder>layoutWidget</zorder>
-   <zorder>SaveDL</zorder>
-   <zorder>CommButt</zorder>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">

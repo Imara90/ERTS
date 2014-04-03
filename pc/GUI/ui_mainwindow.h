@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created: Wed Apr 2 10:29:48 2014
+** Created: Thu Apr 3 04:39:21 2014
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -57,10 +57,10 @@ public:
     QLCDNumber *P1;
     QLCDNumber *P2;
     QLabel *QRImage;
-    QLCDNumber *Pitch_2;
-    QLCDNumber *Yaw_2;
-    QLCDNumber *Lift_2;
-    QLCDNumber *Roll_2;
+    QLCDNumber *ae2;
+    QLCDNumber *ae1;
+    QLCDNumber *ae0;
+    QLCDNumber *ae3;
     QWidget *layoutWidget;
     QGridLayout *gridLayout_2;
     QVBoxLayout *verticalLayout_8;
@@ -70,14 +70,14 @@ public:
     QLabel *label_21;
     QVBoxLayout *verticalLayout_4;
     QLabel *label_23;
-    QLCDNumber *Lift_3;
-    QLCDNumber *Roll_3;
-    QLCDNumber *Pitch_3;
+    QLCDNumber *r_ref;
+    QLCDNumber *phi_ref;
+    QLCDNumber *theta_ref;
     QVBoxLayout *verticalLayout_5;
     QLabel *label_25;
-    QLCDNumber *Lift_4;
-    QLCDNumber *Roll_4;
-    QLCDNumber *Pitch_4;
+    QLCDNumber *r_qr;
+    QLCDNumber *phi_qr;
+    QLCDNumber *theta_qr;
     QSplitter *splitter_3;
     QSplitter *splitter;
     QPushButton *CommButt;
@@ -226,38 +226,38 @@ public:
 
         QRImage = new QLabel(centralWidget);
         QRImage->setObjectName(QString::fromUtf8("QRImage"));
-        QRImage->setGeometry(QRect(460, 360, 251, 231));
+        QRImage->setGeometry(QRect(420, 360, 251, 231));
         QRImage->setFrameShape(QFrame::Box);
         QRImage->setPixmap(QPixmap(QString::fromUtf8("QRChamp.png")));
         QRImage->setScaledContents(true);
         QRImage->setAlignment(Qt::AlignCenter);
-        Pitch_2 = new QLCDNumber(centralWidget);
-        Pitch_2->setObjectName(QString::fromUtf8("Pitch_2"));
-        Pitch_2->setGeometry(QRect(520, 600, 111, 37));
-        Pitch_2->setFrameShape(QFrame::StyledPanel);
-        Pitch_2->setFrameShadow(QFrame::Raised);
-        Pitch_2->setMode(QLCDNumber::Dec);
-        Yaw_2 = new QLCDNumber(centralWidget);
-        Yaw_2->setObjectName(QString::fromUtf8("Yaw_2"));
-        Yaw_2->setGeometry(QRect(710, 450, 111, 36));
-        Yaw_2->setFrameShape(QFrame::StyledPanel);
-        Yaw_2->setFrameShadow(QFrame::Raised);
-        Yaw_2->setMode(QLCDNumber::Dec);
-        Lift_2 = new QLCDNumber(centralWidget);
-        Lift_2->setObjectName(QString::fromUtf8("Lift_2"));
-        Lift_2->setGeometry(QRect(520, 320, 111, 37));
-        Lift_2->setFrameShape(QFrame::StyledPanel);
-        Lift_2->setFrameShadow(QFrame::Raised);
-        Lift_2->setMode(QLCDNumber::Dec);
-        Roll_2 = new QLCDNumber(centralWidget);
-        Roll_2->setObjectName(QString::fromUtf8("Roll_2"));
-        Roll_2->setGeometry(QRect(350, 450, 101, 41));
-        Roll_2->setFrameShape(QFrame::StyledPanel);
-        Roll_2->setFrameShadow(QFrame::Raised);
-        Roll_2->setMode(QLCDNumber::Dec);
+        ae2 = new QLCDNumber(centralWidget);
+        ae2->setObjectName(QString::fromUtf8("ae2"));
+        ae2->setGeometry(QRect(480, 600, 111, 37));
+        ae2->setFrameShape(QFrame::StyledPanel);
+        ae2->setFrameShadow(QFrame::Raised);
+        ae2->setMode(QLCDNumber::Dec);
+        ae1 = new QLCDNumber(centralWidget);
+        ae1->setObjectName(QString::fromUtf8("ae1"));
+        ae1->setGeometry(QRect(680, 460, 111, 36));
+        ae1->setFrameShape(QFrame::StyledPanel);
+        ae1->setFrameShadow(QFrame::Raised);
+        ae1->setMode(QLCDNumber::Dec);
+        ae0 = new QLCDNumber(centralWidget);
+        ae0->setObjectName(QString::fromUtf8("ae0"));
+        ae0->setGeometry(QRect(480, 320, 111, 37));
+        ae0->setFrameShape(QFrame::StyledPanel);
+        ae0->setFrameShadow(QFrame::Raised);
+        ae0->setMode(QLCDNumber::Dec);
+        ae3 = new QLCDNumber(centralWidget);
+        ae3->setObjectName(QString::fromUtf8("ae3"));
+        ae3->setGeometry(QRect(310, 450, 101, 41));
+        ae3->setFrameShape(QFrame::StyledPanel);
+        ae3->setFrameShadow(QFrame::Raised);
+        ae3->setMode(QLCDNumber::Dec);
         layoutWidget = new QWidget(centralWidget);
         layoutWidget->setObjectName(QString::fromUtf8("layoutWidget"));
-        layoutWidget->setGeometry(QRect(20, 380, 301, 171));
+        layoutWidget->setGeometry(QRect(-20, 390, 301, 171));
         gridLayout_2 = new QGridLayout(layoutWidget);
         gridLayout_2->setSpacing(6);
         gridLayout_2->setContentsMargins(11, 11, 11, 11);
@@ -274,16 +274,19 @@ public:
 
         label_19 = new QLabel(layoutWidget);
         label_19->setObjectName(QString::fromUtf8("label_19"));
+        label_19->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
 
         verticalLayout_8->addWidget(label_19);
 
         label_20 = new QLabel(layoutWidget);
         label_20->setObjectName(QString::fromUtf8("label_20"));
+        label_20->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
 
         verticalLayout_8->addWidget(label_20);
 
         label_21 = new QLabel(layoutWidget);
         label_21->setObjectName(QString::fromUtf8("label_21"));
+        label_21->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
 
         verticalLayout_8->addWidget(label_21);
 
@@ -298,29 +301,29 @@ public:
 
         verticalLayout_4->addWidget(label_23);
 
-        Lift_3 = new QLCDNumber(layoutWidget);
-        Lift_3->setObjectName(QString::fromUtf8("Lift_3"));
-        Lift_3->setFrameShape(QFrame::StyledPanel);
-        Lift_3->setFrameShadow(QFrame::Raised);
-        Lift_3->setMode(QLCDNumber::Dec);
+        r_ref = new QLCDNumber(layoutWidget);
+        r_ref->setObjectName(QString::fromUtf8("r_ref"));
+        r_ref->setFrameShape(QFrame::StyledPanel);
+        r_ref->setFrameShadow(QFrame::Raised);
+        r_ref->setMode(QLCDNumber::Dec);
 
-        verticalLayout_4->addWidget(Lift_3);
+        verticalLayout_4->addWidget(r_ref);
 
-        Roll_3 = new QLCDNumber(layoutWidget);
-        Roll_3->setObjectName(QString::fromUtf8("Roll_3"));
-        Roll_3->setFrameShape(QFrame::StyledPanel);
-        Roll_3->setFrameShadow(QFrame::Raised);
-        Roll_3->setMode(QLCDNumber::Dec);
+        phi_ref = new QLCDNumber(layoutWidget);
+        phi_ref->setObjectName(QString::fromUtf8("phi_ref"));
+        phi_ref->setFrameShape(QFrame::StyledPanel);
+        phi_ref->setFrameShadow(QFrame::Raised);
+        phi_ref->setMode(QLCDNumber::Dec);
 
-        verticalLayout_4->addWidget(Roll_3);
+        verticalLayout_4->addWidget(phi_ref);
 
-        Pitch_3 = new QLCDNumber(layoutWidget);
-        Pitch_3->setObjectName(QString::fromUtf8("Pitch_3"));
-        Pitch_3->setFrameShape(QFrame::StyledPanel);
-        Pitch_3->setFrameShadow(QFrame::Raised);
-        Pitch_3->setMode(QLCDNumber::Dec);
+        theta_ref = new QLCDNumber(layoutWidget);
+        theta_ref->setObjectName(QString::fromUtf8("theta_ref"));
+        theta_ref->setFrameShape(QFrame::StyledPanel);
+        theta_ref->setFrameShadow(QFrame::Raised);
+        theta_ref->setMode(QLCDNumber::Dec);
 
-        verticalLayout_4->addWidget(Pitch_3);
+        verticalLayout_4->addWidget(theta_ref);
 
 
         gridLayout_2->addLayout(verticalLayout_4, 0, 1, 1, 1);
@@ -335,36 +338,36 @@ public:
 
         verticalLayout_5->addWidget(label_25);
 
-        Lift_4 = new QLCDNumber(layoutWidget);
-        Lift_4->setObjectName(QString::fromUtf8("Lift_4"));
-        Lift_4->setFrameShape(QFrame::StyledPanel);
-        Lift_4->setFrameShadow(QFrame::Raised);
-        Lift_4->setMode(QLCDNumber::Dec);
+        r_qr = new QLCDNumber(layoutWidget);
+        r_qr->setObjectName(QString::fromUtf8("r_qr"));
+        r_qr->setFrameShape(QFrame::StyledPanel);
+        r_qr->setFrameShadow(QFrame::Raised);
+        r_qr->setMode(QLCDNumber::Dec);
 
-        verticalLayout_5->addWidget(Lift_4);
+        verticalLayout_5->addWidget(r_qr);
 
-        Roll_4 = new QLCDNumber(layoutWidget);
-        Roll_4->setObjectName(QString::fromUtf8("Roll_4"));
-        Roll_4->setFrameShape(QFrame::StyledPanel);
-        Roll_4->setFrameShadow(QFrame::Raised);
-        Roll_4->setMode(QLCDNumber::Dec);
+        phi_qr = new QLCDNumber(layoutWidget);
+        phi_qr->setObjectName(QString::fromUtf8("phi_qr"));
+        phi_qr->setFrameShape(QFrame::StyledPanel);
+        phi_qr->setFrameShadow(QFrame::Raised);
+        phi_qr->setMode(QLCDNumber::Dec);
 
-        verticalLayout_5->addWidget(Roll_4);
+        verticalLayout_5->addWidget(phi_qr);
 
-        Pitch_4 = new QLCDNumber(layoutWidget);
-        Pitch_4->setObjectName(QString::fromUtf8("Pitch_4"));
-        Pitch_4->setFrameShape(QFrame::StyledPanel);
-        Pitch_4->setFrameShadow(QFrame::Raised);
-        Pitch_4->setMode(QLCDNumber::Dec);
+        theta_qr = new QLCDNumber(layoutWidget);
+        theta_qr->setObjectName(QString::fromUtf8("theta_qr"));
+        theta_qr->setFrameShape(QFrame::StyledPanel);
+        theta_qr->setFrameShadow(QFrame::Raised);
+        theta_qr->setMode(QLCDNumber::Dec);
 
-        verticalLayout_5->addWidget(Pitch_4);
+        verticalLayout_5->addWidget(theta_qr);
 
 
         gridLayout_2->addLayout(verticalLayout_5, 0, 2, 1, 1);
 
         splitter_3 = new QSplitter(centralWidget);
         splitter_3->setObjectName(QString::fromUtf8("splitter_3"));
-        splitter_3->setGeometry(QRect(320, 30, 431, 171));
+        splitter_3->setGeometry(QRect(320, 50, 481, 171));
         splitter_3->setFrameShape(QFrame::NoFrame);
         splitter_3->setOrientation(Qt::Horizontal);
         splitter = new QSplitter(splitter_3);
@@ -501,17 +504,14 @@ public:
         splitter_2->addWidget(Abort);
         splitter_3->addWidget(splitter_2);
         MainWindow->setCentralWidget(centralWidget);
-        Abort->raise();
-        RunButt->raise();
+        splitter_3->raise();
         groupBox->raise();
         QRImage->raise();
-        Pitch_2->raise();
-        Yaw_2->raise();
-        Lift_2->raise();
-        Roll_2->raise();
+        ae2->raise();
+        ae1->raise();
+        ae0->raise();
+        ae3->raise();
         layoutWidget->raise();
-        SaveDL->raise();
-        CommButt->raise();
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
         menuBar->setGeometry(QRect(0, 0, 845, 25));
