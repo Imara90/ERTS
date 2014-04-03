@@ -36,7 +36,7 @@
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
 
-#define DEBUGGING
+//#define DEBUGGING
 
 //DEBUG
 int sumglobal = 0;
@@ -121,8 +121,8 @@ int main()
 		return 0;
 	}
 	//Joystick buffer clearence and calibration of yaw axis
-//	clear_js_buffer();
-// 	js_calibration();
+	clear_js_buffer();
+ 	js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
 	 *(P,P1,P2,0 for Control Gains Mode)*/
@@ -188,7 +188,7 @@ int main()
 	
 	while (key != 43) {// + key
 		//reads data from the joystick ...comment if joystick is not connected
-		// abort = read_js(jmap);
+		abort = read_js(jmap);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		//printf("key %i\n",key);
@@ -283,7 +283,7 @@ int main()
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
 #ifdef DEBUGGING
-						printf("[%d], [controltime: %d], [flag: %x], [CHK: %x]",TeleData[0], (TeleData[1] << 8 | TeleData[2]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);
+						printf("[%d], [ae0: %d], [ae0: %d], [flag: %x], [CHK: %x]", (char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]),  TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);
 
 // final telemetry 
 #else						

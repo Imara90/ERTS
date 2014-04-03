@@ -23,8 +23,8 @@ void calibration_mode(void) {
         
 	}
 	// get sensor and timestamp values
-	x0[0] = 500; x0[1] = 501; //x0[2] = X32_QR_s2; 
-	x0[3] = 503; x0[4] = 504; x0[5] = 505;	
+	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; x0[2] = X32_QR_s2; 
+	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;	
 	
     for(i = 0; i < 6; i++) 
 	{

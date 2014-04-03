@@ -231,7 +231,7 @@ BYTE   dl[DLOGSIZE];
 // variable to save buffer return in
 BYTE 	c;
 
-#define DEBUGGING
+//#define DEBUGGING
 
 
 /******************************MACROS*****************************************/
@@ -355,22 +355,17 @@ void sensor_handling(void)
     
 	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
     	// get sensor and timestamp values
-	/*x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
-	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;*/
+	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
+	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
 	// get sensor and timestamp values
-	x0[0] = 500; x0[1] = 501; //x0[2] = X32_QR_s2; 
-	x0[3] = 503; x0[4] = 504; x0[5] = 505;
+	//x0[0] = 500; x0[1] = 501; //x0[2] = X32_QR_s2; 
+	//x0[3] = 503; x0[4] = 504; x0[5] = 505;
 	
-	//in case of erros, sensors must go to the main function
-
-	//if(calibration_done)
-    	//{
 		// TODO remove this from the qr IR
 		Butt2Filter();
 		KalmanFilter();
 	    	//Yaw Rate
 	    	r = x0[5] - OFFSET_x0[5];
-	//}
 	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 	
 
 }
@@ -421,11 +416,12 @@ void isr_qr_link(void)
 	// Send actuator values
 	// (Need to supply a continous stream, otherwise
 	// QR will go to safe mode, so just send every ms)
+/*
 	X32_QR_a0 = ae[0];
 	X32_QR_a1 = ae[1];
 	X32_QR_a2 = ae[2];
 	X32_QR_a3 = ae[3];
-
+*/
 
 	//functiontime = X32_us_clock - starttime;
 }
@@ -735,11 +731,14 @@ void send_telemetry(void)
 
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
-		cbWrite(txcb, package[MODE], &sum);
-		cbWrite(txcb, (BYTE)(controltime >> 8), &sum);
-		cbWrite(txcb, (BYTE)controltime, &sum);
-		cbWrite(txcb, 0x01, &sum);
-		cbWrite(txcb, 0x02, &sum);
+		//cbWrite(txcb, package[MODE], &sum);
+		cbWrite(txcb, (BYTE)(r), &sum);
+		//cbWrite(txcb, (BYTE)(controltime >> 8), &sum);
+		//cbWrite(txcb, (BYTE)controltime, &sum);
+		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[0]), &sum);
+		cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[1]), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
 		//functiontime = X32_us_clock - starttime;
@@ -878,12 +877,27 @@ int main()
 						}
 						break;
 					case YAW_CONTROL_MODE:
-                        			sensor_handling();
-                        			yaw_control_mode();		
+                        			//sensor_handling();
+						DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+					    	// get sensor and timestamp values
+						x0[5] = X32_QR_s5;
+						    	//Yaw Rate
+						    	r = x0[5] - OFFSET_x0[5];
+                        			yaw_control_mode();	
+						ENABLE_INTERRUPT(INTERRUPT_GLOBAL);	
 						break;
 					case FULL_CONTROL_MODE:
-                        			sensor_handling();
+                        			
+						DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+					    	// get sensor and timestamp values
+						x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
+						x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
+							Butt2Filter();
+							KalmanFilter();
+						    	//Yaw Rate
+						    	r = x0[5] - OFFSET_x0[5];
 						full_control_mode();
+						ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
 						break;
 					case P_CONTROL_MODE:
                					p_control_mode();
