@@ -25,18 +25,18 @@
 #define FALSE 	0
 #define TRUE 	1
 #include "mode_selection.h"	// Diogos mode selection function
-
+#include "check_motor_ramp.h"
 #define START_BYTE 0x80
 #define TELLEN	      	8
 #define TELPKGLEN     	TELLEN - 1 
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DATALEN		48
+#define DATALEN		    33
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
 
-#define DEBUGGING
+//#define DEBUGGING
 
 //DEBUG
 int sumglobal = 0;
@@ -227,6 +227,7 @@ int main()
 			//MODE SELECTIONA
 				//printf("selected mode: %d ", keymap[0]);		
 			mode_selection(keymap, data[0]);
+            check_motor_ramp(data);
 				//printf("actual mode: %d \n ", keymap[0]);
 			//SETS THE PACKAGE WITH THE DESIRED DATA
 			SetPkgMode(&mPkg, keymap[0]);

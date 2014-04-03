@@ -22,7 +22,8 @@ void mode_selection(int *sel_mode,int lift) {
     }
     
     //check if change to SAFE MODE was requested
-    if( (TELEMETRY_FLAG & 0x02) != 0) {
+    if( (TELEMETRY_FLAG & 0x02) != 0) 
+    {
         
         *sel_mode = MODE_SAFE;
         TELEMETRY_FLAG = TELEMETRY_FLAG & 0x01;   
