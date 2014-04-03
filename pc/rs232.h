@@ -98,19 +98,6 @@ void term_reset() {
 	tcsetattr(STDIN_FILENO,TCSAFLUSH,&stdin_orig);
 }
 
-void term_nonblocking() {
-	struct termios newt;
-	tcgetattr(STDIN_FILENO, &stdin_orig);
-	fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK); // non-blocking
-	newt = stdin_orig;
-	newt.c_lflag &= ~(ICANON | ECHO);
-	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-	atexit(term_reset);
-}
-
-
-
-
 
 void keyboard_nonblocking() {
         struct termios newt;

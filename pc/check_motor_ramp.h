@@ -1,6 +1,6 @@
 /*--------------
 Check motor ramp limit using lift data being sent to the FPGA
-
+By Daniel Lemus
 1-04-2014
 
 */
@@ -34,7 +34,7 @@ void check_motor_ramp(int *actual_lift) {
         if(abs(delta) > DOWN_MAXRAMP )            
         {
            if (delta < 0) // decrement
-			{
+		{
 				*actual_lift = prev_lift - DOWN_MAXRAMP;
 			}
 			else // increment
@@ -43,4 +43,7 @@ void check_motor_ramp(int *actual_lift) {
 			} 
         }
     }    
+
+prev_lift = *actual_lift;
+
 }

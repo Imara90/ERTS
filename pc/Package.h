@@ -18,12 +18,12 @@ int TrimToMaxLift(int value)
 {
     if (value>255)
 	{
-        printf("\nClipping %i to %i",value,255);
+        //printf("\nClipping %i to %i",value,255);
         value = 255;
 	}
 	else if (value<0)
 	{
-        printf("\nClipping %i to %i",value,0);
+        //printf("\nClipping %i to %i",value,0);
         value = 0;
 	}
     return value;
@@ -32,12 +32,12 @@ int TrimToMaxByte(int value)
 {
     if (value>INT8_MAX)
 	{
-        printf("\nClipping %i to %i",value,INT8_MAX);
+        //printf("\nClipping %i to %i",value,INT8_MAX);
         value = INT8_MAX;
 	}
 	else if (value<INT8_MIN)
 	{
-        printf("\nClipping %i to %i",value,INT8_MIN);
+        //printf("\nClipping %i to %i",value,INT8_MIN);
         value = INT8_MIN;
 	}
     return value;

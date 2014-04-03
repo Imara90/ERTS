@@ -25,6 +25,7 @@
 #define FALSE 	0
 #define TRUE 	1
 #include "mode_selection.h"	// Diogos mode selection function
+#include "check_motor_ramp.h"	// Daniels motor ramp
 
 #define START_BYTE 0x80
 //#define TELLEN	      	8
@@ -109,7 +110,7 @@ int DLDecode(int* DLPkg/*, int* Output*/){
 
 int main()
 {
-	term_nonblocking();
+	
 	keyboard_nonblocking();
     
     	//Engine Values for mode selection
@@ -233,9 +234,10 @@ int main()
 			//EVALUATES IF ABORTION REQUESTED
 			if (abort == 1) keymap[0] = MODE_ABORT;
 			//MODE SELECTION
-			//if(keymap[0] != 0) printf("selected mode: %d l:%d tel:%x\n ", keymap[0],jmap[0],keymap[1]);		
 			mode_selection(keymap, data[0]); 
-				//if(keymap[0] != 0)printf("actual mode: %d \n ", keymap[0]);
+			check_motor_ramp(data);
+		
+	
 			//SETS THE PACKAGE WITH THE DESIRED DATA
 			SetPkgMode(&mPkg, keymap[0]);
 			SetPkgData(&mPkg, data); 

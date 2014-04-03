@@ -292,7 +292,6 @@ int	sensor[6] = {500, 501, 502, 503, 504, 505};
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
-// TODO rewrite to marco or position in between switch
 void Butt2Filter(void)
 {
 	int i;
@@ -452,7 +451,6 @@ void isr_qr_timer(void)
 		KalmanFilter();//phi,p,theta,q
 	   	//Yaw Rate
 	    	r = x0[5] - OFFSET_x0[5];
-		//X32_display = y0[0];
     	}
 
 	functiontime = X32_us_clock - starttime;
@@ -656,11 +654,7 @@ void send_data(void)
 		while ( !X32_rs232_txready ) ;
 
 		X32_rs232_data = dscb.elems[dscb.start];
-		dscb.start = (dscb.start + 1) % dscb.size;	
-
-		// DEBUG DEBUG
-		//X32_display = (dscb.end - dscb.start) % dscb.size;
-		//delay_ms(10);
+		dscb.start = (dscb.start + 1) % dscb.size;
 		on_led(6);
 	}
 }
