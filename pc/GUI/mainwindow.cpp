@@ -10,7 +10,7 @@
 #include "../rs232.h"
 #include "../Package.h"
 #include "../mode_selection.h" 	// Diogos mode selection function
-
+#include "../manual_mode_pc.h"
 
 int flag = 0;
 //int fd_RS232;
@@ -22,12 +22,12 @@ unsigned char  QRMode = MODE_SAFE; //Initializes QR Mode
 //#define TRUE 	1
 
 #define START_BYTE 0x80
-#define TELLEN	      	23
+#define TELLEN	      	8
 #define TELPKGLEN     	TELLEN - 1
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DATALEN		60
+#define DATALEN         48
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
 
@@ -47,7 +47,7 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
     //CHECKSUM CHECK
     for(i = 0; i < TELPKGCHKSUM ; i++)
     {
-        sum += TelPkg[i];
+        sum ^= TelPkg[i];
     }
     sum = (BYTE)~sum;
     if (sum == 0x80)
@@ -76,7 +76,7 @@ int DLDecode(int* DLPkg/*, int* Output*/){
     //CHECKSUM CHECK
     for(i = 0; i < DLPKGCHKSUM ; i++)
     {
-        sum += DLPkg[i];
+        sum ^= DLPkg[i];
     }
     sum = (BYTE)~sum;
         if (sum == 0x80)
@@ -287,9 +287,29 @@ void MainWindow::on_RunButt_clicked()
                     ui->Yaw->display(data[3]);
                     break;
             }
-
+            switch (keymap[0])
+            {
+                case MODE_MANUAL:
+                    manual_mode(data[0], data[1], data[2], data[3],ae);
+                    break;
+                case MODE_YAW_CONTROL:
+                    break;
+                case MODE_FULL_CONTROL:
+                    break;
+                default:
+                    for(i = 0;i<4;i++)
+                    {
+                        ae[i] = 0;
+                    }
+                    break;
+            }
+            //DISPLAY THE ENGINE VALUES
+            ui->ae0->display(ae[0]);
+            ui->ae1->display(ae[1]);
+            ui->ae2->display(ae[2]);
+            ui->ae3->display(ae[3]);
             //MODE SELECTION
-            mode_selection(keymap, ae ,data[0]);
+            mode_selection(keymap,data[0]);
             QRMode = keymap[0];
             //SETS THE PACKAGE WITH THE DESIRED DATA
             SetPkgMode(&mPkg, keymap[0]);
@@ -341,15 +361,7 @@ void MainWindow::on_RunButt_clicked()
                     // TELEMETRY DECODING. Only If the store data has the expected size
                     if (datacount == TELPKGLEN) //Complete Pkg Received
                     {
-                    /*	//Prints the stored package
-                        for (i = 0; i < TELPKGLEN; i++) {
-                            printf("[%x]",TeleData[i]);
-                        }
-                    */
-                        for(i=0;i<4;i++){
-                            ae[i] = (TeleData[2+2*i] << 8  | TeleData[3+2*i]);
-                           // printf("[E%d:%d]",i,ae[i]);
-                        }
+
                         // using the telemetry for mode switching
                         TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
                         //CHECKS WHETHER CALIBRATION IS DONE
@@ -366,6 +378,9 @@ void MainWindow::on_RunButt_clicked()
 //                                printf(" Chksum OK = %i \n",ChkSumOK);
                         //Saves data only if the pkg is complete
                         if (ChkSumOK){
+                            ui->r_qr->display((int)TeleData[0]);
+                            ui->phi_qr->display((TeleData[1] << 8 | TeleData[2]));
+                            ui->theta_ref->display((TeleData[3] << 8 | TeleData[4]));
                             //Writes the telemetry in a Txt file
                             for (i = 0; i < TELPKGLEN; i++) {
                                 fprintf(TeleFile, "%x ", TeleData[i]);
@@ -387,10 +402,12 @@ void MainWindow::on_RunButt_clicked()
                     }
                     // DATA LOGGING DECODING. Only If the stored data has the expected size
                     if (datacount == DLPKGLEN) //Complete Pkg Received
-                    {if (abort == 1) keymap[0] = MODE_ABORT;
-                        QRMode = keymap[0];
-                        ui->ModeSel->setText(GetMode(QRMode));
-                        printf("DL ");
+                    {
+                        datacount = 0;
+//                        if (abort == 1) keymap[0] = MODE_ABORT;
+//                        QRMode = keymap[0];
+//                        ui->ModeSel->setText(GetMode(QRMode));
+//                        printf("DL ");
                         //Prints the stored package
 //                        for (i = 0; i < DLPKGLEN; i++) {
 //                            printf("[%x]",DLData[i]);
