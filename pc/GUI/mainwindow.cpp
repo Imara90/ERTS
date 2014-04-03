@@ -31,6 +31,10 @@ unsigned char  QRMode = MODE_SAFE; //Initializes QR Mode
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
 
+#define PCONTROL_INIT   20
+#define P1CONTROL_INIT  1
+#define P2CONTROL_INIT  2
+
 //Flag to trigger data logging
 bool DataLogkey = false;
 
@@ -293,9 +297,9 @@ void MainWindow::on_RunButt_clicked()
                     data[1] = keymap[5];
                     data[2] = keymap[6];
                     data[3] = keymap[7];
-                    ui->P->display(data[1]);
-                    ui->P1->display(data[2]);
-                    ui->P2->display(data[3]);
+                    ui->P->display(data[1]+PCONTROL_INIT);
+                    ui->P1->display(data[2]+P1CONTROL_INIT);
+                    ui->P2->display(data[3]+P2CONTROL_INIT);
                     break;
 
                 default: //CONTROL MODES
