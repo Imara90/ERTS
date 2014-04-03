@@ -36,6 +36,8 @@
 #define X32_QR_s5 		peripherals[PERIPHERAL_XUFO_S5]
 #define X32_QR_timestamp 	peripherals[PERIPHERAL_XUFO_TIMESTAMP]
 
+#define CLOCKS_PER_US		0x32
+
 #define X32_rs232_data		peripherals[PERIPHERAL_PRIMARY_DATA]
 #define X32_rs232_stat		peripherals[PERIPHERAL_PRIMARY_STATUS]
 #define X32_rs232_char		(X32_rs232_stat & 0x02)
@@ -433,6 +435,8 @@ void isr_qr_timer(void)
 {
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 
+	starttime = X32_us_clock;
+
 	// get sensor and timestamp values
 	//x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
 	//x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
@@ -448,8 +452,10 @@ void isr_qr_timer(void)
 		KalmanFilter();//phi,p,theta,q
 	   	//Yaw Rate
 	    	r = x0[5] - OFFSET_x0[5];
-		X32_display = y0[0];
+		//X32_display = y0[0];
     	}
+
+	functiontime = X32_us_clock - starttime;
 
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
@@ -653,7 +659,7 @@ void send_data(void)
 		dscb.start = (dscb.start + 1) % dscb.size;	
 
 		// DEBUG DEBUG
-		X32_display = (dscb.end - dscb.start) % dscb.size;
+		//X32_display = (dscb.end - dscb.start) % dscb.size;
 		//delay_ms(10);
 		on_led(6);
 	}
@@ -686,8 +692,10 @@ void send_telemetry(void)
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
 		cbWrite(txcb, (BYTE)package[MODE], &sum);
-		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
-		cbWrite(txcb, (BYTE)(ae[0]), &sum);
+		cbWrite(txcb, (BYTE)(functiontime >> 8), &sum);
+		cbWrite(txcb, (BYTE)(functiontime), &sum);
+		//cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
+		//cbWrite(txcb, (BYTE)(ae[0]), &sum);
 		cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
 		cbWrite(txcb, (BYTE)(ae[1]), &sum);
 		cbWrite(txcb, (BYTE)(ae[2] >> 8), &sum);
@@ -762,7 +770,9 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
  	
 	// timer interrupt - less high priority
-        X32_timer_per = 100 * CLOCKS_PER_MS;
+        // X32_timer_per = 100 * CLOCKS_PER_MS;
+	//peripherals[PERIPHERAL_TIMER1_PERIOD] = 100 * CLOCKS_PER_MS;
+	peripherals[PERIPHERAL_TIMER1_PERIOD] = (CLOCKS_PER_MS<<2);
         SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
         SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 20);
         ENABLE_INTERRUPT(INTERRUPT_TIMER1);
@@ -878,11 +888,11 @@ int main()
 				}
 
 				// sends the telemetry at 10Hz
-				starttime = X32_us_clock;
+				//starttime = X32_us_clock;
 				send_telemetry();
-				functiontime = X32_us_clock - starttime;
+				//functiontime = X32_us_clock - starttime;
 	
-				//X32_display = maxtime;
+				X32_display = maxtime;
 
 				// profiling the control time	
 				controltime = X32_us_clock;

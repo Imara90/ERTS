@@ -356,6 +356,7 @@ int main()
 					// DATA LOGGING DECODING. Only If the stored data has the expected size
 					if (datacount == DLPKGLEN) //Complete Pkg Received
 					{
+						datacount = 0;
 						printf("\nDL, ");
 						//Prints the stored package
 						for (i = 0; i < DLPKGLEN; i++) {

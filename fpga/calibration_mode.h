@@ -15,9 +15,10 @@ void calibration_mode(void) {
 
 	int i;
 	if (calibration_counter == 0) { 
-		for(i = 0; i < 6; i++) OFFSET_x0[i] = 0;
+		DISABLE_INTERRUPT(INTERRUPT_TIMER1);
+		calibration_done = 0;
 		telemetry_flag = telemetry_flag & 0xFE;
-        calibration_done = 0;
+		for(i = 0; i < 6; i++) OFFSET_x0[i] = 0;
 	}
 		
 	for(i = 0; i < 6; i++) 
@@ -33,7 +34,8 @@ void calibration_mode(void) {
 		}
         
 		telemetry_flag = telemetry_flag | 0x03;
-        calibration_done = 1;
+        	calibration_done = 1;
+		ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 	}   
     calibration_counter++;
     
