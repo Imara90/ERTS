@@ -316,8 +316,10 @@ void MainWindow::on_RunButt_clicked()
                     manual_mode(data[0], data[1], data[2], data[3],ae);
                     break;
                 case MODE_YAW_CONTROL:
+						  yaw_control_mode_pc(data[0], data[1], data[2], data[3],ae);
                     break;
                 case MODE_FULL_CONTROL:
+						  full_control_mode_pc(data[0], data[1], data[2], data[3],ae);
                     break;
                 default:
                     for(i = 0;i<4;i++)
