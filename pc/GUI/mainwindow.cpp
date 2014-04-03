@@ -39,6 +39,10 @@ FILE* TeleFile;
 int dataclose = -1;
 int telclose = -1;
 
+/***************************************************************/
+//	Checks and decodes telemetry packets
+// Author: Daniel Lemus 870754
+/***************************************************************/
 int TeleDecode(int* TelPkg/*, int* Output*/){
 
     int i;
@@ -68,6 +72,10 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
     return TRUE;
 }
 
+/***************************************************************/
+//	Checks and DataLog packets
+// Author: Daniel Lemus 870754
+/***************************************************************/
 int DLDecode(int* DLPkg/*, int* Output*/){
 
     int i;
@@ -94,7 +102,10 @@ int DLDecode(int* DLPkg/*, int* Output*/){
     return TRUE;
 }
 
-
+/***************************************************************/
+/*	Sets status bar text and color
+/* Author: Daniel Lemus 870754
+/***************************************************************/
 void SetStatusColor(QStatusBar* statusBar,QString mString,QColor mColor){
     QPalette palette;
     palette.setColor(QPalette::Background,mColor);
@@ -103,6 +114,10 @@ void SetStatusColor(QStatusBar* statusBar,QString mString,QColor mColor){
 }
 
 
+/***************************************************************/
+//	Initializes Main Window
+// Author: Daniel Lemus 870754
+/***************************************************************/
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -125,11 +140,19 @@ MainWindow::MainWindow(QWidget *parent) :
 
 }
 
+/***************************************************************/
+//	Triggers Main Window destructor
+// Author: Daniel Lemus 870754
+/***************************************************************/
 MainWindow::~MainWindow()
 {
     delete ui;
 }
 
+/***************************************************************/
+//	Run button clicks
+// Author: Daniel Lemus 870754
+/***************************************************************/
 void MainWindow::on_RunButt_clicked()
 {
     //------------------------------------GUI PARAMETERS----------------------
@@ -464,7 +487,10 @@ void MainWindow::on_RunButt_clicked()
 
 
 
-
+/***************************************************************/
+//	Handles Communication button clicks
+// Author: Daniel Lemus 870754
+/***************************************************************/
 void MainWindow::on_CommButt_clicked()
 {
     ui->label_5->setFocus();
@@ -501,7 +527,10 @@ void MainWindow::on_CommButt_clicked()
     ui->label_5->setFocus();
 }
 
-
+/***************************************************************/
+//	Handles pressed keys from the keyboard
+// Author: Daniel Lemus 870754
+/***************************************************************/
 void MainWindow::keyPressEvent(QKeyEvent* Key)
 {
 //    ui->statusBar->showMessage(Key->text().toLower());
@@ -580,11 +609,19 @@ void MainWindow::keyPressEvent(QKeyEvent* Key)
     //ui->statusBar->showMessage(QString::number(pressed_key));
 }
 
+/***************************************************************/
+//	Handles Save Data Log Key
+// Author: Daniel Lemus 870754
+/***************************************************************/
 void MainWindow::on_SaveDL_clicked()
 {
     DataLogkey = true;
 }
 
+/***************************************************************/
+//	Handles main window close event
+// Author: Daniel Lemus 870754
+/***************************************************************/
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     SetStatusColor(ui->statusBar,"Closing ....",Qt::yellow);
