@@ -5,13 +5,6 @@
 #include <string.h>
 #include <QKeyEvent>
 
-#include "../read_kb.h"
-#include "../read_js.h"
-#include "../rs232.h"
-#include "../Package.h"
-#include "../mode_selection.h" 	// Diogos mode selection function
-#include "../manual_mode_pc.h"
-
 int flag = 0;
 //int fd_RS232;
 BYTE ReadBuffer[6];
@@ -21,13 +14,25 @@ unsigned char  QRMode = MODE_SAFE; //Initializes QR Mode
 //#define FALSE 	0
 //#define TRUE 	1
 
+//GLOBALS FOR CONTROL MODES
+long int Z = 0;		// LIFT FORCE
+long int L = 0;		// ROLL MOMENTUM
+long int M = 0;		// PICTH MOMENTU
+long int N = 0;		// YAW MOMENTUM
+int 	phi = 0; 	// ROLL ANGLE
+int 	theta = 0; 	// PITCH ANGLE
+int 	p = 0; 		// ROLL RATE
+int 	q = 0; 		// PITCH RATE
+int 	r = 0; 		// YAW RATE
+long int ww[4] = {0, 0, 0, 0};
+
 #define START_BYTE 0x80
 #define TELLEN	      	8
 #define TELPKGLEN     	TELLEN - 1
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
 #define START_BYTE 0x80
-#define DATALEN         48
+#define DATALEN         33
 #define DLPKGLEN     	DATALEN - 1 //EXPECTED DATA LOG PACKAGE LENGTH EXCLUDING THE STARTING BYTE
 #define DLPKGCHKSUM  	DLPKGLEN - 1
 
@@ -43,6 +48,17 @@ FILE* TeleFile;
 int dataclose = -1;
 int telclose = -1;
 
+#include "../read_kb.h"
+#include "../read_js.h"
+#include "../rs232.h"
+#include "../Package.h"
+#include "../mode_selection.h" 	// Diogos mode selection function
+#include "../manual_mode_pc.h"
+#include "../p_control_modepc.h"
+#include "../yaw_control_mode_pc.h"
+#include "../full_control_mode_pc.h"
+
+
 /***************************************************************/
 //	Checks and decodes telemetry packets
 // Author: Daniel Lemus 870754
@@ -57,11 +73,11 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
     {
         sum ^= TelPkg[i];
     }
-    sum = (BYTE)~sum;
+   // sum = (BYTE)~sum;
     if (sum == 0x80)
     {
             sum = 0x00;
-        }
+    }
     // DEBUG
     //sumglobal = sum;
 //	printf("[%x][%x]",,ChkSum);
@@ -202,8 +218,8 @@ void MainWindow::on_RunButt_clicked()
     //Initializes the keymap from the keyboard
     int jmap[4] = {0,0,0,0};
     //Joystick buffer clearence and calibration of yaw axis
-//	clear_js_buffer();
-//	js_calibration();
+    clear_js_buffer();
+    //js_calibration();
 
     /*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
      *(P,P1,P2,0 for Control Gains Mode)*/
@@ -220,6 +236,7 @@ void MainWindow::on_RunButt_clicked()
     //Count variable which loops over the sending package
     int datai = 0;
     //Used to check whether the complete Pkg has been written
+    ui->Yaw->display(data[3]);
     int Pkg_written = 0;
     //Used to disable writting to the port
     int writeflag = 1;
@@ -271,7 +288,7 @@ void MainWindow::on_RunButt_clicked()
         QCoreApplication::processEvents(); //Prevents for GUI Freezing
 
         //reads data from the joystick ...comment if joystick is not connected
-        //abort = read_js(jmap);
+        abort = read_js(jmap);
         //CHECKS KEYBOARD INPUT FOR DATALOGGING
         if (DataLogkey == true){ //Data Logging requested
             pressed_key = 126;
@@ -320,10 +337,13 @@ void MainWindow::on_RunButt_clicked()
                     manual_mode(data[0], data[1], data[2], data[3],ae);
                     break;
                 case MODE_YAW_CONTROL:
-						  yaw_control_mode_pc(data[0], data[1], data[2], data[3],ae);
+                          yaw_control_mode(data[0], data[1], data[2], data[3],ae);
+//                          SetStatusColor(ui->statusBar,QString::number((char)TeleData[0]),Qt::yellow);
+
+                          ui->r_ref->display(int(data[3])*15/127);
                     break;
                 case MODE_FULL_CONTROL:
-						  full_control_mode_pc(data[0], data[1], data[2], data[3],ae);
+                          full_control_mode(data[0], data[1], data[2], data[3],ae);
                     break;
                 default:
                     for(i = 0;i<4;i++)
@@ -332,6 +352,7 @@ void MainWindow::on_RunButt_clicked()
                     }
                     break;
             }
+//            ui->testlbl->setText(QString::number();
             //DISPLAY THE ENGINE VALUES
             ui->ae0->display(ae[0]);
             ui->ae1->display(ae[1]);
@@ -407,9 +428,10 @@ void MainWindow::on_RunButt_clicked()
 //                                printf(" Chksum OK = %i \n",ChkSumOK);
                         //Saves data only if the pkg is complete
                         if (ChkSumOK){
-                            ui->r_qr->display((int)TeleData[0]);
-                            ui->phi_qr->display((TeleData[1] << 8 | TeleData[2]));
-                            ui->theta_ref->display((TeleData[3] << 8 | TeleData[4]));
+                            //SetStatusColor(ui->statusBar,QString::number((char)TeleData[0]),Qt::yellow);
+                            ui->r_qr->display((char)TeleData[0]);
+                            ui->phi_qr->display((short)(TeleData[1] << 8 | TeleData[2]));
+                            ui->theta_ref->display((short)(TeleData[3] << 8 | TeleData[4]));
                             //Writes the telemetry in a Txt file
                             for (i = 0; i < TELPKGLEN; i++) {
                                 fprintf(TeleFile, "%x ", TeleData[i]);

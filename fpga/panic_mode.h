@@ -5,7 +5,7 @@ Moderate RPM's value to lift threshold and after few seconds enter safe mode
 
 */
 
-#define LIFT_THRESHOLD 500 //TODO Define this values experimentally
+#define LIFT_THRESHOLD 300 
 #define ENGINE_STEP 30
 
 

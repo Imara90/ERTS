@@ -419,12 +419,12 @@ void isr_qr_link(void)
 	// (Need to supply a continous stream, otherwise
 	// QR will go to safe mode, so just send every ms)
 
-/*
+
 	X32_QR_a0 = ae[0];
 	X32_QR_a1 = ae[1];
 	X32_QR_a2 = ae[2];
 	X32_QR_a3 = ae[3];
-*/
+
 
 	//functiontime = X32_us_clock - starttime;
 }
@@ -738,7 +738,7 @@ void send_telemetry(void)
 
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
-		//cbWrite(txcb, package[MODE], &sum);
+		//cbWrite(txcb, package[MODE], &sum(char)TeleData[0]);
 		cbWrite(txcb, (BYTE)(r), &sum);
 		//cbWrite(txcb, (BYTE)(controltime >> 8), &sum);
 		//cbWrite(txcb, (BYTE)controltime, &sum);
@@ -767,10 +767,8 @@ void send_telemetry(void)
 */		
 		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
 		cbWrite(txcb, (BYTE)(phi), &sum);
-		cbWrite(txcb, (BYTE)(sp), &sum);
-		cbWrite(txcb, (BYTE)(sphi), &sum);
-		//cbWrite(txcb, (BYTE)(theta >> 8), &sum);
-		//cbWrite(txcb, (BYTE)(theta), &sum);
+		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
+		cbWrite(txcb, (BYTE)(theta), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
 #endif
