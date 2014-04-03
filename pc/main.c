@@ -28,8 +28,8 @@
 #include "check_motor_ramp.h"	// Daniels motor ramp
 
 #define START_BYTE 0x80
-//#define TELLEN	      	8
-#define TELLEN	      	22
+#define TELLEN	      	8
+//#define TELLEN	      	22
 #define TELPKGLEN     	TELLEN - 1 
 #define TELPKGCHKSUM  	TELPKGLEN - 1
 
@@ -58,10 +58,10 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 	//CHECKSUM CHECK
 	for(i = 0; i < TELPKGCHKSUM ; i++)
 	{
-		//sum += TelPkg[i];
-		sum ^= TelPkg[i];
+		sum += TelPkg[i];
+		//sum ^= TelPkg[i];
 	}
-	//sum = (BYTE)~sum;
+	sum = (BYTE)~sum;
    	if (sum == 0x80)
 	{
         	sum = 0x00;
@@ -88,10 +88,10 @@ int DLDecode(int* DLPkg/*, int* Output*/){
 	//CHECKSUM CHECK
 	for(i = 0; i < DLPKGCHKSUM ; i++)
 	{
-		//sum += DLPkg[i];
-		sum ^= DLPkg[i];
+		sum += DLPkg[i];
+		//sum ^= DLPkg[i];
 	}
-	//sum = (BYTE)~sum;
+	sum = (BYTE)~sum;
     	if (sum == 0x80)
 	{
         	sum = 0x00;
@@ -290,7 +290,7 @@ int main()
 						
 					}
 					// TELEMETRY DECODING. Only If the store data has the expected size
-						
+/*						
 	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
@@ -315,9 +315,9 @@ int main()
 							fprintf(TeleFile,"\n");
 						}
 					}
-
+*/
 	// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG
-/*
+
 					if (datacount == TELPKGLEN) //Complete Pkg Received
 					{
 						printf("\n[r: %d], [phi: %d], [theta: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
@@ -341,7 +341,7 @@ int main()
 							fprintf(TeleFile,"\n");
 						}
 					}
-*/	
+	
 				}
 
 

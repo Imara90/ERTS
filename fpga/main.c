@@ -91,10 +91,10 @@
 
 //BUTTERWORTH LOW PASS FILTER CONSTANTS
 //for 25Hz cut-off frequency and 1266.5 Hz sampling freq.
-#define A0		969
-#define A1		969
+#define A0		2240
+#define A1		2240
 #define B0		16384
-#define B1		14444
+#define B1		11903
 //for 10Hz cut-off frequency and 1266.5 Hz sampling freq.
 /*#define A0		401
 #define A1		401
@@ -227,7 +227,7 @@ BYTE   dl[DLOGSIZE];
 // variable to save buffer return in
 BYTE 	c;
 
-#define DEBUGGING
+//#define DEBUGGING
 
 int	sensor[6] = {500, 501, 502, 503, 504, 505};
 
@@ -366,22 +366,6 @@ void isr_qr_link(void)
 	isr_qr_time = X32_us_clock;
         inst = X32_instruction_counter;
 
-	/*
-	// get sensor and timestamp values
-	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
-	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
-	timestamp = X32_QR_timestamp;
-	//in case of erros, sensors must go to the main function
-
-	// monitor presence of interrupts 
-	isr_qr_counter++;
-	
-	if (isr_qr_counter % 500 == 0) 
-	{
-		toggle_led(2);
-	}	
-
-*/
 	// Clip engine values to be positive and 10 bits.
 	for (ae_index = 0; ae_index < 4; ae_index++) 
 	{
@@ -430,31 +414,22 @@ void isr_rs232_rx(void)
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
+
 void isr_qr_timer(void)
 {
 	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-
-	starttime = X32_us_clock;
-
-	// get sensor and timestamp values
-	//x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
-	//x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
-
 	x0[0] = sensor[0]; x0[1] = sensor[1]; //x0[2] = X32_QR_s2; 
 	x0[3] = sensor[3]; x0[4] = sensor[4]; x0[5] = sensor[5];
 	timestamp = X32_QR_timestamp;
 	
 	if(calibration_done)
     	{
-		toggle_led(0);
+		//on_led(0);
         	Butt2Filter();//ax,ay
 		KalmanFilter();//phi,p,theta,q
 	   	//Yaw Rate
 	    	r = x0[5] - OFFSET_x0[5];
     	}
-
-	functiontime = X32_us_clock - starttime;
-
 	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 }
 
@@ -557,14 +532,15 @@ int check_sum(void)
 	// independent of the package structure
 	for (i = 0; i < (nParams - 1); i++)
 	{
-		sum += package[i];
+		sum ^= package[i];
 	}	
-	sum = ~sum;
+	//sum = ~sum;
 	
 	if (sum == 0x80)
 	{
 		sum = 0x00;
 	}
+	
 	
 	if (package[CHECKSUM] != sum) {
 		return 0;
@@ -586,9 +562,10 @@ void store_data(void)
 
 	if (X32_ms_clock - storetime >= DATASTORETIMEMS)
 	{
-		//starttime = X32_ms_clock;
+		//starttime = X32_us_clock;
 
 		cbWritenoSum(dscb, (BYTE)STARTING_BYTE);
+		//functiontime = X32_us_clock - starttime;
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
 		cbWrite(dscb, (BYTE)(X32_ms_clock - storetime), &sum);
 		cbWrite(dscb, package[MODE], &sum);
@@ -634,7 +611,7 @@ void store_data(void)
 		cbWritenoSum(dscb, (BYTE)(sum));
 	
 		storetime = X32_ms_clock;
-		//functiontime = X32_ms_clock - starttime;
+		
 	}
 	
 }
@@ -678,7 +655,7 @@ void send_telemetry(void)
 		// set a flag when the sum is biger than 0
 		sumae = ae[0] + ae[1] + ae[2] + ae[3];
 		(sumae > 0) ? (telemetry_flag |= 0x04) : (telemetry_flag &= 0x03); 
-
+/*
 #ifdef DEBUGGING
 		// profiling
 		//starttime = X32_us_clock;
@@ -686,8 +663,8 @@ void send_telemetry(void)
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
 		cbWrite(txcb, (BYTE)package[MODE], &sum);
-		cbWrite(txcb, (BYTE)(functiontime >> 8), &sum);
-		cbWrite(txcb, (BYTE)(functiontime), &sum);
+		cbWrite(txcb, (BYTE)(controltime >> 8), &sum);
+		cbWrite(txcb, (BYTE)(controltime), &sum);
 		//cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
 		//cbWrite(txcb, (BYTE)(ae[0]), &sum);
 		cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
@@ -714,15 +691,18 @@ void send_telemetry(void)
 		
 // Code for the final lab
 #else
+*/
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		cbWrite(txcb, (BYTE)(r), &sum);
-		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
-		cbWrite(txcb, (BYTE)(phi), &sum);
+		cbWrite(txcb, (BYTE)(controltime >> 8), &sum);
+		cbWrite(txcb, (BYTE)(controltime), &sum);
+		//cbWrite(txcb, (BYTE)(phi >> 8), &sum);
+		//cbWrite(txcb, (BYTE)(phi), &sum);
 		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
 		cbWrite(txcb, (BYTE)(theta), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
-#endif
+//#endif
 		// make sure the checksum isn't the starting byte 0x80
 		if (sum == STARTING_BYTE)
 		{
@@ -766,10 +746,10 @@ int main()
 	// timer interrupt - less high priority
         // X32_timer_per = 100 * CLOCKS_PER_MS;
 	//peripherals[PERIPHERAL_TIMER1_PERIOD] = 100 * CLOCKS_PER_MS;
-	peripherals[PERIPHERAL_TIMER1_PERIOD] = (CLOCKS_PER_MS<<2);
-        SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
-        SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 20);
-        ENABLE_INTERRUPT(INTERRUPT_TIMER1);
+	//peripherals[PERIPHERAL_TIMER1_PERIOD] = (CLOCKS_PER_MS << 2);
+        //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
+        //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 20);
+        //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	// prepare rs232 rx interrupt and getchar handler
         SET_INTERRUPT_VECTOR(INTERRUPT_PRIMARY_RX, &isr_rs232_rx);
@@ -823,6 +803,7 @@ int main()
 			decode();
 			if (check_sum())
 			{
+				
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
@@ -848,13 +829,16 @@ int main()
                         			}
 						break;
 					case YAW_CONTROL_MODE:
+						isr_qr_timer();
 						yaw_control_mode();		
 						break;
 					case FULL_CONTROL_MODE:
+						isr_qr_timer();					
 						full_control_mode();
 						break;
 					case P_CONTROL_MODE:
-                        			p_control_mode();						break;
+                        			p_control_mode();
+						break;
 					case ABORT_MODE:
 						program_done++;
 						for (i = 0; i < 4; i++)
@@ -866,12 +850,15 @@ int main()
 						break;
 				}
 				
+				
 				// TODO put these in main code where they are necessary
 				//starttime = X32_us_clock;
 				//functiontime = X32_us_clock - starttime;
 
+				//starttime = X32_us_clock;
 				// if the package was correct, store the correct data
 				store_data();
+				//functiontime = X32_us_clock - starttime;
 
 				// Current time of the control loop
 				controltime = X32_us_clock - controltime;
@@ -885,11 +872,13 @@ int main()
 				//starttime = X32_us_clock;
 				send_telemetry();
 				//functiontime = X32_us_clock - starttime;
+		
+				// profiling the control time	
+				controltime = X32_us_clock;
 	
 				X32_display = maxtime;
 
-				// profiling the control time	
-				controltime = X32_us_clock;
+				
 				
 				// turn l the leds off
 				// X32_leds = 0;		

@@ -78,4 +78,27 @@ Shifting a bit
 
 	0x0037				55 us
 
+timer interrupt time without flters
+
+	0x0015
+
+///////////////////////////////////////////////////////////////////////////
+
+time IR with filters 	
+
+	0x010C				268 us
+
+Switchcase safe mode
+
+	0x1A2				418 us
+
+Decoding
+
+	0x0164				356 us
+
+Storing data 
+
+	0x0736				1846 us
+
+
 
