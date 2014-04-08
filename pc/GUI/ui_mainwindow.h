@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created: Thu Apr 3 04:39:21 2014
+** Created: Thu Apr 3 16:53:14 2014
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -85,6 +85,7 @@ public:
     QSplitter *splitter_2;
     QPushButton *SaveDL;
     QPushButton *Abort;
+    QLabel *testlbl;
     QMenuBar *menuBar;
     QToolBar *mainToolBar;
     QStatusBar *statusBar;
@@ -503,6 +504,9 @@ public:
         Abort->setPalette(palette1);
         splitter_2->addWidget(Abort);
         splitter_3->addWidget(splitter_2);
+        testlbl = new QLabel(centralWidget);
+        testlbl->setObjectName(QString::fromUtf8("testlbl"));
+        testlbl->setGeometry(QRect(300, 260, 66, 17));
         MainWindow->setCentralWidget(centralWidget);
         splitter_3->raise();
         groupBox->raise();
@@ -512,6 +516,7 @@ public:
         ae0->raise();
         ae3->raise();
         layoutWidget->raise();
+        testlbl->raise();
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
         menuBar->setGeometry(QRect(0, 0, 845, 25));
@@ -562,6 +567,7 @@ public:
         Abort->setToolTip(QApplication::translate("MainWindow", "Controls the QR", 0, QApplication::UnicodeUTF8));
 #endif // QT_NO_TOOLTIP
         Abort->setText(QApplication::translate("MainWindow", "Abort", 0, QApplication::UnicodeUTF8));
+        testlbl->setText(QApplication::translate("MainWindow", "TextLabel", 0, QApplication::UnicodeUTF8));
     } // retranslateUi
 
 };

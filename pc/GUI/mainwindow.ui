@@ -1367,6 +1367,19 @@
      </widget>
     </widget>
    </widget>
+   <widget class="QLabel" name="testlbl">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>260</y>
+      <width>66</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
    <zorder>splitter_3</zorder>
    <zorder>groupBox</zorder>
    <zorder>QRImage</zorder>
@@ -1375,6 +1388,7 @@
    <zorder>ae0</zorder>
    <zorder>ae3</zorder>
    <zorder>layoutWidget</zorder>
+   <zorder>testlbl</zorder>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
