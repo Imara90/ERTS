@@ -15,7 +15,7 @@
 \usepackage{natbib} % Required to change bibliography style to APA
 \usepackage{amsmath} % Required for some math elements 
 \usepackage{anysize}
-\marginsize{2cm}{2cm}{1cm}{1cm} % decrease the margins
+\marginsize{2cm}{2cm}{2cm}{2cm} % decrease the margins
 
 \usepackage{xcolor}
 \newcommand\worries[1]{\textcolor{red}{#1}} %add command to specify worries in red
@@ -35,8 +35,8 @@
 
 \title{IN4073 Embedded Real-Time Systems \\ QR Lab report - Team II} % Title
 
-\author{Diogo \textsc{Monteiro}, Daniel L. \textsc{Perez} and Imara C.T.M. \textsc{Speek} \\
-		xxxxxx xxxxxx 1506374} % Authors' names
+\author{Diogo \textsc{Monteiro}, Daniel S. \textsc{Lemus} and Imara C.T.M. \textsc{Speek} \\
+		xxxxxx 870754 1506374} % Authors' names
 
 \date{\today} % Date for the report
 
@@ -75,6 +75,79 @@
 
 \section{Implementation}
 \label{sec:implementation}
+
+\subsection{Communication Protocol PC-$>$QR}
+In order to transmit efficiently data from the PC to the QR, a simple and compact communication protocol was implemented. It consists on a fix length 7 bytes packet, which includes a starting byte \textbf{0x80}, 5 parameters and a checksum (Table \ref{tbl:PkgDefinition}). 
+
+\begin{table}[h]
+\centering
+\caption{Packet Definition}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline 
+0x80 & MODE & LIFT/- & ROLL/P & PITCH/P1 & YAW/P2 & CHECKSUM \\ 
+\hline 
+\end{tabular} 
+\label{tbl:PkgDefinition}
+\end{table}
+
+Although data from the joystick come in the [$2^{15}$,$2^{15}-1$] range, a single byte is used for each parameter. This is enough taking into account that extremely high sensitivity from the joystick is not needed and rather undesirable.  
+
+The packet structure is composed of
+\begin{itemize}
+
+\item{\emph{Starting Byte} \textbf{0x80}, which is reserved for the starting byte and none of the parameters nor the checksum are allowed to have this value.}
+
+\item{\emph{Mode} is set in the second byte as an unsigned char.}
+
+\item{\emph{Lift} is scaled from $[0-255]$ excluding 128 (\textbf{0x80}).}
+
+\item{\emph{Roll}, \emph{pitch} and \emph{yaw} are scaled in the range $[-127,127]$, and then type-cast to unsigned char. This same range is used to scale the control gains (\emph{P} (for yaw control), \emph{P1} and \emph{P2} (for full control)).}
+
+\item{\emph{Checksum} is calculated as the complement of the sum of all parameters, excluding the starting byte. If the sum of the parameters exceed 255, the complement is taken from the least significant byte. \textbf{0x80} value is handled and changed by \textbf{0x00}.}
+
+\end{itemize}
+
+The parameters being encapsulated in the packet depend on the selected mode. \emph{Panic, Manual, Calibration,Yaw Control} and \emph{Full Control} modes includes \emph{lift}, \emph{roll},\emph{pitch} and \emph{yaw} as parameters. \emph{P} mode includes 0, \emph{P} (for yaw control), \emph{P1} and \emph{P2} (for full control) gains as parameters (Table \ref{tbl:PkgDefinition}). Although \emph{lift}, \emph{roll},\emph{pitch} and \emph{yaw} are transmitted for safe, panic and calibration modes, they are not acknowledged by the FPGA.
+
+Data coming from the joystick and keyboard are scaled in $[0-255]$ range and encapsulated in a single byte (\emph{unsigned char}) per parameter.
+
+A data structure is implemented in the \emph{Package.h} file. This structure includes functions to initialize, set parameters into the packet and calculate the checksum. Some extra functions are included to clip the data to the [-127,127] range and handle with the \textbf{0x80}.
+
+This simple communication protocol structure allows the FPGA a more efficiently decoding, handling always with the same packet length.
+
+\subsection{Telemetry}
+
+Telemetry is used as supervision. It is also used to acknowledge the fpga status (\textbf{TELEMETRY FLAG}). Using the retrieved information mode selection is performed in the PC (See. mode selection section ... @Diogo). Along with the FPGA status (\textbf{TELEMETRY FLAG}) sensor data is included (yaw rate, pitch and yaw) as follows (Table. \ref{tbl:TelPkgDefinition}). 
+
+TODO... MENTION HOW FAST THE TELEMETRY IS SENT AND HOW THIS IS PERFORMED IN THE FPGA (WHETHER A ISR IS USED OR NOT)
+
+\begin{table}[h]
+\centering
+\caption{Telemetry Packet Definition}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline 
+0x80 & r & phi & theta & TELEMETRY FLAG & CHECKSUM \\
+\hline 
+\end{tabular} 
+\label{tbl:TelPkgDefinition}
+\end{table}
+
+Parameter r (yaw rate) is encapsulated in a single byte, whereas phi and theta use 2 bytes each.
+
+\subsection{Data Logging}
+
+Data logging is used to verify the filtering/controller behaviour, as well as QR behaviour in general. Multiple signals are stored while the QR is running. A 33 bytes packet is stored each 150ms composed by a starting byte (\textbf{0x80}), 16 parameters (31 bytes) and a checksum. Logged data include timestamp (1 byte), MODE, Lift, Roll, Pitch and Yaw (1 byte each), motor commanded speeds (2 bytes each), sensor normalized data (1 byte each) excluding acceleration reading in Z direction, phi and theta angles (2 bytes each), p and q angles (1 byte each), P, P1 and P2 control gains (1 Byte each) and control time (1 byte).
+
+The data is retrieved from the PC once the \emph{exit mode} is triggered (Pressing Del key or clicking in the Data Log button in the GUI). The FPGA exits the while loop and starts sending the stored data. In the mean time the PC stops writing in the port and starts receiving from the fpga. As the data is received, the PC checks for the start byte (\textbf{0x80}) and stores the subsequent bytes until the expected size is reached (33 bytes). Once the complete packet is stored, the checksum is verified and the packet is written into a text file. All packets are separated by a CR and the starting byte is excluded (as the packet is verified before is written into the file).
+
+A matlab script is used to decode and visualize the logged signals.
+
+\subsection{Butterworth Filter (Daniel Lemus)}
+
+
+
+
+
 
 
 %----------------------------------------------------------------------------------------
