@@ -1,10 +1,10 @@
-//
-//  main.cpp
-//  ERTS
-//
-//  Created by Daniel Lemus Perez on 17/02/14.
-//  Copyright (c) 2014 Daniel Lemus Perez. All rights reserved.
-//
+/***************************************************************/
+// main.c
+// Connects with the QR via RS232.
+// Sends Joystick and keyboard commands
+// Retrieve telemetry and data log
+/***************************************************************/
+
 
 #include <assert.h>
 #include <stdio.h>
@@ -44,6 +44,10 @@ int sumglobal = 0;
 int dataclose = -1;
 int telclose = -1;
 
+/***************************************************************/
+//	Checks and decodes telemetry packets
+// Author: Daniel Lemus 870754
+/***************************************************************/
 int TeleDecode(int* TelPkg/*, int* Output*/){
 	
 	int i;
@@ -74,6 +78,10 @@ int TeleDecode(int* TelPkg/*, int* Output*/){
 	return TRUE;
 }
 
+/***************************************************************/
+//	Checks and DataLog packets
+// Author: Daniel Lemus 870754
+/***************************************************************/
 int DLDecode(int* DLPkg/*, int* Output*/){
 	
 	int i;
@@ -102,7 +110,10 @@ int DLDecode(int* DLPkg/*, int* Output*/){
 	return TRUE;
 }
 
-
+/***************************************************************/
+//	main code
+// Author: Daniel Lemus 870754
+/***************************************************************/
 int main()
 {
 	term_nonblocking();

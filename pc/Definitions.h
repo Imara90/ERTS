@@ -1,10 +1,7 @@
-//
-//  Definitions.h
-//  
-//
-//  Created by Daniel Lemus Perez on 27/02/14.
-//
-//
+/***************************************************************/
+// Definitions.h
+// Author: Daniel Lemus 870754
+/***************************************************************/
 
 #ifndef _Definitions_h
 #define _Definitions_h
