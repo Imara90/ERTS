@@ -22,8 +22,9 @@
 \newcommand\todo[1]{\textcolor{blue}{#1}} % add command to specify todo in blue
 
 \usepackage[toc, page]{appendix} % to include appendices
+\usepackage{listings} % to include source code
 
-\setlength\parindent{0pt} % Removes all indentation from paragraphs
+%\setlength\parindent{0pt} % Removes all indentation from paragraphs
 
 \renewcommand{\labelenumi}{\alph{enumi}.} % Make numbering in the enumerate environment by letter rather than number (e.g. section 6)
 
@@ -68,6 +69,8 @@
 \label{sec:architecture}
 
 
+
+
 %----------------------------------------------------------------------------------------
 %	IMPLEMENTATION
 %	How you did it and who did what
@@ -76,8 +79,16 @@
 \section{Implementation}
 \label{sec:implementation}
 
-\subsection{Communication Protocol PC-$>$QR}
-In order to transmit efficiently data from the PC to the QR, a simple and compact communication protocol was implemented. It consists on a fix length 7 bytes packet, which includes a starting byte \textbf{0x80}, 5 parameters and a checksum (Table \ref{tbl:PkgDefinition}). 
+This Section introduces the implementation of the functionalities implemented in the system. These concern communication protocols, safety measures, speed enhancements and basic functionalities.
+
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+% All info considering communcation protocols
+\subsection{Communication Protocols}
+
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+\subsubsection{PC-$>$QR}
+In order to transmit efficiently data from the PC to the QR, a simple and compact communication protocol was implemented. It consists on a fixed length 7 bytes packet, including a starting byte \textbf{0x80}, 5 parameters and a checksum (Table \ref{tbl:PkgDefinition}). 
 
 \begin{table}[h]
 \centering
@@ -90,36 +101,43 @@ In order to transmit efficiently data from the PC to the QR, a simple and compac
 \label{tbl:PkgDefinition}
 \end{table}
 
-Although data from the joystick come in the [$2^{15}$,$2^{15}-1$] range, a single byte is used for each parameter. This is enough taking into account that extremely high sensitivity from the joystick is not needed and rather undesirable.  
+Although data from the joystick comes in the [$2^{15}$,$2^{15}-1$] range, a single byte is used for each parameter. This is enough taking into account that extremely high sensitivity from the joystick is not needed and rather undesirable.  
+\worries{have to define why?}
 
 The packet structure is composed of
 \begin{itemize}
 
-\item{\emph{Starting Byte} \textbf{0x80}, which is reserved for the starting byte and none of the parameters nor the checksum are allowed to have this value.}
+\item{\emph{Starting Byte} \textbf{0x80}, none of the parameters nor the checksum are allowed to have this value.}
 
 \item{\emph{Mode} is set in the second byte as an unsigned char.}
 
 \item{\emph{Lift} is scaled from $[0-255]$ excluding 128 (\textbf{0x80}).}
 
-\item{\emph{Roll}, \emph{pitch} and \emph{yaw} are scaled in the range $[-127,127]$, and then type-cast to unsigned char. This same range is used to scale the control gains (\emph{P} (for yaw control), \emph{P1} and \emph{P2} (for full control)).}
+\item{\emph{Roll}, \emph{pitch} and \emph{yaw} are scaled in the range $[-127,127]$, and then type-cast to unsigned char. The same range is used to scale the control gains (\emph{P} (for yaw control), \emph{P1} and \emph{P2} (for full control)).}
 
-\item{\emph{Checksum} is calculated as the complement of the sum of all parameters, excluding the starting byte. If the sum of the parameters exceed 255, the complement is taken from the least significant byte. \textbf{0x80} value is handled and changed by \textbf{0x00}.}
+\item{\emph{Checksum} is calculated as a two's complement addition checksum. The \textbf{0x80} value is handled and changed to \textbf{0x00}.}
 
 \end{itemize}
 
-The parameters being encapsulated in the packet depend on the selected mode. \emph{Panic, Manual, Calibration,Yaw Control} and \emph{Full Control} modes includes \emph{lift}, \emph{roll},\emph{pitch} and \emph{yaw} as parameters. \emph{P} mode includes 0, \emph{P} (for yaw control), \emph{P1} and \emph{P2} (for full control) gains as parameters (Table \ref{tbl:PkgDefinition}). Although \emph{lift}, \emph{roll},\emph{pitch} and \emph{yaw} are transmitted for safe, panic and calibration modes, they are not acknowledged by the FPGA.
+The parameters being encapsulated in the packet depend on the selected mode. \emph{Panic, Manual, Calibration,Yaw Control} and \emph{Full Control} modes includes \emph{lift}, \emph{roll},\emph{pitch} and \emph{yaw} as parameters. \emph{P} mode includes 0, \emph{P} (for yaw control), \emph{P1} and \emph{P2} (for full control) gains as parameters (Table \ref{tbl:PkgDefinition}). Although \emph{lift}, \emph{roll},\emph{pitch} and \emph{yaw} are transmitted for safe, panic and calibration modes, they are not acknowledged by the FPGA. Data coming from the joystick and keyboard are scaled in $[0-255]$ range and encapsulated in a single byte (\emph{unsigned char}) per parameter.
 
-Data coming from the joystick and keyboard are scaled in $[0-255]$ range and encapsulated in a single byte (\emph{unsigned char}) per parameter.
+A data structure is implemented in the \emph{Package.h} file. This structure includes functions to initialize, set parameters into the packet and calculate the checksum. Some extra functions are included to clip the data to the [-127,127] range and handle with the \textbf{0x80}. This simple communication protocol structure allows the FPGA a more efficiently decoding, handling always with the same packet length.
 
-A data structure is implemented in the \emph{Package.h} file. This structure includes functions to initialize, set parameters into the packet and calculate the checksum. Some extra functions are included to clip the data to the [-127,127] range and handle with the \textbf{0x80}.
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-This simple communication protocol structure allows the FPGA a more efficiently decoding, handling always with the same packet length.
+\subsubsection{Mode selection}
+\todo{write about switch case and decoding}
+\todo{write about mode selection function in pc}
 
-\subsection{Telemetry}
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+\subsubsection{Telemetry QR-$>$PC}
 
 Telemetry is used as supervision. It is also used to acknowledge the fpga status (\textbf{TELEMETRY FLAG}). Using the retrieved information mode selection is performed in the PC (See. mode selection section ... @Diogo). Along with the FPGA status (\textbf{TELEMETRY FLAG}) sensor data is included (yaw rate, pitch and yaw) as follows (Table. \ref{tbl:TelPkgDefinition}). 
 
-TODO... MENTION HOW FAST THE TELEMETRY IS SENT AND HOW THIS IS PERFORMED IN THE FPGA (WHETHER A ISR IS USED OR NOT)
+\todo{ MENTION HOW FAST THE TELEMETRY IS SENT AND HOW THIS IS PERFORMED IN THE FPGA (WHETHER A ISR IS USED OR NOT)}\\
+
+\todo{mention the internal telemetry (LEDs etc)}
 
 \begin{table}[h]
 \centering
@@ -134,6 +152,35 @@ TODO... MENTION HOW FAST THE TELEMETRY IS SENT AND HOW THIS IS PERFORMED IN THE 
 
 Parameter r (yaw rate) is encapsulated in a single byte, whereas phi and theta use 2 bytes each.
 
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+% Reliable communication
+% 
+
+\subsection{Communication properties}
+\subsubsection{Reliability} 
+To ensure a \emph{reliable communication} , the sent packets are appended with a checksum.  This checksum is calculated at both the PC and the QR. When the locally calculated checksum does not match the send checksum, the package is regarded as faulty and discarded. The checksum in the \textsc{PC-$>$QR} protocol is calculated using a \emph{two's complement addition checksum} as it has been used before in a previous project by \textbf{Daniel}. The checksum calculation used in the telemetry and data logging written by \textbf{Imara} uses the \textsc{XOR} checksum.  
+
+The two's complement method takes 22 $\mu$s for every addition and requires a complement taking 5 additional $\mu$s while the \textsc{XOR} method takes 22 $\mu$s for every \textsc{XOR}'ing. The \textsc{XOR} checksum has a \emph{Hamming Distance} of 2, detecting all one-bit errors, but not all two-bit errors. This happens when an even number of bit errors occurs in the same bit position of the checksum computational block. The two's complement addition with a Hamming Distance of 2 can be seen as an improvement of the \textsc{XOR} checksum as it mixes between bit positions of the data-blocks as a result of the bit-by-bit carry outs of the additions. As most of the control loop delay is caused by the X32 code, we want to limit the amount of instructions. Because of this and it's data independence we decided to use the \textsc{XOR} checksum 
+
+\subsubsection{Dependability}
+Whenever the PC link is broken or disconnected, the code should immediately signal the error and enter panic mode. \textbf{Imara} coded this using a communication counter \texttt{commflag} which is set to zero whenever a package is received in the interrupt service routine of the RS232 RX of the FPGA. Whenever the counter exceeds the threshold \texttt{commthres}, the mode is set to \texttt{PANIC\_MODE}. \todo{explain why this didn't work in the lab}
+
+\subsubsection{Robustness}
+\todo{write arithmetic solutions for representing and handling of sensor values, possibly in an image overview?}
+
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+% Safety mode, emergency stop, stalling proof, robust to noise, reliable communication, 
+% dependability, robustness
+
+\subsection{Safety features}
+The \emph{safe mode} is the initial mode in which the QR operates and has to be accessed in between switching modes. \textbf{Imara} coded the safe mode function in the matching header file in which the FPGA's status is updated in the \texttt{telemetry\_flag}. The engine values are decreased using a \texttt{SAFE\_JUMP} value of 5 to avoid stalling of the engines whenever the FPGA operates in safe mode as determined in the \texttt{switch case} in the \texttt{main} function. 
+
+An extra \texttt{abort\_mode} was created by \textbf{Diogo} to distinguish between directly dangerous situations where the FPGA should shut down the engines and shut down and situations where the system can reduce engine values in a controlled manner such as the \texttt{panic\_mode} provides. \todo{Diogo, can you support the reasons for this}
+
+To prevent stalling to occur in the brushless engines, a \texttt{check\_motor\_ramp()} function is called in the PC after the \texttt{mode\_selection()} performs the mode selection. This function written by \textbf{Daniel} clips the ramping up of the engines to a set maximum value for increasing and decreasing of the engine values. This is done by comparing current \texttt{lift} control values with a \texttt{prev\_lift}. 
+
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+%   Datalogging
 \subsection{Data Logging}
 
 Data logging is used to verify the filtering/controller behaviour, as well as QR behaviour in general. Multiple signals are stored while the QR is running. A 33 bytes packet is stored each 150ms composed by a starting byte (\textbf{0x80}), 16 parameters (31 bytes) and a checksum. Logged data include timestamp (1 byte), MODE, Lift, Roll, Pitch and Yaw (1 byte each), motor commanded speeds (2 bytes each), sensor normalized data (1 byte each) excluding acceleration reading in Z direction, phi and theta angles (2 bytes each), p and q angles (1 byte each), P, P1 and P2 control gains (1 Byte each) and control time (1 byte).
@@ -142,8 +189,14 @@ The data is retrieved from the PC once the \emph{exit mode} is triggered (Pressi
 
 A matlab script is used to decode and visualize the logged signals.
 
-\subsection{Butterworth Filter (Daniel Lemus)}
 
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+%   Filtering
+\subsection{Filtering}
+
+\subsubsection{Butterworth Filter (Daniel Lemus)}
+
+\subsubsection{Kalman Filter}
 
 
 
