@@ -115,7 +115,7 @@ The packet structure is composed of
 
 \item{\emph{Roll}, \emph{pitch} and \emph{yaw} are scaled in the range $[-127,127]$, and then type-cast to unsigned char. The same range is used to scale the control gains (\emph{P} (for yaw control), \emph{P1} and \emph{P2} (for full control)).}
 
-\item{\emph{Checksum} is calculated as a two's complement addition checksum. The \textbf{0x80} value is handled and changed to \textbf{0x00}.}
+\item{\emph{Checksum} is calculated as a two's complement addition of all parameters (exluding the starting byte). The \textbf{0x80} value is handled and changed to \textbf{0x00}.}
 
 \end{itemize}
 
