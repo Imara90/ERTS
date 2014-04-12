@@ -79,7 +79,52 @@
 \section{Implementation}
 \label{sec:implementation}
 
-This Section introduces the implementation of the functionalities implemented in the system. These concern communication protocols, safety measures, speed enhancements and basic functionalities.
+This Section introduces the implementation of the functionalities implemented in the system. These concern, GUI communication protocols, safety measures, speed enhancements and basic functionalities.
+
+
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+%GUI
+\subsection{GUI}
+A simple GUI is designed to control the QR (Figure \ref{fig.GUI}) using QT creator, which allows multi-platform deployment. User can interact with the QR through the keyboard and the GUI (Using the 4 buttons). Buttons functionalities are described in Table \ref{tbl:GUIButts}. \todo{INCLUDE KEYBOARD BUTTONS FUNCTIONALITIES}
+
+\begin{figure}[ht]
+\centering
+	\includegraphics[scale=0.4]{Figures/GUI.png}
+	\caption{Designed User Interface}
+	\label{fig.GUI}
+\end{figure}
+
+\begin{table}[ht]
+\centering
+\caption{GUI Buttons functionalities}
+\begin{tabular}{|c|c|}
+\hline 
+\textbf{Button} & \textbf{Functionality} \\ 
+\hline 
+\hline 
+Connect / Disconnect & Establishes communication with the QR (through RS232). Once connection is stablished \\ & \emph{Start Sending} button is enabled\\ 
+\hline 
+Start/Stop Sending & Data is sent and received. Joystick/Keyboard commanded inputs and Telemetry \\ & are displayed   in the display controls. 
+\\ & Connect button (Now labelled as Disconnect) is disabled until the \emph{Start/Stop Sending} \\ & button is pressed again.
+\\ & \emph{Abort} and \emph{Download DataLog} are enabled
+\\
+\hline 
+Download DataLog & \texttt{EXIT\_MODE} is sent to the QR and data is received and stored in a txt file. 
+\\ & \emph{Start/Stop Sending} button is disabled while the data is being stored\\
+\hline 
+Abort & \texttt{ABORT\_MODE} is sent to the QR making all motor stop immediately\\ 
+\hline 
+\end{tabular} 
+\label{tbl:GUIButts}
+\end{table}
+
+Telemetry data are shown in 3 display controls (QR column with r, phi, theta) next to the commanded values (REFERENCES) which are only displayed in \texttt{FULL\_CONTROL} mode.
+
+All commanded signals from the keyboard and joystick are shown in the Lift, Roll, Pitch, Yaw, P, P1, P2 controls as well as the set MODE. P, P2, P3 values are only changed in \texttt{YAW\_CONTROL} and \texttt{FULL\_CONTROL} modes (See \todo{mode selection}).
+
+In addition, four extra controls show the expected motor speed (Along with a QR schematic for easier understanding).
+
+As safety measure, the QR must be set in \texttt{SAFE\_MODE} before communication is stopped (using the \emph{Start/Stop Sending} button). If the user terminates the program, \texttt{SAFE\_MODE} is set in the QR and the RS232 port is closed.
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 % All info considering communcation protocols
@@ -90,7 +135,7 @@ This Section introduces the implementation of the functionalities implemented in
 \subsubsection{PC-$>$QR}
 In order to transmit efficiently data from the PC to the QR, a simple and compact communication protocol was implemented. It consists on a fixed length 7 bytes packet, including a starting byte \textbf{0x80}, 5 parameters and a checksum (Table \ref{tbl:PkgDefinition}). 
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \caption{Packet Definition}
 \begin{tabular}{|c|c|c|c|c|c|c|}
@@ -101,8 +146,7 @@ In order to transmit efficiently data from the PC to the QR, a simple and compac
 \label{tbl:PkgDefinition}
 \end{table}
 
-Although data from the joystick comes in the [$2^{15}$,$2^{15}-1$] range, a single byte is used for each parameter. This is enough taking into account that extremely high sensitivity from the joystick is not needed and rather undesirable.  
-\worries{have to define why?}
+Although data from the joystick comes in the [$2^{15}$,$2^{15}-1$] range, a single byte is used for each parameter. This is enough taking into account that high sensitivity from the joystick is not needed and rather undesirable (may introduce noise).
 
 The packet structure is composed of
 \begin{itemize}
@@ -133,13 +177,13 @@ A data structure is implemented in the \emph{Package.h} file. This structure inc
 
 \subsubsection{Telemetry QR-$>$PC}
 
-Telemetry is used as supervision. It is also used to acknowledge the fpga status (\textbf{TELEMETRY FLAG}). Using the retrieved information mode selection is performed in the PC (See. mode selection section ... @Diogo). Along with the FPGA status (\textbf{TELEMETRY FLAG}) sensor data is included (yaw rate, pitch and yaw) as follows (Table. \ref{tbl:TelPkgDefinition}). 
+Telemetry is used as supervision. It is also used to acknowledge the fpga status (\texttt{TELEMETRY\_FLAG}). Using the retrieved information mode selection is performed in the PC (See. mode selection section ... @Diogo). Along with the FPGA status (\texttt{TELEMETRY\_FLAG}) sensor data is included (yaw rate, pitch and yaw) as follows (Table. \ref{tbl:TelPkgDefinition}). 
 
 \todo{ MENTION HOW FAST THE TELEMETRY IS SENT AND HOW THIS IS PERFORMED IN THE FPGA (WHETHER A ISR IS USED OR NOT)}\\
 
 \todo{mention the internal telemetry (LEDs etc)}
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \caption{Telemetry Packet Definition}
 \begin{tabular}{|c|c|c|c|c|c|}
@@ -194,7 +238,55 @@ A matlab script is used to decode and visualize the logged signals.
 %   Filtering
 \subsection{Filtering}
 
-\subsubsection{Butterworth Filter (Daniel Lemus)}
+QR sensor signals must be filtered and bias-cleared before they are feed in the controller. Figure \ref{fig.Noise} shows signals in steady state coming from the accelerometer and gyroscope.
+
+Two filter options are explored to perform the signal reconditioning.
+
+\begin{figure}[ht]
+\centering
+	\includegraphics[scale=0.6]{Figures/Noise.eps}
+	\caption{Accelerometer vs Gyro signals noise comparison}
+	\label{fig.Noise}
+\end{figure}
+
+\subsubsection{Butterworth Filter}
+
+A first order butterworth filter is used to perform noise reduction. This noise reduction can be regulated setting the cutoff frequency. Lower cutoff frequencies will lead to a much smoother signal with delay as trade-off. In contrast, higher cutoff frequencies results in a synchronised signal with still some noise (Figure \ref{fig.NoiseComp}). Although a lower cut frequency (10Hz) lead to a delayed signal, the phase shift for a butterworth $1^{st}$ order is less than $90^{o}$ at the cut frequency, making it suitable for the QR application. 
+
+\begin{figure}[ht]
+\centering
+	\includegraphics[scale=0.6]{Figures/NoiseComp.eps}
+	\caption{Cutoff Frequency effect in a $1^{st}$ order butterworth filter}
+	\label{fig.NoiseComp}
+\end{figure}
+
+Implementation of a $1^{st}$ order butterworth filter is straightforward compared to a Kalman filter. Given the signal sample frequency and the desired cutoff frequency, a set of constants ($A0$,$A1$,$B_0$ and $B_1$) are calculated. Using this constants the filtered signal is reconstructed out from the raw sensor values (current and previous) and the previous filtered value.
+
+\begin{equation}
+	 B_0 y_k = A_0 x_k + A_1 x_{k-1} + B_1 y_{k-1}
+	 \label{eq:Butt1st}
+\end{equation}
+
+Equation \ref{eq.Butt1st} shows the update formula for a 1st order Butterworth filter, where $x$ and $y$ are the raw and filtered values respectively, $A0$,$A1$,$B_0$ and $B_1$ are the constants for a $1^{st}$ order butterworth filter, $k$ and $k-1$ represent the current and previous measurement.
+
+The calculated constants for the $1^{st}$ order butterworth are rational numbers and a proper scaling is applied in order to compute the multiplication with the measured and filtered values (The FPGA soft core does not handle floating point numbers). A 14 bit fix point arithmetic is applied in this case to compute the constants (This is multiply by $2^14$ and round the number as seen in Table \ref{tbl:ButtConstants}).
+
+\begin{table}[ht]
+\centering
+\caption{Telemetry Packet Definition}
+\begin{tabular}{|c|c|c|c|c|}
+\hline 
+ & $A_0$ & $A_1$ & $B_0$ & $B_1$ \\ 
+\hline 
+Real Values & 0.0242 & 0.0242 & 1 & -0.9515 \\ 
+\hline 
+14 Bit Fix Point & 396 & 396 & 16384 & -15590 \\ 
+\hline 
+\end{tabular}
+\label{tbl:ButtConstants}
+\end{table}
+
+Once the values are scaled properly multiplication can be computed as the product of two integers dividing the result by $2^14$ (This is made using the $>>$ operator). The outcome of the multiplication is used to compute the filter described in equation \ref{eq:Butt1st}.
 
 \subsubsection{Kalman Filter}
 
