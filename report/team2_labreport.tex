@@ -238,12 +238,14 @@ A matlab script is used to decode and visualize the logged signals.
 %   Filtering
 \subsection{Filtering}
 
-QR sensor signals must be filtered and bias-cleared before they are feed in the controller. Figure \ref{fig.Noise} shows how signals coming from the accelerometer are noisier than the signals coming from the gyroscopes. Two filter options are explored to perform the signal reconditioning.
+QR sensor signals must be filtered and bias-cleared before they are feed in the controller. Figure \ref{fig.Noise} shows signals in steady state coming from the accelerometer and gyroscope.
+
+Two filter options are explored to perform the signal reconditioning.
 
 \begin{figure}[ht]
 \centering
 	\includegraphics[scale=0.6]{Figures/Noise.eps}
-	\caption{Accelerometer vs Gyro noise comparison}
+	\caption{Accelerometer vs Gyro signals noise comparison}
 	\label{fig.Noise}
 \end{figure}
 
@@ -258,14 +260,14 @@ A first order butterworth filter is used to perform noise reduction. This noise 
 	\label{fig.NoiseComp}
 \end{figure}
 
-Implementation of a $1^{st}$ order butterworth filter is straightforward. Given the signal sample frequency and the desired cutoff frequency, a set of constants ($A0$,$A1$,$B_0$ and $B_1$) are calculated. Using this constants the filtered signal is reconstructed out from the raw sensor values (current and previous) and the previous filtered value.
+Implementation of a $1^{st}$ order butterworth filter is straightforward compared to a Kalman filter. Given the signal sample frequency and the desired cutoff frequency, a set of constants ($A0$,$A1$,$B_0$ and $B_1$) are calculated. Using this constants the filtered signal is reconstructed out from the raw sensor values (current and previous) and the previous filtered value.
 
 \begin{equation}
 	 B_0 y_k = A_0 x_k + A_1 x_{k-1} + B_1 y_{k-1}
 	 \label{eq:Butt1st}
 \end{equation}
 
-where $x$ and $y$ are the raw and filtered values respectively, $A0$,$A1$,$B_0$ and $B_1$ are the constants for a $1^{st}$ order butterworth filter, $k$ and $k-1$ represent the current and previous measurement.
+Equation \ref{eq.Butt1st} shows the update formula for a 1st order Butterworth filter, where $x$ and $y$ are the raw and filtered values respectively, $A0$,$A1$,$B_0$ and $B_1$ are the constants for a $1^{st}$ order butterworth filter, $k$ and $k-1$ represent the current and previous measurement.
 
 The calculated constants for the $1^{st}$ order butterworth are rational numbers and a proper scaling is applied in order to compute the multiplication with the measured and filtered values (The FPGA soft core does not handle floating point numbers). A 14 bit fix point arithmetic is applied in this case to compute the constants (This is multiply by $2^14$ and round the number as seen in Table \ref{tbl:ButtConstants}).
 
