@@ -257,11 +257,13 @@ A matlab script is used to decode and visualize the logged signals.
 
 QR sensor signals must be filtered and bias-cleared before they are feed in the controller. Figure \ref{fig.Noise} shows signals in steady state coming from the accelerometer and gyroscope.
 
-Two filter options are explored to perform the signal reconditioning.
+Two filter options are explored to perform the signal reconditioning: Butterworth Filter and Kalman Filter developed by \textbf{Daniel} and \textbf{Diogo}, respectively.
+
+The only control mode that makes use of the sensor filtered values is the \textit{full control mode}, since the \textit{yaw rate} \texttt{r} for the \textit{yaw control mode} can be read directly from the gyro sensor along the respective axis. Hence, it was decided to include the sensor reading and filtering in the main \texttt{switch case} along with the \texttt{case FULL\_CONTROL\_MODE}. Other options were considered such as including the sensor handling in a timer interrupt or in the \texttt{isr\_qr\_link} interrupt. However, for both cases sensor reading and filtering would be performed even in unnecessary conditions. Moreover, setting it just before the \texttt{full\_control\_mode()} function allowed to keep the sensor handling at an approximately constant frequency, what is of enormous importance for a good performance by the filters. In case of change to a different mode, the filter's constants are reinitialized so that erroneous values are not obtained if \textit{full control mode} is executed after.
 
 \begin{figure}[ht]
 \centering
-	\includegraphics[scale=0.6]{Figures/Noise.eps}
+%	\includegraphics[scale=0.6]{Figures/Noise.eps}
 	\caption{Accelerometer vs Gyro signals noise comparison}
 	\label{fig.Noise}
 \end{figure}
@@ -272,7 +274,7 @@ A first order butterworth filter is used to perform noise reduction. This noise 
 
 \begin{figure}[ht]
 \centering
-	\includegraphics[scale=0.6]{Figures/NoiseComp.eps}
+%	\includegraphics[scale=0.6]{Figures/NoiseComp.eps}
 	\caption{Cutoff Frequency effect in a $1^{st}$ order butterworth filter}
 	\label{fig.NoiseComp}
 \end{figure}
@@ -284,9 +286,9 @@ Implementation of a $1^{st}$ order butterworth filter is straightforward compare
 	 \label{eq:Butt1st}
 \end{equation}
 
-Equation \ref{eq.Butt1st} shows the update formula for a 1st order Butterworth filter, where $x$ and $y$ are the raw and filtered values respectively, $A0$,$A1$,$B_0$ and $B_1$ are the constants for a $1^{st}$ order butterworth filter, $k$ and $k-1$ represent the current and previous measurement.
+Equation \ref{eq:Butt1st} shows the update formula for a 1st order Butterworth filter, where $x$ and $y$ are the raw and filtered values respectively, $A0$,$A1$,$B_0$ and $B_1$ are the constants for a $1^{st}$ order butterworth filter, $k$ and $k-1$ represent the current and previous measurement.
 
-The calculated constants for the $1^{st}$ order butterworth are rational numbers and a proper scaling is applied in order to compute the multiplication with the measured and filtered values (The FPGA soft core does not handle floating point numbers). A 14 bit fix point arithmetic is applied in this case to compute the constants (This is multiply by $2^14$ and round the number as seen in Table \ref{tbl:ButtConstants}).
+The calculated constants for the $1^{st}$ order butterworth are rational numbers and a proper scaling is applied in order to compute the multiplication with the measured and filtered values (The FPGA soft core does not handle floating point numbers). A 14 bit fix point arithmetic is applied in this case to compute the constants (This is multiply by $2^{14}$ and round the number as seen in Table \ref{tbl:ButtConstants}).
 
 \begin{table}[ht]
 \centering
@@ -303,9 +305,15 @@ Real Values & 0.0242 & 0.0242 & 1 & -0.9515 \\
 \label{tbl:ButtConstants}
 \end{table}
 
-Once the values are scaled properly multiplication can be computed as the product of two integers dividing the result by $2^14$ (This is made using the $>>$ operator). The outcome of the multiplication is used to compute the filter described in equation \ref{eq:Butt1st}.
+Once the values are scaled properly multiplication can be computed as the product of two integers dividing the result by $2^{14}$ (This is made using the $>>$ operator). The outcome of the multiplication is used to compute the filter described in equation \ref{eq:Butt1st}.
 
 \subsubsection{Kalman Filter}
+
+The Kalman filter is applied for correction of the sensor reading errors related to gyroscopes drift and accelerometers noise. An extra effort for noise reduction is done by using the Butterworth filter, as stated in the previous section. 
+
+The algorithm applied was the same as presented in the course lectures. A first approximation of the angle and associated rate is found by directly reading the accelerometer and gyroscope values, respectively. A estimate of the angle is attained by integrating the angle rate using the constant \texttt{P2PHI}. Then, an iterative correction of that value is performed by using constant \texttt{C1} and comparing the actual estimate and accelerometer reading. Also the value obtained for the angle rate is corrected in a similar way by the constant \texttt{C2}, which will influence the rate integration in the following iteration. By adjusting the values of the referred constants, we define the weight or influence that each sensor reading has in the angle and rate computation. This continuous iterative process will correct for both accelerometer noise and gyroscope drift in the long term.
+
+In order to achieve a faster algorithm the constants \texttt{C1} and \texttt{C2} are defined as a power of $2$ value such that the introduced corrections can be performed by a simple shift right. In the integration step of the algorithm the constant \texttt{P2PHI} was first implemented by using an estimate value and applying the fix point arithmetic, defined in the previous section. Later, for easing the tuning process it was also tried to implement the integration by applying shift rights to the angle rate instead of using the multiplication by \texttt{P2PHI}. The tuning procedure of the Kalman Filters was not completed, therefore final values of the constants were not found as will be explained in section \ref{sec:results}.
 
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
