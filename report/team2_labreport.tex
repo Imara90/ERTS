@@ -170,7 +170,7 @@ A data structure is implemented in the \emph{Package.h} file. This structure inc
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 \subsubsection{Mode selection}
-To assess the mode changes requested by the user, \texttt{mode\_selection()} function is executed between the keyboard reading and the communication packet creation. The QR operation is always started in \textit{safe mode} and any change between modes must pass by this safe state. Exception is made to access \textit{panic mode} or \textit{abort mode} as a safety measure. In order to change from \textit{safe mode} to an intended control mode there are two main checks: \textit{Lift} must be equal to $0$ and the sum of the engine values also equal to $0$, which is equivalent to have all the 4 engines set to null. The latter check is done by reading the third least significant bit of the fpga status(\textbf{TELEMETRY FLAG}), received in the telemetry packet. Moving to both \textit{yaw-controlled mode} and \textit{full control mode}
+To assess the mode changes requested by the user, \textbf{Diogo} created the \texttt{mode\_selection()} function which is executed between the keyboard reading and the communication packet creation. The QR operation is always started in \textit{safe mode} and any change between modes must pass by this safe state. Exception is made to access \textit{panic mode} or \textit{abort mode} as a safety measure. In order to change from \textit{safe mode} to an intended control mode there are two main checks: \textit{Lift} must be equal to $0$ and the sum of the engine values also equal to $0$, which is equivalent to have all the 4 engines set to null. The latter check is done by reading the third least significant bit of the fpga status(\textbf{TELEMETRY FLAG}), received in the telemetry packet. Moving to both \textit{yaw-controlled mode} and \textit{full control mode}
 requests an extra check to assess if the sensors calibration was already performed. This is done in a similar way but using the least significant bit. In order to ease the tuning process of the controlled modes, it is also allowed changes between a controlled mode and \textit{P control mode}, which enables the adjustment of the proportional gains (\textit{P,P1,P2}) of the controllers.
 
 In two special cases mode changes to \textit{safe mode} are performed automatically, those are when \textit{panic mode} or \textit{calibration mode} have completed its tasks. That information is also provided by the fpga status flag in the second least significant bit.
@@ -366,6 +366,27 @@ The main function of this mode is to permit the exiting of the main loop in the 
 
 \section{Experimental results}
 \label{sec:results}
+In the demonstration performed in the last laboratory session, we were able to show the capabilities of the QR running the code developed. In this section we discuss what worked correctly and also what went wrong. Some reasoning is as well applied to try to justify what caused those failures and understand what further work should be done in order to correct them.
+
+The first test performed was to the mode change allowance possibilities. Here, it was verified that all the several safety requirements were fulfilled. Nonetheless, one issue was identified when the \textit{calibration mode} was selected and the automatic change back to safe state was not performed. Forcing a change by pressing '$0$' seemed to work and later when \textit{calibration mode} was called again, everything performed as expected. Although further debugging was needed to identify the issue source, it seemed to be related with a wrong initialization of the \texttt{TELEMETRY\_FLAG}.
+
+The execution of the \textit{manual mode} worked perfectly, as the QR revealed an accordingly behaviour with the user references. It also showed a smooth performance in roll, pitch and yaw movements revealing the proficient tuning of the scaling functions.\todo{WE SHOULD TALK ABOUT THE LAG BUT I DONT KNOW HOW WE SHOULD JUSTIFY IT}. At this point we also had the chance to test the \textit{panic mode} and \textit{safe mode}, which executed their tasks as expected taking the QR to a safe and steady state. The following assessment was done to the \textit{calibration mode}. We could notice that the sensors offset was found correctly since the user interface showed null values for the dynamic angles and rates after calibration and when one of the controlled modes was accessed.
+
+At this point we were in condition of testing the \textit{yaw-controlled mode}. A first approach was done by leaving the yaw rate \texttt{r} set to 0 and applying a rotational disturbance to check if the reference was followed and attained. As shown in figure \ref{fig:YawControl}, the expected behaviour was accomplished since the QR rapidly rejected the disturbance and followed the reference.
+
+\begin{figure}[ht]
+\centering
+%	\includegraphics[scale=0.6]{Figures/YawControl.eps}
+	\caption{Disturbance rejection in \textit{yaw-controlled mode}}
+	\label{fig:YawControl}
+\end{figure}
+
+Despite this successfully test, when a different reference (provided by the joystick) was feed to the controller a strange behaviour was witnessed. Basically, the controller was assuming a symmetric reference to the one intended. The error here was identified in the dynamics inversion of the mode algorithm. The linearized dynamics were established using as convention a positive \textit{yaw momentum} \texttt{N} for a clockwise rotation (when looking from above the QR), while the reference yaw rate definition used the opposite definition. This issued could be easily solved by adding a minus sign to the \texttt{N} equation of the linearized system.
+
+Since the group did not have the chance to properly tune the Filtering parameters it was decided not to test \textit{full control mode} since an unexpected and not safety behavior could be experienced. Nevertheless, assuming that the algorithm used clearly resembles the applied for the \textit{yaw-controlled mode}, we believe that it was correctly implemented.
+
+\todo{Talk about GUI\\}
+\todo{Explain why when the cable was disconnected the QR didn't enter panic} 
 
 
 
