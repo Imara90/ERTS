@@ -37,7 +37,7 @@
 \title{IN4073 Embedded Real-Time Systems \\ QR Lab report - Team II} % Title
 
 \author{Diogo \textsc{Monteiro}, Daniel S. \textsc{Lemus} and Imara C.T.M. \textsc{Speek} \\
-		xxxxxx 870754 1506374} % Authors' names
+		4323688 870754 1506374} % Authors' names
 
 \date{\today} % Date for the report
 
@@ -170,9 +170,25 @@ A data structure is implemented in the \emph{Package.h} file. This structure inc
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 \subsubsection{Mode selection}
-\todo{write about switch case and decoding}
-\todo{write about mode selection function in pc}
+To assess the mode changes requested by the user, \texttt{mode\_selection()} function is executed between the keyboard reading and the communication packet creation. The QR operation is always started in \textit{safe mode} and any change between modes must pass by this safe state. Exception is made to access \textit{panic mode} or \textit{abort mode} as a safety measure. In order to change from \textit{safe mode} to an intended control mode there are two main checks: \textit{Lift} must be equal to $0$ and the sum of the engine values also equal to $0$, which is equivalent to have all the 4 engines set to null. The latter check is done by reading the third least significant bit of the fpga status(\textbf{TELEMETRY FLAG}), received in the telemetry packet. Moving to both \textit{yaw-controlled mode} and \textit{full control mode}
+requests an extra check to assess if the sensors calibration was already performed. This is done in a similar way but using the least significant bit. In order to ease the tuning process of the controlled modes, it is also allowed changes between a controlled mode and \textit{P control mode}, which enables the adjustment of the proportional gains (\textit{P,P1,P2}) of the controllers.
 
+In two special cases mode changes to \textit{safe mode} are performed automatically, those are when \textit{panic mode} or \textit{calibration mode} have completed its tasks. That information is also provided by the fpga status flag in the second least significant bit.
+
+Any time an attempt is made to change mode and all the requirements are not fulfilled, the communication packet sends the previous operating mode which is saved in the variable \texttt{prev\_mode}.
+
+The fact of including the mode selection in the PC side, allows to avoid all the needed checks in the fpga. Therefore, after the communication packet have been received and decoded a simple \texttt{switch case} inside the main loop is performed, such that the function associated with the received mode can be executed. The cost of including one extra byte (\textbf{TELEMETRY FLAG}) in the telemetry packet revealed to be a rather advantageous solution in terms of processing time in the fpga.
+
+\begin{table}[h]
+\centering
+\caption{TELEMETRY FLAG Byte Definition}
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
+\hline 
+x & x & x & x & x & ENGINES NULL & SAFE MODE REQUEST & CALIBRATION DONE \\
+\hline 
+\end{tabular} 
+\label{tbl:TelFlagDef}
+\end{table}
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 \subsubsection{Telemetry QR-$>$PC}
@@ -237,6 +253,7 @@ A matlab script is used to decode and visualize the logged signals.
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 %   Filtering
 \subsection{Filtering}
+\label{sec:filtering}
 
 QR sensor signals must be filtered and bias-cleared before they are feed in the controller. Figure \ref{fig.Noise} shows signals in steady state coming from the accelerometer and gyroscope.
 
@@ -291,6 +308,45 @@ Once the values are scaled properly multiplication can be computed as the produc
 \subsubsection{Kalman Filter}
 
 
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+%   Control Modes
+\subsection{Control Modes(\todo{Diogo Monteiro})}
+
+\subsubsection{Safe Mode}
+\todo{imara}
+\subsubsection{Panic Mode}
+\textit{Panic mode} developed by \textbf{Diogo} can be accessed by pressing '$1$' in the keyboard. The main purpose of this function is it allow the safe landing of the QR in a lost of control scenario. To achieve this a mean of the actual engines values is computed and in case it is higher than an experimentally defined \texttt{LIFT\_THRESHOLD}, a progressive balance of the four engines is accomplished through changes by a value of $30$ (\texttt{ENGINE\_STEP}) until the reference threshold is attained for each engine. The value \texttt{LIFT\_THRESHOLD} was found by increasing lift until the QR was about to hover.  In case the mean value of engines is superior to the \texttt{LIFT\_THERSHOLD}, the final reference becomes the computed mean. This was done to avoid sudden increases of engines thrust whenever panic state is reported. The value chosen for the \texttt{ENGINE\_STEP} revealed to be fairly adjusted to the requested engine speed changes and at the same time stalling proof.
+
+Finally, when all the engines are at the same speed a delay time of 2 seconds is performed in order to allow the balancing of the QR. After, the \texttt{TELEMETRY\_FLAG} is updated to request a change to \textit{safe mode}.
+
+\subsubsection{Manual Mode}
+\textit{Manual mode} developed by \textbf{Diogo} can be accessed by pressing '$2$' in the keyboard. In this mode a direct mapping between the received information and the engine values was designed. A initial base value to the engines is assigned using the \textit{Lift} information, by defining a scaling between $[0-255]$ and $[0-\text{\texttt{ENGINE\_LIMIT}}]$. In order to obtain a faster increase of the engines until an approximate hover state is attained, two different linear scaling were defined: one for \textit{Lift} values up to $75$ (\texttt{LOW\_LIFT\_CONVERSION}) and second for the rest of the range (\texttt{HIGH\_LIFT\_CONVERSION}).
+
+The other received parameters (\textit{Roll, Pitch, Yaw}) will then apply offsets to the base value defined, such that the intended movement by the user can be performed. For the case of \textit{Roll} and \textit{Pitch}, only one engine is affected for each information. This allows to approximately maintain a constant lift force in the QR. For the \textit{Yaw} case and due to the same reason, all engines suffer symmetric offsets. The scaling of the latter parameters is done between $[-127,127]$ and $[-50,50]$, which is defined in the code using the macro \texttt{ROLLPITCHYAW\_ENGINE\_LIMIT}. 
+
+Note for the fact that when the reference value is negative($[-127,0[$), a signing typecast is performed since the decoded information in the fpga is unsigned. This typecast is also performed for the controlled modes.
+
+\subsubsection{Calibration Mode}
+\textit{Calibration mode} developed by \textbf{Diogo} can be accessed by pressing '$3$' in the keyboard. In order to compute the calibration values of each sensor, the function \texttt{calibration\_mode()} is called continuously until 256 (\texttt{CALIBRATION\_THRESHOLD}) values of each sensor reading are saved and summed in the array variable \texttt{OFFSET\_x0[i]} with 6 positions (6 sensors). When the sum is finished, what is controlled by the counter \texttt{calibration\_counter}, a shift right of $8$ ($2^8=256$) bits is performed to obtain the final offset calibration values. At this point the \texttt{TELEMETRY\_FLAG} is also updated to request a change to safe mode in the PC and inform that calibration was already performed.
+\subsubsection{Yaw-Controlled Mode}
+\textit{Yaw-Controlled Mode} developed by \textbf{Diogo} can be accessed by pressing '$4$' in the keyboard. For the development of this mode, a linear approximation of the QR dynamics was used in order to avoid the necessity of creating a square-root routine needed for the fidelity model of the system, presented in the assignment description. Despite the approximation, the controller behaviour proved to not be deeply affected and still bringing the reference error to null.
+For this control mode the lift, roll and pitch movements are still considered manually controlled, therefore a similar scaling to the one used in \texttt{manual\_mode()} was applied. However, instead of a direct scaling of the engines values here it is done for the \textit{lift force} \texttt{Z} ,\textit{roll momentum} \texttt{L} and \textit{pitch momentum} \texttt{M}. All the definitions used for the scaling constants were based on the values used in the manual mode, which were tuned experimentally. This way, the expected behaviour of the QR is closely related to the one applied in the \textit{manual mode}, except for the yaw motion.
+
+For the \textit{yaw momentum} \texttt{N} the proportional control loop is applied based on the sensor reading of the yaw rate \texttt{r}. This is done by a direct reading of the sensor \texttt{x0[5]} corrected by the calibration. 
+
+Having the force and momentums defined, the inversion of the linearized system dynamics is performed in order to obtain the engine values. 
+\subsubsection{Full Control Mode}
+\textit{Full Control Mode} developed by \textbf{Diogo} can be accessed by pressing '$5$' in the keyboard. This mode follows the same algorithm used for the \textit{yaw-controlled mode} but with only a direct scaling for the \textit{lift force} \texttt{Z}. Also the definition of the \textit{yaw momentum} \texttt{N} is the same used in the previous controlled mode. 
+
+For both the \textit{roll momentum} \texttt{L} and \textit{pitch momentum} \texttt{M}, a proportional (\texttt{P1}) and derivative (\texttt{P2}) controller is applied based on the actual values of the roll and pitch dynamic angles and rates. This angular states are provided by the sensor reading after passing through the filters, as explained in \ref{sec:filtering}.
+
+In the end the linearized system dynamics are inverted and the engines values computed.
+\subsubsection{P Control Mode}
+\textit{P Control Mode} developed by \textbf{Diogo} can be accessed by pressing '$6$' in the keyboard. This mode is intended to be accessed when an adjustment of the controllers parameters is requested for tuning purposes. Initially the parameters are defined using the macros \texttt{PCONTROL\_INIT}, \texttt{P1CONTROL\_INIT} and \texttt{P2CONTROL\_INIT}. When this mode is entered an offset can be applied to the initial values based on the received in the communication packet. The range of change is set between $[\text{\texttt{\_INITIAL}}-127,\text{\texttt{\_INITIAL}}+127]$.
+\subsubsection{Abort/Exit Mode}
+\textit{Abort/Exit Mode} developed by \textbf{Diogo} can be accessed by pressing \texttt{DEL} in the keyboard or pressing 'strike' button in the joystick. The option to use \texttt{DEL} key instead of \texttt{ESC} was due to safety measures, as the latter button is close to the mode definition keys. 
+
+The main function of this mode is to permit the exiting of the main loop in the fpga. It also allows a faster shutting down of the engines as an emergency measure, in case \textit{panic/safe} mode are not an option. The exiting is done by incrementing the flag \texttt{program\_done}.
 
 
 
