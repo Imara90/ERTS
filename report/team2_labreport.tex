@@ -315,7 +315,7 @@ Once the values are scaled properly multiplication can be computed as the produc
 
 \subsubsection{Kalman Filter}
 
-The Kalman filter is applied for correction of the sensor reading errors related to gyroscopes drift and accelerometers noise. An extra effort for noise reduction is done by using the Butterworth filter, as stated in the previous section. \todo{have to declare that this causes a delay of 180 degrees and was actually an error in our code}
+The Kalman filter is applied for correction of the sensor reading errors related to gyroscopes drift and accelerometers noise. An extra effort for noise reduction is done by using the Butterworth filter, as stated in the previous section.
 
 The algorithm applied was the same as presented in the course lectures. A first approximation of the angle and associated rate is found by directly reading the accelerometer and gyroscope values, respectively. A estimate of the angle is attained by integrating the angle rate using the constant \texttt{P2PHI}. Then, an iterative correction of that value is performed by using constant \texttt{C1} and comparing the actual estimate and accelerometer reading. Also the value obtained for the angle rate is corrected in a similar way by the constant \texttt{C2}, which will influence the rate integration in the following iteration. By adjusting the values of the referred constants, we define the weight or influence that each sensor reading has in the angle and rate computation. This continuous iterative process will correct for both accelerometer noise and gyroscope drift in the long term.
 
@@ -324,7 +324,7 @@ In order to achieve a faster algorithm the constants \texttt{C1} and \texttt{C2}
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 %   Control Modes
-\subsection{Control Modes(\todo{Diogo Monteiro})}
+\subsection{Control Modes}
 
 \subsubsection{Safe Mode}
 \label{sec:safemode}
@@ -364,8 +364,55 @@ For both the \textit{roll momentum} \texttt{L} and \textit{pitch momentum} \text
 
 The main function of this mode is to permit the exiting of the main loop in the fpga. It also allows a faster shutting down of the engines as an emergency measure, in case \textit{panic/safe} mode are not an option. The exiting is done by incrementing the flag \texttt{program\_done}.
 
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+%   Profiling
+\subsection{Profiling}
+During the project, \textbf{Imara} profiled the software and made several improvements. Initially the entire sending of the telemetry costs 1738 $\mu$s. After employing a macro for writing to the circular buffer, this time was decreased to only 1310 $\mu$s. Finally when using the sending macro, this was decreased to 892 $\mu$s. The size of the packet eventually increased, but by sending a flag to indicate whether the engine values were all set to zero saved sending 4 bytes, to which the sending of the telemetry was finally reduced to 904 $\mu$s. In the same manner was the sending of a single byte reduced from 150 $\mu$s to 83 $\mu$s by using the \texttt{cbGet} macro. 
 
+The filters were also drastically decreased in time. The butterworth filter was decreased from 1221 $\mu$s to 690 $\mu$s by using a macro for the fixed point arithmetic. This time could be even more decreased as it was initially computer for all sensor values. This was changed to only 2 sensors and ended up taking 252 $\mu$s.
 
+The following profile was made of the software by using the internal clock defined as \texttt{X32\_us\_clock}. These values are measure with the \texttt{INTERRUPT\_XUFO}, the \texttt{INTERRUPT\_PRIMARY\_RX} and the \texttt{INTERRUPT\_PRIMARY\_TX} enabled. This means that these Interrupt Service Routines (ISRs) can inerrupt the code, causing a delay. These interrupts are required to be enabled to ensure complete code coverage.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{|l|l|c|}
+\hline 
+\textbf{Function} & \textbf{Specific code} & \textbf{Time in $\mu$s} \\ 
+\hline 
+\texttt{if (commflag++ > commthres)} & & 17 \\
+\hline
+\texttt{decode()} & & 256 \\
+\hline
+ & \texttt{DISABLE\_INTERRUPT(INTERRUPT\_GLOBAL)} & 85 \\
+ & \texttt{for loop()} & 105 \\
+ & \texttt{ENABLE\_INTERRUPT(INTERRUPT\_GLOBAL)} & 130 \\
+\hline
+\texttt{check\_sum()} & & 168 \\
+\hline
+\texttt{isr\_rs232\_tx} & \texttt{toggle\_led()} & 17 \\
+\hline
+\texttt{isr\_rs232\_rx} & & 51 \\
+\hline
+ & \texttt{cbWritenoSum()} & 25 \\
+\hline
+\texttt{Safe mode} & & 499 \\
+\hline
+\texttt{Manual mode} & & 337 \\
+\hline 
+\texttt{Butterworth filter} & & 252 \\
+\hline
+\texttt{Kalman filter} & & 312 \\
+\hline
+\texttt{data\_store()} & & 1556 \\
+\hline
+\texttt{send\_telemetry()} & & 904 \\
+\hline
+\end{tabular} 
+\caption{Profiling approximation of times}
+\label{tbl:profiling}
+\end{table}
+
+The entire control loop excluding the periodic telemetry and datastoring results in a loop of 867 $\mu$s. 
 
 %----------------------------------------------------------------------------------------
 %	EXPERIMENTAL RESULTS
@@ -394,6 +441,8 @@ Despite this successfully test, when a different reference (provided by the joys
 Since the group did not have the chance to properly tune the Filtering parameters it was decided not to test \textit{full control mode} since an unexpected and not safety behavior could be experienced. Nevertheless, assuming that the algorithm used clearly resembles the applied for the \textit{yaw-controlled mode}, we believe that it was correctly implemented.
 
 \todo{Talk about GUI\\}
+
+
 \todo{Explain why when the cable was disconnected the QR didn't enter panic} 
 
 
@@ -406,17 +455,23 @@ Since the group did not have the chance to properly tune the Filtering parameter
 \section{Conclusion}
 \label{sec:conclusion}
 
+This project has been extremely valuable for all three of us. Because the fourth group member dropped out in week 2, it has been hard to keep up with the pace of the course. This caused an initial chaotic start as the team existed out of 1 Systems and Control Msc, 1 Biomechanical Engineering Phd and 1 former Industrial Design and current Embedded Systems Msc student. Although this initially created an unbalanced workload, it eventually spread out among the team members and ended up being a great learning experience. 
+
+Although the design ended up flawed when in yaw-control mode, we feel like we learned from our mistakes. If we might have gotten a week extra, we would have had enough time to tweek the yaw-control into perfection as it was only available for testing in the final lab. If the yaw-control had been operable, it would have only been a few extra steps to have a successful full-control mode. 
+
+We would have obviously liked to see the quadcopter hover, but it has already inspired team members to continue in similar projects and being able to do so because of the gained knowledge in the project is good enough for now. 
+
 
 %----------------------------------------------------------------------------------------
 %	APPENDIX
 %----------------------------------------------------------------------------------------
 
-\newpage
-\section{Appendices}
-
-\appendix
-\section{Title of Appendix A}
-\section{Title of Appendix B}
+%\newpage
+%\section{Appendices}
+%
+%\appendix
+%\section{Title of Appendix A}
+%\section{Title of Appendix B}
 
 
 
