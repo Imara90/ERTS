@@ -121,6 +121,11 @@ Abort & \texttt{ABORT\_MODE} is sent to the QR setting all engines to zero\\
 Telemetry data is shown in 3 display controls (QR column with r, phi, theta) next to the commanded values \texttt{REFERENCES} which are only displayed in \texttt{FULL\_CONTROL} mode. All commanded signals from the keyboard and joystick are shown in the Lift, Roll, Pitch, Yaw, P, P1, P2 controls as well as the set MODE. The \texttt{P} values are only changed in \texttt{YAW\_CONTROL} and \texttt{FULL\_CONTROL} modes as explained in Section \ref{sec:modeselection}. Four extra indicators show the expected motor speed (Along with a QR schematic for easier understanding). The PC calculates these motor speed values in function clones from the FPGA functions, locally on the PC by using the same input data. As a safety measure, the QR must be set in \texttt{SAFE\_MODE} before communication is stopped (using the \emph{Start/Stop Sending} button). If the user terminates the program, \texttt{SAFE\_MODE} is set in the QR and the RS232 port is closed.
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+\subsection{Memory allocation in the FPGA}
+\todo{discuss the circular buffers and how dynamic memory allocation is not possible}
+
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 % All info considering communcation protocols
 \subsection{Communication Protocols}
 As mentioned in Section \ref{sec:architecture}, the different interfaces require different communication protocols to perform optimal communication. This section discusses these protocols. 
@@ -128,16 +133,18 @@ As mentioned in Section \ref{sec:architecture}, the different interfaces require
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 \subsubsection{Pc2Fpga}
-In order to efficiently transmit  data from the PC to the FPGA, a simple and compact communication protocol was implemented. It consists of a fixed length 7 bytes packet, including a starting byte \textbf{0x80}, 5 parameters and a checksum to ensure a reliable communication (Table \ref{tbl:PkgDefinition}). 
+In order to efficiently transmit  data from the PC to the FPGA, a simple and compact communication protocol was implemented. It consists of a fixed length 7 bytes packet, including a starting byte \textbf{0x80}, 5 parameters and a checksum to ensure a reliable communication (Table \ref{tbl:PkgDefinition}). \todo{add calculation to how many bytes can be send using the baudrate of 115k2bps 8n1}
+
+In order to be able to receive on the RS232 line, the \texttt{INTERRUPT\_PRIMARY\_RX} has to be enabled. This done in the initializing of the interrupts in the main loop. 
 
 \begin{table}[ht]
 \centering
-\caption{Packet Definition}
 \begin{tabular}{|c|c|c|c|c|c|c|}
 \hline 
 0x80 & MODE & LIFT/- & ROLL/P & PITCH/P1 & YAW/P2 & CHECKSUM \\ 
 \hline 
 \end{tabular} 
+\caption{Packet Definition in bytes}
 \label{tbl:PkgDefinition}
 \end{table}
 
@@ -176,36 +183,40 @@ Including the mode selection in the PC side allows to avoid all the needed check
 
 \begin{table}[h]
 \centering
-\caption{TELEMETRY FLAG Byte Definition}
 \begin{tabular}{|c|c|c|c|c|c|c|c|}
 \hline 
-x & x & x & x & x & ENGINES NULL & SAFE MODE REQUEST & CALIBRATION DONE \\
+DC & DC & DC & DC & DC & ENGINES NULL & SAFE MODE REQUEST & CALIBRATION DONE \\
 \hline 
 \end{tabular} 
+\caption{TELEMETRY FLAG Definition in Bits}
 \label{tbl:TelFlagDef}
 \end{table}
+
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-\subsubsection{Telemetry QR-$>$PC}
+\subsubsection{Fpga2Pc}
+To supervise the behavior of the QR, telemetry is send on the same RS232 line. To ensure a reliable a starting byte and checksum as discussed in the next section is appended in the packet. The telemetry sends the most important features to supervise: the angular rate $r$ for yaw-control and the angular velocities $\phi$ and $\theta$ to distinguish the motion of the QR.  \todo{need to detail why just these}. Phi and theta \todo{are both this many bytes and therefor we need 2 bytes to be send etc} Along with these parameters, the status of the FPGA, appended in the \texttt{TELEMETRY\_FLAG} is sent as defined in Table. \ref{tbl:TelPkgDefinition} 
 
-Telemetry is used as supervision. It is also used to acknowledge the fpga status (\texttt{TELEMETRY\_FLAG}). Using the retrieved information mode selection is performed in the PC (See. mode selection section ... @Diogo). Along with the FPGA status (\texttt{TELEMETRY\_FLAG}) sensor data is included (yaw rate, pitch and yaw) as follows (Table. \ref{tbl:TelPkgDefinition}). 
-
-\todo{ MENTION HOW FAST THE TELEMETRY IS SENT AND HOW THIS IS PERFORMED IN THE FPGA (WHETHER A ISR IS USED OR NOT)}\\
-
-\todo{mention the internal telemetry (LEDs etc)}
+As the final telemetry coded by \textbf{Imara} takes 904 $\mu$s to assign and send, it will claim the RS232 line, slowing down the entire process. For this reason a polling technique was implemented. The \texttt{send\_telemetry()} is called in every while loop, but checks whether or not the defined \texttt{POLLTIMEMS} of 200 $ms$ is passed. If this is the case, the telemetry flag is set according to the sum of the engines. The appropriate parameters are then written to the transmitting circular buffer using the macro function \texttt{cbWrite()} as written by \textbf{imara} which immediately updates the checksum by passing the address of the local variable. If the checksum contains the starting byte \textbf{0x80}, it is appended to \textbf{0x00}. The checksum is then added to the packet after which a while loop iterates until the transmitting buffer is empty (\texttt{txcb.end == txcb.start}). Until then it waits indefinitely for the RS232 to change its status register to \texttt{X32\_rs232\_stat \& 0x01}, indicating it is ready to send the next byte upon which it does so by using the macro \texttt{cbGet()} as written by \textbf{Imara} which writes the current value of the transmitter buffer to the address of the \texttt{X32\_rs232\_data} RS232 data register, initializing the transmission of the written byte. 
 
 \begin{table}[ht]
 \centering
-\caption{Telemetry Packet Definition}
-\begin{tabular}{|c|c|c|c|c|c|}
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
 \hline 
-0x80 & r & phi & theta & TELEMETRY FLAG & CHECKSUM \\
+0x80 & r & phi $>>$ 8 & phi & theta $>>$ 8 & theta & TELEMETRY FLAG & CHECKSUM \\
 \hline 
 \end{tabular} 
+\caption{Telemetry Packet Definition in Bytes}
 \label{tbl:TelPkgDefinition}
 \end{table}
 
-Parameter r (yaw rate) is encapsulated in a single byte, whereas phi and theta use 2 bytes each.
+In order to be able to send on the RS232 line, the \texttt{INTERRUPT\_PRIMARY\_TX} has to be enabled. This done in the initializing of the interrupts in the main loop. 
+
+Initially the \texttt{send\_telemetry()} was coded by \textbf{Imara} to send only the first byte of the telemetry, causing the initiation of the \texttt{isr\_rs232\_tx()}. The next byte to be send in the circular buffer would this way be put in line waiting to be handled by a scheduler, causing no delays for other important ISRs. This would initiate a new interrupt for every byte send until the buffer was empty. Due to a shortage of team members and time we decided to send all telemetry in one go instead
+
+\todo{check whether or not it makes a difference when sending local or global variables}
+
+
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 % Reliable communication
@@ -218,7 +229,7 @@ To ensure a \emph{reliable communication} , the sent packets are appended with a
 The two's complement method takes 22 $\mu$s for every addition and requires a complement taking 5 additional $\mu$s while the \textsc{XOR} method takes 22 $\mu$s for every \textsc{XOR}'ing. The \textsc{XOR} checksum has a \emph{Hamming Distance} of 2, detecting all one-bit errors, but not all two-bit errors. This happens when an even number of bit errors occurs in the same bit position of the checksum computational block. The two's complement addition with a Hamming Distance of 2 can be seen as an improvement of the \textsc{XOR} checksum as it mixes between bit positions of the data-blocks as a result of the bit-by-bit carry outs of the additions. As most of the control loop delay is caused by the X32 code, we want to limit the amount of instructions. Because of this and it's data independence we decided to use the \textsc{XOR} checksum 
 
 \subsubsection{Dependability}
-Whenever the PC link is broken or disconnected, the code should immediately signal the error and enter panic mode. \textbf{Imara} coded this using a communication counter \texttt{commflag} which is set to zero whenever a package is received in the interrupt service routine of the RS232 RX of the FPGA. Whenever the counter exceeds the threshold \texttt{commthres}, the mode is set to \texttt{PANIC\_MODE}. \todo{explain why this didn't work in the lab}
+Whenever the PC link is broken or disconnected, the code should immediately signal the error and enter panic mode. \textbf{Imara} coded this using a communication counter \texttt{commflag} which is set to zero whenever a package is received in the interrupt service routine of the RS232 RX of the FPGA. Whenever the counter exceeds the threshold \texttt{commthres}, the mode is set to \texttt{PANIC\_MODE}. 
 
 \subsubsection{Robustness}
 \todo{write arithmetic solutions for representing and handling of sensor values, possibly in an image overview?}
