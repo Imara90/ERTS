@@ -230,14 +230,14 @@ The two's complement method takes 22 $\mu$s for every addition and requires a co
 Whenever the PC link is broken or disconnected, the code should immediately signal the error and enter panic mode. \textbf{Imara} coded this using a communication counter \texttt{commflag} which is set to zero whenever a package is received in the interrupt service routine of the RS232 RX of the FPGA. Whenever the counter exceeds the threshold \texttt{commthres}, the mode is set to \texttt{PANIC\_MODE}. 
 
 \subsubsection{Robustness}
-\todo{write arithmetic solutions for representing and handling of sensor values, possibly in an image overview?}
+\todo{write arithmetic solutions for representing and handling of sensor values}
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 % Safety mode, emergency stop, stalling proof, robust to noise, reliable communication, 
 % dependability, robustness
 
 \subsection{Safety features}
-The \emph{safe mode} is the initial mode in which the QR operates and has to be accessed in between switching modes. \textbf{Imara} coded the safe mode function in the matching header file in which the FPGA's status is updated in the \texttt{telemetry\_flag}. The engine values are decreased using a \texttt{SAFE\_JUMP} value of 5 to avoid stalling of the engines whenever the FPGA operates in safe mode as determined in the \texttt{switch case} in the \texttt{main} function. 
+The \emph{safe mode} is the initial mode in which the QR operates and has to be accessed in between switching modes. \textbf{Imara} coded the safe mode function in the matching header file in which the FPGA's status is updated in the \texttt{telemetry\_flag} as discussed in Section \ref{sec:safemode}. This safe mode and the \texttt{mode\_selection()} function ensures that no illegal control values are send to the engines when switching modes. 
 
 An extra \texttt{abort\_mode} was created by \textbf{Diogo} to distinguish between directly dangerous situations where the FPGA should shut down the engines and shut down and situations where the system can reduce engine values in a controlled manner such as the \texttt{panic\_mode} provides. \todo{Diogo, can you support the reasons for this}
 
@@ -247,11 +247,11 @@ To prevent stalling to occur in the brushless engines, a \texttt{check\_motor\_r
 %   Datalogging
 \subsection{Data Logging}
 
-Data logging is used to verify the filtering/controller behaviour, as well as QR behaviour in general. Multiple signals are stored while the QR is running. A 33 bytes packet is stored each 150ms composed by a starting byte (\textbf{0x80}), 16 parameters (31 bytes) and a checksum. Logged data include timestamp (1 byte), MODE, Lift, Roll, Pitch and Yaw (1 byte each), motor commanded speeds (2 bytes each), sensor normalized data (1 byte each) excluding acceleration reading in Z direction, phi and theta angles (2 bytes each), p and q angles (1 byte each), P, P1 and P2 control gains (1 Byte each) and control time (1 byte).
+Data logging as coded by \textbf{Imara} is used to verify the filtering/controller behaviour, as well as QR behaviour in general. The \textsc{store\_data()} function polls in the same way as the \texttt{send\_telemetry()} function does, but instead every \textsc{DATASTORETIMEMS} of 150 $ms$. The 33 bytes packet is composed of a starting byte (\textbf{0x80}), 16 parameters (31 bytes) and a checksum. Logged data includes a timestamp (1 byte), MODE, Lift, Roll, Pitch and Yaw (1 byte each), motor commanded speeds (2 bytes each), sensor normalized data (1 byte each) excluding acceleration reading in Z direction, phi and theta angles (2 bytes each), p and q angles (1 byte each), P, P1 and P2 control gains (1 Byte each) and control time (1 byte). The packet is composed in the \textsc{store\_data()} function. \todo{specify why we need these and not others}
 
-The data is retrieved from the PC once the \emph{exit mode} is triggered (Pressing Del key or clicking in the Data Log button in the GUI). The FPGA exits the while loop and starts sending the stored data. In the mean time the PC stops writing in the port and starts receiving from the fpga. As the data is received, the PC checks for the start byte (\textbf{0x80}) and stores the subsequent bytes until the expected size is reached (33 bytes). Once the complete packet is stored, the checksum is verified and the packet is written into a text file. All packets are separated by a CR and the starting byte is excluded (as the packet is verified before is written into the file).
+In contrary to the telemetry, the data log is send on command when the \emph{exit mode} is triggered (Pressing Del key or clicking in the Data Log button in the GUI). The FPGA exits the while loop and starts sending the stored data in the \textsc{send\_data()} function which keeps sending until the circular data log buffer is empty. In the mean time the PC stops writing in the port and starts receiving from the fpga. As the data is received, the PC checks for the start byte (\textbf{0x80}) and stores the subsequent bytes until the expected size is reached (33 bytes). Once the complete packet is stored, the checksum is verified and the packet is written into a text file. All packets are separated by a CR and the starting byte is excluded (as the packet is verified before is written into the file).
 
-A matlab script is used to decode and visualize the logged signals.
+A matlab script is used to decode and visualize the logged signals.\todo{daniel, write about the matlab code}
 
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -259,11 +259,9 @@ A matlab script is used to decode and visualize the logged signals.
 \subsection{Filtering}
 \label{sec:filtering}
 
-QR sensor signals must be filtered and bias-cleared before they are feed in the controller. Figure \ref{fig.Noise} shows signals in steady state coming from the accelerometer and gyroscope.
+QR sensor signals must be filtered and bias-cleared before they are feed in the controller. Figure \ref{fig.Noise} shows signals in steady state coming from the accelerometer and gyroscope. Two filter options are explored to perform the signal reconditioning: Butterworth Filter and Kalman Filter developed by \textbf{Daniel} and \textbf{Diogo}, respectively.
 
-Two filter options are explored to perform the signal reconditioning: Butterworth Filter and Kalman Filter developed by \textbf{Daniel} and \textbf{Diogo}, respectively.
-
-The only control mode that makes use of the sensor filtered values is the \textit{full control mode}, since the \textit{yaw rate} \texttt{r} for the \textit{yaw control mode} can be read directly from the gyro sensor along the respective axis. Hence, it was decided to include the sensor reading and filtering in the main \texttt{switch case} along with the \texttt{case FULL\_CONTROL\_MODE}. Other options were considered such as including the sensor handling in a timer interrupt or in the \texttt{isr\_qr\_link} interrupt. However, for both cases sensor reading and filtering would be performed even in unnecessary conditions. Moreover, setting it just before the \texttt{full\_control\_mode()} function allowed to keep the sensor handling at an approximately constant frequency, what is of enormous importance for a good performance by the filters. In case of change to a different mode, the filter's constants are reinitialized so that erroneous values are not obtained if \textit{full control mode} is executed after.
+The only control mode that makes use of the sensor filtered values is the \textit{full control mode}, since the \textit{yaw rate} \texttt{r} for the \textit{yaw control mode} can be read directly from the gyro sensor along the respective axis. Hence, it was decided to include the sensor reading and filtering in the main \texttt{switch case} along with the \texttt{case FULL\_CONTROL\_MODE}. Other options were considered such as including the sensor handling in a timer interrupt or in the \texttt{isr\_qr\_link} interrupt. However, for both cases sensor reading and filtering would be performed even in unnecessary conditions. Moreover, setting it just before the \texttt{full\_control\_mode()} function allowed to keep the sensor handling at an approximately constant frequency, what is of importance for a good performance of the filters. In the case of changing to a different mode, the filter's constants are reinitialized so that erroneous values are not obtained if \textit{full control mode} is executed after.
 
 \begin{figure}[ht]
 \centering
@@ -274,25 +272,25 @@ The only control mode that makes use of the sensor filtered values is the \texti
 
 \subsubsection{Butterworth Filter}
 
-A first order butterworth filter is used to perform noise reduction. This noise reduction can be regulated setting the cutoff frequency. Lower cutoff frequencies will lead to a much smoother signal with delay as trade-off. In contrast, higher cutoff frequencies results in a synchronised signal with still some noise (Figure \ref{fig.NoiseComp}). Although a lower cut frequency (10Hz) lead to a delayed signal, the phase shift for a butterworth $1^{st}$ order is less than $90^{o}$ at the cut frequency, making it suitable for the QR application. 
+A first order Butterworth filter is used to perform noise reduction. This noise reduction can be regulated setting the cutoff frequency. Lower cutoff frequencies will lead to a much smoother signal with delay as trade-off. In contrast, higher cutoff frequencies results in a synchronized signal with still some noise (Figure \ref{fig.NoiseComp}). Although a lower cut frequency (10Hz) lead to a delayed signal, the phase shift for a Butterworth $1^{st}$ order is less than $90^{o}$ at the cut frequency, making it suitable for the QR application. 
 
 \begin{figure}[ht]
 \centering
 %	\includegraphics[scale=0.6]{Figures/NoiseComp.eps}
-	\caption{Cutoff Frequency effect in a $1^{st}$ order butterworth filter}
+	\caption{Cutoff Frequency effect in a $1^{st}$ order Butterworth filter}
 	\label{fig.NoiseComp}
 \end{figure}
 
-Implementation of a $1^{st}$ order butterworth filter is straightforward compared to a Kalman filter. Given the signal sample frequency and the desired cutoff frequency, a set of constants ($A0$,$A1$,$B_0$ and $B_1$) are calculated. Using this constants the filtered signal is reconstructed out from the raw sensor values (current and previous) and the previous filtered value.
+Implementation of a $1^{st}$ order Butterworth filter is straightforward compared to a Kalman filter. Given the signal sample frequency and the desired cutoff frequency, a set of constants ($A_0$, $A_1$, $B_0$ and $B_1$) are calculated. Using this constants the filtered signal is reconstructed out from the raw sensor values (current and previous) and the previous filtered value.
 
 \begin{equation}
 	 B_0 y_k = A_0 x_k + A_1 x_{k-1} + B_1 y_{k-1}
 	 \label{eq:Butt1st}
 \end{equation}
 
-Equation \ref{eq:Butt1st} shows the update formula for a 1st order Butterworth filter, where $x$ and $y$ are the raw and filtered values respectively, $A0$,$A1$,$B_0$ and $B_1$ are the constants for a $1^{st}$ order butterworth filter, $k$ and $k-1$ represent the current and previous measurement.
+Equation \ref{eq:Butt1st} shows the update formula for a 1st order Butterworth filter, where $x$ and $y$ are the raw and filtered values respectively, $A_0$, $A_1$, $B_0$ and $B_1$ are the constants for a $1^{st}$ order Butterworth filter, $k$ and $k-1$ represent the current and previous measurement.
 
-The calculated constants for the $1^{st}$ order butterworth are rational numbers and a proper scaling is applied in order to compute the multiplication with the measured and filtered values (The FPGA soft core does not handle floating point numbers). A 14 bit fix point arithmetic is applied in this case to compute the constants (This is multiply by $2^{14}$ and round the number as seen in Table \ref{tbl:ButtConstants}).
+The calculated constants for the $1^{st}$ order Butterworth are rational numbers and a proper scaling is applied in order to compute the multiplication with the measured and filtered values (The FPGA soft core does not handle floating point numbers). A 14 bit fix point arithmetic is applied in this case to compute the constants (This is multiply by $2^{14}$ and round the number as seen in Table \ref{tbl:ButtConstants}). \todo{this has to be explained more thoroughly, the arithmetics}
 
 \begin{table}[ht]
 \centering
@@ -309,15 +307,15 @@ Real Values & 0.0242 & 0.0242 & 1 & -0.9515 \\
 \label{tbl:ButtConstants}
 \end{table}
 
-Once the values are scaled properly multiplication can be computed as the product of two integers dividing the result by $2^{14}$ (This is made using the $>>$ operator). The outcome of the multiplication is used to compute the filter described in equation \ref{eq:Butt1st}.
+Once the values are scaled properly multiplication can be computed as the product of two integers dividing the result by $2^{14}$ (This is made using the $>>$ operator). The outcome of the multiplication is used to compute the filter described in equation \ref{eq:Butt1st}. To generate a speed up of the Butterworth function, a marco was coded by \textbf{Imara} for the \texttt{mult(a, b)} function. 
 
 \subsubsection{Kalman Filter}
 
-The Kalman filter is applied for correction of the sensor reading errors related to gyroscopes drift and accelerometers noise. An extra effort for noise reduction is done by using the Butterworth filter, as stated in the previous section. 
+The Kalman filter is applied for correction of the sensor reading errors related to gyroscopes drift and accelerometers noise. An extra effort for noise reduction is done by using the Butterworth filter, as stated in the previous section. \todo{have to declare that this causes a delay of 180 degrees and was actually an error in our code}
 
 The algorithm applied was the same as presented in the course lectures. A first approximation of the angle and associated rate is found by directly reading the accelerometer and gyroscope values, respectively. A estimate of the angle is attained by integrating the angle rate using the constant \texttt{P2PHI}. Then, an iterative correction of that value is performed by using constant \texttt{C1} and comparing the actual estimate and accelerometer reading. Also the value obtained for the angle rate is corrected in a similar way by the constant \texttt{C2}, which will influence the rate integration in the following iteration. By adjusting the values of the referred constants, we define the weight or influence that each sensor reading has in the angle and rate computation. This continuous iterative process will correct for both accelerometer noise and gyroscope drift in the long term.
 
-In order to achieve a faster algorithm the constants \texttt{C1} and \texttt{C2} are defined as a power of $2$ value such that the introduced corrections can be performed by a simple shift right. In the integration step of the algorithm the constant \texttt{P2PHI} was first implemented by using an estimate value and applying the fix point arithmetic, defined in the previous section. Later, for easing the tuning process it was also tried to implement the integration by applying shift rights to the angle rate instead of using the multiplication by \texttt{P2PHI}. The tuning procedure of the Kalman Filters was not completed, therefore final values of the constants were not found as will be explained in section \ref{sec:results}.
+In order to achieve a faster algorithm the constants \texttt{C1} and \texttt{C2} are defined as a power of $2$ value such that the introduced corrections can be performed by a simple shift right. In the integration step of the algorithm the constant \texttt{P2PHI} was first implemented by using an estimate value and applying the fixed point arithmetic, defined in the previous section. Later, for easing the tuning process it was also tried to implement the integration by applying shift rights to the angle rate instead of using the multiplication by \texttt{P2PHI}. The tuning procedure of the Kalman Filters was not completed, therefore final values of the constants were not found as will be explained in section \ref{sec:results}.
 
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -325,7 +323,9 @@ In order to achieve a faster algorithm the constants \texttt{C1} and \texttt{C2}
 \subsection{Control Modes(\todo{Diogo Monteiro})}
 
 \subsubsection{Safe Mode}
-\todo{imara}
+\label{sec:safemode}
+ The engine values are decreased using a \texttt{SAFE\_JUMP} value of 5 to avoid stalling of the engines whenever the FPGA operates in safe mode as determined in the \texttt{switch case} in the \texttt{main} function. 
+
 \subsubsection{Panic Mode}
 \textit{Panic mode} developed by \textbf{Diogo} can be accessed by pressing '$1$' in the keyboard. The main purpose of this function is it allow the safe landing of the QR in a lost of control scenario. To achieve this a mean of the actual engines values is computed and in case it is higher than an experimentally defined \texttt{LIFT\_THRESHOLD}, a progressive balance of the four engines is accomplished through changes by a value of $30$ (\texttt{ENGINE\_STEP}) until the reference threshold is attained for each engine. The value \texttt{LIFT\_THRESHOLD} was found by increasing lift until the QR was about to hover.  In case the mean value of engines is superior to the \texttt{LIFT\_THERSHOLD}, the final reference becomes the computed mean. This was done to avoid sudden increases of engines thrust whenever panic state is reported. The value chosen for the \texttt{ENGINE\_STEP} revealed to be fairly adjusted to the requested engine speed changes and at the same time stalling proof.
 
