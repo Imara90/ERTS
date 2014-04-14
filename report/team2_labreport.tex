@@ -216,15 +216,13 @@ Initially the \texttt{send\_telemetry()} was coded by \textbf{Imara} to send onl
 
 \todo{check whether or not it makes a difference when sending local or global variables}
 
-
-
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 % Reliable communication
 % 
 
 \subsection{Communication properties}
 \subsubsection{Reliability} 
-To ensure a \emph{reliable communication} , the sent packets are appended with a checksum.  This checksum is calculated at both the PC and the QR. When the locally calculated checksum does not match the send checksum, the package is regarded as faulty and discarded. The checksum in the \textsc{PC-$>$QR} protocol is calculated using a \emph{two's complement addition checksum} as it has been used before in a previous project by \textbf{Daniel}. The checksum calculation used in the telemetry and data logging written by \textbf{Imara} uses the \textsc{XOR} checksum.  
+To ensure a \emph{reliable communication}, the sent packets are appended with a checksum.  This checksum is calculated at both the PC and the QR. When the locally calculated checksum does not match the send checksum, the package is regarded as faulty and discarded. The checksum in the \textsc{Pc2Fpga} protocol is calculated using a \emph{two's complement addition checksum} as it has been used before in a previous project by \textbf{Daniel}. The checksum calculation used in the telemetry and data logging written by \textbf{Imara} uses the \textsc{XOR} checksum.  
 
 The two's complement method takes 22 $\mu$s for every addition and requires a complement taking 5 additional $\mu$s while the \textsc{XOR} method takes 22 $\mu$s for every \textsc{XOR}'ing. The \textsc{XOR} checksum has a \emph{Hamming Distance} of 2, detecting all one-bit errors, but not all two-bit errors. This happens when an even number of bit errors occurs in the same bit position of the checksum computational block. The two's complement addition with a Hamming Distance of 2 can be seen as an improvement of the \textsc{XOR} checksum as it mixes between bit positions of the data-blocks as a result of the bit-by-bit carry outs of the additions. As most of the control loop delay is caused by the X32 code, we want to limit the amount of instructions. Because of this and it's data independence we decided to use the \textsc{XOR} checksum 
 
