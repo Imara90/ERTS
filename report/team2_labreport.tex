@@ -68,7 +68,7 @@
 \section{Architecture}
 \label{sec:architecture}
 
-
+This section introduces the QR hardware, their interfaces and the implementation in software components. 
 
 
 %----------------------------------------------------------------------------------------
@@ -79,13 +79,13 @@
 \section{Implementation}
 \label{sec:implementation}
 
-This Section introduces the implementation of the functionalities implemented in the system. These concern, GUI communication protocols, safety measures, speed enhancements and basic functionalities.
+This section introduces the implementation of the functionalities implemented in the system. These concern, GUI communication protocols, safety measures, speed enhancements and basic functionalities.
 
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 %GUI
 \subsection{GUI}
-A simple GUI is designed to control the QR (Figure \ref{fig.GUI}) using QT creator, which allows multi-platform deployment. User can interact with the QR through the keyboard and the GUI (Using the 4 buttons). Buttons functionalities are described in Table \ref{tbl:GUIButts}. \todo{INCLUDE KEYBOARD BUTTONS FUNCTIONALITIES}
+A simple GUI is designed to control the QR (Figure \ref{fig.GUI}) using QT creator allowing for multi-platform deployment. Users can interact with the QR through GUI with the keyboard and the joystick as described in the assignment \cite{langendoen2014assignment}. The GUI's functionalities are described in Table \ref{tbl:GUIButts}. 
 
 \begin{figure}[ht]
 \centering
@@ -96,35 +96,29 @@ A simple GUI is designed to control the QR (Figure \ref{fig.GUI}) using QT creat
 
 \begin{table}[ht]
 \centering
-\caption{GUI Buttons functionalities}
 \begin{tabular}{|c|c|}
 \hline 
 \textbf{Button} & \textbf{Functionality} \\ 
 \hline 
 \hline 
-Connect / Disconnect & Establishes communication with the QR (through RS232). Once connection is stablished \\ & \emph{Start Sending} button is enabled\\ 
+Connect / Disconnect & Establishes communication with the QR (through RS232). Once established, \\ & the \emph{Start Sending} button is enabled\\ 
 \hline 
-Start/Stop Sending & Data is sent and received. Joystick/Keyboard commanded inputs and Telemetry \\ & are displayed   in the display controls. 
-\\ & Connect button (Now labelled as Disconnect) is disabled until the \emph{Start/Stop Sending} \\ & button is pressed again.
+Start/Stop Sending & Data is sent and received. Joystick/Keyboard commanded inputs and Telemetry \\ & are displayed  where indicated. 
+\\ & Connect button (now labeled as Disconnect) is disabled until the \\ & button is pressed again.
 \\ & \emph{Abort} and \emph{Download DataLog} are enabled
 \\
 \hline 
-Download DataLog & \texttt{EXIT\_MODE} is sent to the QR and data is received and stored in a txt file. 
-\\ & \emph{Start/Stop Sending} button is disabled while the data is being stored\\
+Download DataLog & \texttt{EXIT\_MODE} is sent to the QR and data is received and stored in a \texttt{.txt} file
+\\ & \emph{Start/Stop Sending} button is disabled while data is retrieved\\
 \hline 
-Abort & \texttt{ABORT\_MODE} is sent to the QR making all motor stop immediately\\ 
+Abort & \texttt{ABORT\_MODE} is sent to the QR setting all engines to zero\\ 
 \hline 
 \end{tabular} 
+\caption{GUI functionalities}
 \label{tbl:GUIButts}
 \end{table}
 
-Telemetry data are shown in 3 display controls (QR column with r, phi, theta) next to the commanded values (REFERENCES) which are only displayed in \texttt{FULL\_CONTROL} mode.
-
-All commanded signals from the keyboard and joystick are shown in the Lift, Roll, Pitch, Yaw, P, P1, P2 controls as well as the set MODE. P, P2, P3 values are only changed in \texttt{YAW\_CONTROL} and \texttt{FULL\_CONTROL} modes (See \todo{mode selection}).
-
-In addition, four extra controls show the expected motor speed (Along with a QR schematic for easier understanding).
-
-As safety measure, the QR must be set in \texttt{SAFE\_MODE} before communication is stopped (using the \emph{Start/Stop Sending} button). If the user terminates the program, \texttt{SAFE\_MODE} is set in the QR and the RS232 port is closed.
+Telemetry data is shown in 3 display controls (QR column with r, phi, theta) next to the commanded values \texttt{REFERENCES} which are only displayed in \texttt{FULL\_CONTROL} mode. All commanded signals from the keyboard and joystick are shown in the Lift, Roll, Pitch, Yaw, P, P1, P2 controls as well as the set MODE. The \texttt{P} values are only changed in \texttt{YAW\_CONTROL} and \texttt{FULL\_CONTROL} modes as explained in Section \ref{sec:modeselection}. Four extra indicators show the expected motor speed (Along with a QR schematic for easier understanding). The PC calculates these motor speed values in function clones from the FPGA functions, locally on the PC by using the same input data. As a safety measure, the QR must be set in \texttt{SAFE\_MODE} before communication is stopped (using the \emph{Start/Stop Sending} button). If the user terminates the program, \texttt{SAFE\_MODE} is set in the QR and the RS232 port is closed.
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 % All info considering communcation protocols
@@ -170,8 +164,8 @@ A data structure is implemented in the \emph{Package.h} file. This structure inc
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 \subsubsection{Mode selection}
-To assess the mode changes requested by the user, \textbf{Diogo} created the \texttt{mode\_selection()} function which is executed between the keyboard reading and the communication packet creation. The QR operation is always started in \textit{safe mode} and any change between modes must pass by this safe state. Exception is made to access \textit{panic mode} or \textit{abort mode} as a safety measure. In order to change from \textit{safe mode} to an intended control mode there are two main checks: \textit{Lift} must be equal to $0$ and the sum of the engine values also equal to $0$, which is equivalent to have all the 4 engines set to null. The latter check is done by reading the third least significant bit of the fpga status(\textbf{TELEMETRY FLAG}), received in the telemetry packet. Moving to both \textit{yaw-controlled mode} and \textit{full control mode}
-requests an extra check to assess if the sensors calibration was already performed. This is done in a similar way but using the least significant bit. In order to ease the tuning process of the controlled modes, it is also allowed changes between a controlled mode and \textit{P control mode}, which enables the adjustment of the proportional gains (\textit{P,P1,P2}) of the controllers.
+\label{sec:modeselection}
+To assess the mode changes requested by the user, \texttt{mode\_selection()} function is executed between the keyboard reading and the communication packet creation. The QR operation is always started in \textit{safe mode} and any change between modes must pass by this safe state. Exception is made to access \textit{panic mode} or \textit{abort mode} as a safety measure. In order to change from \textit{safe mode} to an intended control mode there are two main checks: \textit{Lift} must be equal to $0$ and the sum of the engine values also equal to $0$, which is equivalent to have all the 4 engines set to null. The latter check is done by reading the third least significant bit of the fpga status(\textbf{TELEMETRY FLAG}), received in the telemetry packet. Moving to both \textit{yaw-controlled mode} and \textit{full control mode} requests an extra check to assess if the sensors calibration was already performed. This is done in a similar way but using the least significant bit. In order to ease the tuning process of the controlled modes, it is also allowed changes between a controlled mode and \textit{P control mode}, which enables the adjustment of the proportional gains (\textit{P,P1,P2}) of the controllers.
 
 In two special cases mode changes to \textit{safe mode} are performed automatically, those are when \textit{panic mode} or \textit{calibration mode} have completed its tasks. That information is also provided by the fpga status flag in the second least significant bit.
 
@@ -414,5 +408,7 @@ Since the group did not have the chance to properly tune the Filtering parameter
 
 %----------------------------------------------------------------------------------------
 
+\bibliographystyle{plain}
+\bibliography{report}
 
 \end{document}
