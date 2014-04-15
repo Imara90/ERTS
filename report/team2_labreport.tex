@@ -91,7 +91,7 @@ A simple GUI is designed to control the QR (Figure \ref{fig.GUI}) using QT creat
 
 \begin{figure}[ht]
 \centering
-	\includegraphics[scale=0.4]{Figures/GUI.png}
+	\includegraphics[scale=0.35]{Figures/GUI.png}
 	\caption{Designed User Interface}
 	\label{fig.GUI}
 \end{figure}
@@ -103,11 +103,11 @@ A simple GUI is designed to control the QR (Figure \ref{fig.GUI}) using QT creat
 \textbf{Button} & \textbf{Functionality} \\ 
 \hline 
 \hline 
-Connect / Disconnect & Establishes communication with the QR (through RS232). Once established, \\ & the \emph{Start Sending} button is enabled\\ 
+Connect / Disconnect & Establishes PC Link (through RS232) \& enables the \emph{Start Sending} button  \\
 \hline 
-Start/Stop Sending & Data is sent and received. Joystick/Keyboard commanded inputs and Telemetry \\ & are displayed  where indicated. 
-\\ & Connect button (now labeled as Disconnect) is disabled until the \\ & button is pressed again.
-\\ & \emph{Abort} and \emph{Download DataLog} are enabled
+Start/Stop Sending & Display Joystick/Keyboard commanded inputs and Telemetry. 
+\\ & Disables/enables the connect button (now labeled as Disconnect).
+\\ & Enables \emph{Abort} and \emph{Download DataLog}.
 \\
 \hline 
 Download DataLog & \texttt{EXIT\_MODE} is sent to the QR and data is received and stored in a \texttt{.txt} file
