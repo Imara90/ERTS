@@ -12,10 +12,11 @@
 \documentclass{article}
 
 \usepackage{graphicx} % Required for the inclusion of images
-\usepackage{natbib} % Required to change bibliography style to APA
+%\usepackage{natbib} % Required to change bibliography style to APA
 \usepackage{amsmath} % Required for some math elements 
 \usepackage{anysize}
-\marginsize{2cm}{2cm}{2cm}{2cm} % decrease the margins
+\marginsize{2cm}{1.5cm}{0.5cm}{2cm} % decrease the margins
+\usepackage{subcaption}
 
 \usepackage{xcolor}
 \newcommand\worries[1]{\textcolor{red}{#1}} %add command to specify worries in red
@@ -70,7 +71,14 @@ This FPGA is connected through a serial link connection with the PC and a QR lin
 \section{Architecture}
 \label{sec:architecture}
 
-This section introduces the QR hardware, their interfaces and the implementation in software components. 
+\begin{figure}[h]
+\centering
+	\includegraphics[width=13cm]{Figures/Architecture.pdf}
+	\caption{Software architecture Scheme}
+	\label{fig.Architecture}
+\end{figure}
+
+The schematic in Figure \ref{fig.Architecture} describes the software architecture implemented in the PC/QR. It is split in 2 big regions (PC, QR), containing the implemented algorithms. These algorithms are described in detail in the next sections.
 
 
 %----------------------------------------------------------------------------------------
@@ -140,7 +148,9 @@ As mentioned in Section \ref{sec:architecture}, the different interfaces require
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 \subsubsection{Pc2Fpga}
-In order to efficiently transmit  data from the PC to the FPGA, a simple and compact communication protocol was implemented. It consists of a fixed length 7 bytes packet, including a starting byte \textbf{0x80}, 5 parameters and a checksum to ensure a reliable communication (Table \ref{tbl:PkgDefinition}). \todo{add calculation to how many bytes can be send using the baudrate of 115k2bps 8n1}. In order to be able to receive on the RS232 line, the \texttt{INTERRUPT\_PRIMARY\_RX} has to be enabled. This is done in the initializing of the interrupts in the main loop. 
+In order to efficiently transmit  data from the PC to the FPGA, a simple and compact communication protocol was implemented. It consists of a fixed length 7 bytes packet, including a starting byte \textbf{0x80}, 5 parameters and a checksum to ensure a reliable communication (Table \ref{tbl:PkgDefinition}). Serial port communication is set to 115.2 kbps, 8n1 (1 Start bit, 8 data bits and 1 stop bit), meaning that each byte sent is composed by 10 bits. Each byte can be sent through the port at 11.5 kB/s (87 $\mu$s). The total number of bytes sent/received by the pc-$>$ QR link (including telemetry (See. \ref{sec:modeselection})) is 14, which can be handled at 1.2 ms, being fast enough to update user commands.
+
+In order to be able to receive on the RS232 line, the \texttt{INTERRUPT\_PRIMARY\_RX} has to be enabled. This is done in the initializing of the interrupts in the main loop. 
 
 \begin{table}[ht]
 \centering
@@ -248,7 +258,7 @@ Data logging as coded by \textbf{Imara} is used to verify the filtering/controll
 
 In contrary to the telemetry, the data log is send on command when the \emph{exit mode} is triggered (Pressing Del key or clicking the Data Log button in the GUI). The FPGA exits the while loop and starts sending the stored data in the \textsc{send\_data()} function which keeps sending until the circular data log buffer is empty. In the mean time the PC stops writing in the port and starts receiving from the FPGA. As the data is received, the PC checks for the starting byte (\textbf{0x80}) and stores the subsequent bytes until the expected size is reached (33 bytes). Once the complete packet is stored, the checksum is verified and the packet is written into a text file. All packets are separated by a CR and the starting byte is excluded (as the packet is verified before is written into the file).
 
-A matlab script is used to decode and visualize the logged signals.\todo{daniel, write about the matlab code}
+A matlab script is used to decode and visualize the logged signals. It decodes the signals to the original values using the function \textsc{typecast}. Additionally the time-stamp is calculated as the integral of the recorded time-stamp (Time-stamp was recorded as the time interval in between measurements in order to save storage bytes). Several plots can be generated once the data is processed. A sample of the generated plots can be seen in Figure \ref{fig:YawControl}
 
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -262,21 +272,23 @@ The only control mode that makes use of the sensor filtered values is the \texti
 
 \begin{figure}[ht]
 \centering
-%	\includegraphics[scale=0.6]{Figures/Noise.eps}
-	\caption{Accelerometer vs Gyro signals noise comparison}
-	\label{fig.Noise}
+	\begin{subfigure}[b]{0.49\textwidth}
+  		\includegraphics[width=8cm]{Figures/Noise.pdf}
+		\caption{Accelerometer vs Gyro signals noise comparison}
+		\label{fig.Noise}
+  \end{subfigure}
+	\begin{subfigure}[b]{0.49\textwidth}	
+		\includegraphics[width=8cm]{Figures/NoiseComp.pdf}
+		\caption{Cutoff Frequency effect in a $1^{st}$ order Butterworth filter}
+		\label{fig.NoiseComp}
+	\end{subfigure}
+	\caption{}
 \end{figure}
 
 \subsubsection{Butterworth Filter}
 
 A first order Butterworth filter is used to perform noise reduction. This noise reduction can be regulated setting the cutoff frequency. Lower cutoff frequencies will lead to a much smoother signal with delay as trade-off. In contrast, higher cutoff frequencies results in a synchronized signal with still some noise (Figure \ref{fig.NoiseComp}). Although a lower cut frequency (10Hz) lead to a delayed signal, the phase shift for a Butterworth $1^{st}$ order is less than $90^{o}$ at the cut frequency, making it suitable for the QR application. 
 
-\begin{figure}[ht]
-\centering
-%	\includegraphics[scale=0.6]{Figures/NoiseComp.eps}
-	\caption{Cutoff Frequency effect in a $1^{st}$ order Butterworth filter}
-	\label{fig.NoiseComp}
-\end{figure}
 
 Implementation of a $1^{st}$ order Butterworth filter is straightforward. Given the signal sample frequency and the desired cutoff frequency, a set of constants are calculated. Using these constants the filtered signal is reconstructed out from the raw sensor values and the previous filtered value.
 
@@ -417,7 +429,7 @@ At this point we were in condition of testing the \textit{yaw-controlled mode}. 
 
 \begin{figure}[ht]
 \centering
-%	\includegraphics[scale=0.6]{Figures/YawControl.eps}
+	\includegraphics[width=8cm]{Figures/YawControl.pdf}
 	\caption{Disturbance rejection in \textit{yaw-controlled mode}}
 	\label{fig:YawControl}
 \end{figure}
