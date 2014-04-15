@@ -58,6 +58,8 @@
 
 \section{Introduction}
 \label{sec:introduction}
+This project aims to familiarize students with the multidisciplinary skills of embedded system engineering, specifically the designs of an embedded software that controls and stabilizes an unmanned aerial vehicle (UAV), a Quad-Rotor UAV or 'QR'. A FPGA platform is implemented in the prototype to provide a versatile experimentation platform for embedded system development. The FPGA comes with a \texttt{X32} softcore running at 2 MIPS. 
+This FPGA is connected through a serial link connection with the PC and a QR link to the micro controller that provides the sensors and actuators as will be explained in the next section. These link interfaces require careful consideration for the communication protocols as will be discussed in Section \ref{sec:communication}. This low-cost approach introduces measurement errors, reduced size and performance of the FPGA and will present an excellent opportunity for programming embedded systems in a challenging and real application context when dealing with limited-performance components.  
 
 
 %----------------------------------------------------------------------------------------
@@ -132,6 +134,7 @@ The writing macro \texttt{cbWrite} works by writing a value to the newest elemen
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 % All info considering communcation protocols
 \subsection{Communication Protocols}
+\label{sec:communication}
 As mentioned in Section \ref{sec:architecture}, the different interfaces require different communication protocols to perform optimal communication. This section discusses these protocols. 
 
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
