@@ -10,7 +10,9 @@
 %----------------------------------------------------------------------------------------
 
 \documentclass{article}
+\usepackage{float}
 
+\usepackage{caption}
 \usepackage{graphicx} % Required for the inclusion of images
 %\usepackage{natbib} % Required to change bibliography style to APA
 \usepackage{amsmath} % Required for some math elements 
@@ -48,7 +50,7 @@
 
 % abstract of 10 lines maximum specifying the specific approach and results
  \begin{abstract}
-
+Developing a real-time embedded system to pilot a Quad-Rotor UAV (QR) rises many challenges in a wide range of subjects. All the software developed was coded in C in both PC and FPGA, here implemented through the X32 soft core. The communication protocol uses a fixed packed length of 7 bytes, including a starting flag byte and checksum byte. The controller created includes a Kalman filter and Butterworth filter for sensor data handling, having a closed-loop cycle of approximately 867 $\mu s$. A proportional (\texttt{P}) controller was incorporated for \textit{yaw-controlled mode} and a proportional derivative (\texttt{PD}) controller , builted through a cascaded \texttt{P} controller, for \textit{full control mode}. Although a proficient code was elaborated, full controlled flight was not accomplished due to insufficient tuning of the filters.
 
  \end{abstract}
 
@@ -59,7 +61,7 @@
 
 \section{Introduction}
 \label{sec:introduction}
-This project aims to familiarize students with the multidisciplinary skills of embedded system engineering, specifically the designs of an embedded software that controls and stabilizes an unmanned aerial vehicle (UAV), a Quad-Rotor UAV or 'QR'. A FPGA platform is implemented in the prototype to provide a versatile experimentation platform for embedded system development. The FPGA comes with a \texttt{X32} softcore running at 2 MIPS. 
+This project aims to familiarize students with the multidisciplinary skills of embedded system engineering, specifically the designs of an embedded software that controls and stabilizes an unmanned aerial vehicle (UAV), a Quad-Rotor UAV or 'QR'. A FPGA platform is implemented in the prototype to provide a versatile experimentation platform for embedded system development. The FPGA comes with a \texttt{X32} soft core running at 2 MIPS. 
 This FPGA is connected through a serial link connection with the PC and a QR link to the micro controller that provides the sensors and actuators as will be explained in the next section. These link interfaces require careful consideration for the communication protocols as will be discussed in Section \ref{sec:communication}. This low-cost approach introduces measurement errors, reduced size and performance of the FPGA and will present an excellent opportunity for programming embedded systems in a challenging and real application context when dealing with limited-performance components.  
 
 
@@ -73,7 +75,7 @@ This FPGA is connected through a serial link connection with the PC and a QR lin
 
 \begin{figure}[h]
 \centering
-	\includegraphics[width=13cm]{Figures/Architecture.pdf}
+	\includegraphics[scale = .35]{Figures/Architecture.pdf}
 	\caption{Software architecture Scheme}
 	\label{fig.Architecture}
 \end{figure}
@@ -187,11 +189,11 @@ The data structure is implemented in the \emph{Package.h} file. This structure i
 
 \subsubsection{Mode selection}
 \label{sec:modeselection}
-To assess the mode changes requested by the user, the \texttt{mode\_selection()} function is executed between readings of the keyboard and the communication packet creation. The QR operation is always started in \textit{safe mode} and any change between modes must first pass by this safe state. Exception is made to access \textit{panic mode} or \textit{abort mode} as a safety measure. In order to change from \textit{safe mode} to an intended control mode there are two main checks: \textit{Lift} and the sum of the engine values must be equal to $0$, which is equivalent to have all the 4 engines set to $0$. The latter check is done by setting the \texttt{Engines\_Null} flag in the (\textbf{TELEMETRY FLAG}), received in the telemetry packet, a byte appended in the telemetry send by the QR. 
+To assess the mode changes requested by the user, \textbf{Diogo} created the \texttt{mode\_selection()} function which is executed between readings of the keyboard and the communication packet creation. The QR operation is always started in \textit{safe mode} and any change between modes must first pass by this safe state. Exception is made to access \textit{panic mode} or \textit{abort mode} as a safety measure. In order to change from \textit{safe mode} to an intended control mode there are two main checks: \textit{Lift} and the sum of the engine values must be equal to $0$, which is equivalent to have all the 4 engines set to $0$. The latter check is done by setting the \texttt{Engines\_Null} flag in the (\textbf{TELEMETRY FLAG}), received in the telemetry packet, a byte appended in the telemetry send by the QR. 
 
 Moving to both \textit{yaw-controlled mode} and \textit{full control mode} requests an extra check to assess if the sensors calibration was already performed using the \texttt{Calibration\_Done} flag. Changing between a control mode and the \textit{P control mode} is enabled to adjust the proportional gains (\textit{P,P1,P2}) of the controllers. Mode changes to \textit{safe mode} are performed automatically when \textit{panic mode} or \textit{calibration mode} have completed its functionality. This \texttt{Safe\_Mode\_Request} is also appended in the telemetry flag. 
 
-Any time an attempt is made to change mode and all the requirements are not fulfilled, the communication packet sends the previous operating mode which is saved in the variable \texttt{prev\_mode} locally on the PC. Including the mode selection in the PC side allows to avoid all the needed checks in the FPGA. The cost of including one extra byte (\textbf{TELEMETRY FLAG}) in the telemetry packet revealed to be a rather advantageous solution in terms of processing time in the FPGA. \worries{do we have to specify this, I think so}
+Any time an attempt is made to change mode and all the requirements are not fulfilled, the communication packet sends the previous operating mode which is saved in the variable \texttt{prev\_mode} locally on the PC. Including the mode selection in the PC side allows to avoid all the needed checks in the FPGA. The cost of including one extra byte (\textbf{TELEMETRY FLAG}) in the telemetry packet revealed to be a rather advantageous solution in terms of processing time in the FPGA.
 
 \begin{table}[h]
 \centering
@@ -239,14 +241,14 @@ The two's complement method takes 22 $\mu$s for every addition and requires a co
 Whenever the PC link is broken or disconnected, the code should immediately signal the error and enter panic mode. \textbf{Imara} coded this using a communication counter \texttt{commflag} which is set to zero whenever a package is received in the interrupt service routine of the RS232 RX of the FPGA. Whenever the counter exceeds the threshold \texttt{commthres}, the mode is set to \texttt{PANIC\_MODE}. 
 
 \subsubsection{Robustness}
-\todo{write arithmetic solutions for representing and handling of sensor values}
-
+To handle the fixed point arithmetic constraint in the fpga, \textbf{Daniel} created an adapted multiplication routine which ensures a 14 bits precision. This was used for both Butterworth filter and Kalman filter algorithms. Moreover, due to the risk of loss of precision when applying the gain parameters in the controllers an extended   arithmetic was used. For instance, in the \textit{yaw-controlled mode} the \textit{yaw momentum} \texttt{N} computation applies \texttt{N = P*r\_ref - P*r} instead of \texttt{N = P*(r\_ref - r)}.
+Not least important, during the development of the code the X32's divide-by-zero and integer overflow interrupts were applied several time to assess if any arithmetic error was occurring.
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 % Safety mode, emergency stop, stalling proof, robust to noise, reliable communication, 
 % dependability, robustness
 
 \subsection{Safety features}
-An extra \texttt{abort\_mode} was created by \textbf{Diogo} to distinguish between directly dangerous situations where the FPGA should shut down the engines and shut down and situations where the system can reduce engine values in a controlled manner such as the \texttt{panic\_mode} provides. \todo{Diogo, can you support the reasons for this}
+An extra \texttt{abort\_mode} was created by \textbf{Diogo} to distinguish between directly dangerous situations where the FPGA should shut down the engines and shut down and situations where the system can reduce engine values in a controlled manner such as the \texttt{panic\_mode} provides.
 
 To prevent stalling to occur in the brushless engines, a \texttt{check\_motor\_ramp()} function is called in the PC after the \texttt{mode\_selection()} performs the mode selection. This function written by \textbf{Daniel} clips the ramping up of the engines to a set maximum value for increasing and decreasing of the engine values. This is done by comparing current \texttt{lift} control values with a \texttt{prev\_lift}. 
 
@@ -273,12 +275,12 @@ The only control mode that makes use of the sensor filtered values is the \texti
 \begin{figure}[ht]
 \centering
 	\begin{subfigure}[b]{0.49\textwidth}
-  		\includegraphics[width=8cm]{Figures/Noise.pdf}
+  		\includegraphics[trim = 0mm 50mm 0mm 40mm, width=\linewidth]{Figures/Noise}
 		\caption{Accelerometer vs Gyro signals noise comparison}
 		\label{fig.Noise}
   \end{subfigure}
 	\begin{subfigure}[b]{0.49\textwidth}	
-		\includegraphics[width=8cm]{Figures/NoiseComp.pdf}
+		\includegraphics[trim = 0mm 50mm 0mm 40mm, width=\linewidth]{Figures/NoiseComp}
 		\caption{Cutoff Frequency effect in a $1^{st}$ order Butterworth filter}
 		\label{fig.NoiseComp}
 	\end{subfigure}
@@ -419,17 +421,17 @@ The entire control loop excluding the periodic telemetry and datastoring results
 
 \section{Experimental results}
 \label{sec:results}
-In this section we discuss what worked correctly and what did not during the final lab lession. Some reasoning is applied to try to justify what caused those failures and understand what further work should be done in order to correct them.
+In this section we discuss what worked correctly and what did not during the final lab session. Some reasoning is applied to try to justify what caused those failures and understand what further work should be done in order to correct them.
 
-The first test performed was to the mode change allowance possibilities. Here, it was verified that all the several safety requirements were fulfilled. Nonetheless, one issue was identified when the \textit{calibration mode} was selected and the automatic change back to safe state was not performed. Forcing a change by pressing '$0$' seemed to work and later when \textit{calibration mode} was called again, everything performed as expected. Although further debugging was needed to identify the issue source, it seemed to be related with a wrong initialization of the \texttt{TELEMETRY\_FLAG}. \worries{does not really explain the issue or the solution}
+The first test performed was to the mode change allowance possibilities. Here, it was verified that all the several safety requirements were fulfilled. Nonetheless, one issue was identified when the \textit{calibration mode} was selected and the automatic change back to safe state was not performed. Forcing a change by pressing '$0$' seemed to solve the issue and later when \textit{calibration mode} was called again, everything performed as expected. Although further debugging was needed to identify the issue source, it seemed to be related with a wrong initialization of the \texttt{TELEMETRY\_FLAG}.
 
-The execution of the \textit{manual mode} worked perfectly, as the QR revealed an accordingly behaviour with the user references. It also showed a smooth performance in roll, pitch and yaw movements revealing the proficient tuning of the scaling functions.\todo{WE SHOULD TALK ABOUT THE LAG BUT I DONT KNOW HOW WE SHOULD JUSTIFY IT}. At this point we also had the chance to test the \textit{panic mode} and \textit{safe mode}, which executed their tasks as expected taking the QR to a safe and steady state. The following assessment was done to the \textit{calibration mode}. We could notice that the sensors offset was found correctly since the user interface showed null values for the dynamic angles and rates after calibration and when one of the controlled modes was accessed.
+The execution of the \textit{manual mode} worked perfectly, as the QR revealed an accordingly behaviour with the user references. It also showed a smooth performance in roll, pitch and yaw movements revealing the proficient tuning of the scaling functions. Nonetheless, some delay was noticed when evaluating the time interval between a user order and respective actuation. At this point we also had the chance to test the \textit{panic mode} and \textit{safe mode}, which executed their tasks as expected taking the QR to a safe and steady state. The following assessment was to the \textit{calibration mode}. We could notice that the sensors offset was found correctly since the user interface showed null values for the dynamic angles and rates after calibration and when one of the controlled modes was accessed.
 
 At this point we were in condition of testing the \textit{yaw-controlled mode}. A first approach was done by leaving the yaw rate \texttt{r} set to 0 and applying a rotational disturbance to check if the reference was followed and attained. As shown in figure \ref{fig:YawControl}, the expected behaviour was accomplished since the QR rapidly rejected the disturbance and followed the reference.
 
 \begin{figure}[ht]
 \centering
-	\includegraphics[width=8cm]{Figures/YawControl.pdf}
+	\includegraphics[trim = 0mm 50mm 0mm 40mm, scale = .5]{Figures/YawControl}
 	\caption{Disturbance rejection in \textit{yaw-controlled mode}}
 	\label{fig:YawControl}
 \end{figure}
@@ -437,13 +439,6 @@ At this point we were in condition of testing the \textit{yaw-controlled mode}. 
 Despite this successfully test, when a different reference (provided by the joystick) was feed to the controller a strange behaviour was witnessed. Basically, the controller was assuming a symmetric reference to the one intended. The error here was identified in the dynamics inversion of the mode algorithm. The linearized dynamics were established using as convention a positive \textit{yaw momentum} \texttt{N} for a clockwise rotation (when looking from above the QR), while the reference yaw rate definition used the opposite definition. This issued could be easily solved by adding a minus sign to the \texttt{N} equation of the linearized system.
 
 Since the group did not have the chance to properly tune the Filtering parameters it was decided not to test \textit{full control mode} since an unexpected and not safety behavior could be experienced. Nevertheless, assuming that the algorithm used clearly resembles the applied for the \textit{yaw-controlled mode}, we believe that it was correctly implemented.
-
-\todo{Talk about GUI\\}
-
-
-\todo{Explain why when the cable was disconnected the QR didn't enter panic} 
-
-
 
 %----------------------------------------------------------------------------------------
 %	CONCLUSION
