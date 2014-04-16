@@ -50,7 +50,7 @@
 
 % abstract of 10 lines maximum specifying the specific approach and results
  \begin{abstract}
-Developing a real-time embedded system to pilot a Quad-Rotor UAV (QR) rises many challenges in a wide range of subjects. All the software developed was coded in C in both PC and FPGA, here implemented through the X32 soft core. The communication protocol uses a fixed packed length of 7 bytes, including a starting flag byte and checksum byte. The controller created includes a Kalman filter and Butterworth filter for sensor data handling, having a closed-loop cycle of approximately 867 $\mu s$. A proportional (\texttt{P}) controller was incorporated for \textit{yaw-controlled mode} and a proportional derivative (\texttt{PD}) controller , builted through a cascaded \texttt{P} controller, for \textit{full control mode}. Although a proficient code was elaborated, full controlled flight was not accomplished due to insufficient tuning of the filters.
+Developing a real-time embedded system to pilot a Quad-Rotor UAV (QR) rises many challenges in a wide range of subjects. All the software developed was coded in embedded C, C++ and C in the PC and  implemented through the X32 soft core on the FPGA. The Pc2Fpga communication protocol uses a fixed packed length of 7 bytes, including a starting flag byte and checksum byte. The controller created includes a Kalman filter and Butterworth filter for sensor data handling, having a closed-loop cycle of approximately 867 $\mu s$. A proportional (\texttt{P}) controller was incorporated for \textit{yaw-controlled mode} and a proportional derivative (\texttt{PD}) controller, build through a cascaded \texttt{P} controller for \textit{full control mode}. Although a proficient code was elaborated, full controlled flight was not accomplished due to insufficient tuning of the filters.
 
  \end{abstract}
 
@@ -62,7 +62,7 @@ Developing a real-time embedded system to pilot a Quad-Rotor UAV (QR) rises many
 \section{Introduction}
 \label{sec:introduction}
 This project aims to familiarize students with the multidisciplinary skills of embedded system engineering, specifically the designs of an embedded software that controls and stabilizes an unmanned aerial vehicle (UAV), a Quad-Rotor UAV or 'QR'. A FPGA platform is implemented in the prototype to provide a versatile experimentation platform for embedded system development. The FPGA comes with a \texttt{X32} soft core running at 2 MIPS. 
-This FPGA is connected through a serial link connection with the PC and a QR link to the micro controller that provides the sensors and actuators as will be explained in the next section. These link interfaces require careful consideration for the communication protocols as will be discussed in Section \ref{sec:communication}. This low-cost approach introduces measurement errors, reduced size and performance of the FPGA and will present an excellent opportunity for programming embedded systems in a challenging and real application context when dealing with limited-performance components.  
+This FPGA is connected through a serial link connection with the PC and a QR link to the Atmega micro controller that provides the sensors and actuators as will be explained in the next section. These link interfaces require careful consideration for the communication protocols as will be discussed in Section \ref{sec:communication}. This low-cost approach introduces measurement errors, reduced size and performance of the FPGA and will present an excellent opportunity for programming embedded systems in a challenging and real application context when dealing with limited-performance components.  
 
 
 %----------------------------------------------------------------------------------------
@@ -75,12 +75,12 @@ This FPGA is connected through a serial link connection with the PC and a QR lin
 
 \begin{figure}[h]
 \centering
-	\includegraphics[scale = .35]{Figures/Architecture.pdf}
+	\includegraphics[scale = .55]{Figures/Architecture.pdf}
 	\caption{Software architecture Scheme}
 	\label{fig.Architecture}
 \end{figure}
 
-The schematic in Figure \ref{fig.Architecture} describes the software architecture implemented in the PC/QR. It is split in 2 big regions (PC, QR), containing the implemented algorithms. These algorithms are described in detail in the next sections.
+The schematic in Figure \ref{fig.Architecture} describes the software architecture implemented for the interfacing of the Pc/Fpga link at 115k2bps and the Fpga/Qr link at 500kbps. The 100 MHz Trenz TE0300-01BMLP 1600K gates Spartan-3E FPGA comes with the free development X32 soft code allowing the system to be developed in C. The PC acts as a user interface as well as a ground station to read the joystick and keyboard commands. It transmits commands and receives telemetry from the ES while visualizing and eventually storing the data on file after operation through a duplex serial RS232 port. The Atmel AtMega1280 microcontroller interfaces between the 4 brushless Robbe motors (Roxxy BL outrunner 2827-34) controlled by AeroVinci's v2 motor controller and STMicroelectronics LIS344AL accelerometers and Inversense IDG500 gyroscopes and the X32 soft core. 
 
 
 %----------------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ This section introduces the implementation of the functionalities implemented in
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 %GUI
 \subsection{GUI}
-A simple GUI is designed to control the QR (Figure \ref{fig.GUI}) using QT creator allowing for multi-platform deployment. Users can interact with the QR through the GUI with the keyboard and the joystick as described in the assignment \cite{langendoen2014assignment}. The GUI's functionalities are described in Table \ref{tbl:GUIButts}. 
+A simple GUI is designed to control the QR (Figure \ref{fig.GUI}) using QT creator allowing for multi-platform deployment. Users can interact with the QR through the GUI with the keyboard and the joystick as described in the lab assignment. The GUI's functionalities are described in Table \ref{tbl:GUIButts}. 
 
 \begin{figure}[ht]
 \centering
@@ -209,7 +209,7 @@ DC & DC & DC & DC & DC & ENGINES NULL & SAFE MODE REQUEST & CALIBRATION DONE \\
 %-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 \subsubsection{Fpga2Pc}
-To supervise the behavior of the QR, telemetry is send. To ensure a reliable communication a starting byte and checksum as discussed in the next section are appended in the packet. The telemetry sends the most important features to supervise: the angular rate $r$ for yaw-control and the angular velocities $\phi$ and $\theta$ to distinguish the motion of the QR.  \todo{need to detail why just these}. Phi and theta \todo{are both this many bytes and therefor we need 2 bytes to be send etc} Along with these parameters, the status of the FPGA, appended in the \texttt{TELEMETRY\_FLAG} is sent as defined in Table. \ref{tbl:TelPkgDefinition} 
+To supervise the behavior of the QR, telemetry is send. To ensure a reliable communication a starting byte and checksum as discussed in the next section are appended in the packet. The telemetry sends the most important features to supervise: the angular rate $r$ for yaw-control and the angular velocities $\phi$ and $\theta$ to distinguish the motion of the QR. To not loose any precision we need 2 bytes for Phi and theta as their data is 18 bits long, but they never reach their full potential as has been tested priorly. Along with these parameters, the status of the FPGA, appended in the \texttt{TELEMETRY\_FLAG} is sent as defined in Table. \ref{tbl:TelPkgDefinition} 
 
 As the final telemetry coded by \textbf{Imara} takes 904 $\mu$s to assign and send, it will claim the RS232 line, slowing down the entire process. For this reason a polling technique was implemented. The \texttt{send\_telemetry()} is called in every while loop, but checks whether or not the defined \texttt{POLLTIMEMS} of 200 $ms$ is passed. If this is the case, the telemetry flag is set according to the sum of the engines. The appropriate parameters are then written to the transmitting circular buffer using the macro function \texttt{cbWrite()} as written by \textbf{imara} which immediately updates the checksum by passing the address of the local variable. If the checksum contains the starting byte \textbf{0x80}, it is appended to \textbf{0x00}. The checksum is then added to the packet after which a while loop iterates until the transmitting buffer is empty (\texttt{txcb.end == txcb.start}). Until then it waits indefinitely for the RS232 to change its status register to \texttt{X32\_rs232\_stat \& 0x01}, indicating it is ready to send the next byte upon which it does so by using the macro \texttt{cbGet()} as written by \textbf{Imara} which writes the current value of the transmitter buffer to the address of the \texttt{X32\_rs232\_data} RS232 data register, initializing the transmission of the written byte. In order to be able to send on the RS232 line, the \texttt{INTERRUPT\_PRIMARY\_TX} has to be enabled. This done in the initializing of the interrupts in the main loop. 
 
@@ -256,7 +256,7 @@ To prevent stalling to occur in the brushless engines, a \texttt{check\_motor\_r
 %   Datalogging
 \subsection{Data Logging}
 
-Data logging as coded by \textbf{Imara} is used to verify the filtering/controller behaviour, as well as QR behaviour in general. The \textsc{store\_data()} function polls in the same way as the \texttt{send\_telemetry()} function does, but instead every \textsc{DATASTORETIMEMS} of 150 $ms$. The 33 bytes packet is composed of a starting byte (\textbf{0x80}), 16 parameters (31 bytes) and a checksum. Logged data includes a timestamp (1 byte), MODE, Lift, Roll, Pitch and Yaw (1 byte each), motor commanded speeds (2 bytes each), sensor normalized data (1 byte each) excluding acceleration reading in Z direction, phi and theta angles (2 bytes each), p and q angles (1 byte each), P, P1 and P2 control gains (1 Byte each) and control time (1 byte). The packet is composed in the \textsc{store\_data()} function. \todo{specify why we need these and not others}
+Data logging as coded by \textbf{Imara} is used to verify the filtering/controller behaviour, as well as QR behaviour in general. The \textsc{store\_data()} function polls in the same way as the \texttt{send\_telemetry()} function does, but instead every \textsc{DATASTORETIMEMS} of 150 $ms$. The 33 bytes packet is composed of a starting byte (\textbf{0x80}), 16 parameters (31 bytes) and a checksum. Logged data includes a timestamp (1 byte), MODE, Lift, Roll, Pitch and Yaw (1 byte each), motor commanded speeds (2 bytes each), sensor normalized data (1 byte each) excluding acceleration reading in Z direction, phi and theta angles (2 bytes each), p and q angles (1 byte each), P, P1 and P2 control gains (1 Byte each) and control time (1 byte). The packet is composed in the \textsc{store\_data()} function. 
 
 In contrary to the telemetry, the data log is send on command when the \emph{exit mode} is triggered (Pressing Del key or clicking the Data Log button in the GUI). The FPGA exits the while loop and starts sending the stored data in the \textsc{send\_data()} function which keeps sending until the circular data log buffer is empty. In the mean time the PC stops writing in the port and starts receiving from the FPGA. As the data is received, the PC checks for the starting byte (\textbf{0x80}) and stores the subsequent bytes until the expected size is reached (33 bytes). Once the complete packet is stored, the checksum is verified and the packet is written into a text file. All packets are separated by a CR and the starting byte is excluded (as the packet is verified before is written into the file).
 
@@ -301,7 +301,7 @@ Implementation of a $1^{st}$ order Butterworth filter is straightforward. Given 
 
 Equation \ref{eq:Butt1st} shows the update formula for a 1st order Butterworth filter, where $x$ and $y$ are the raw and filtered values respectively, $A_0$, $A_1$, $B_0$ and $B_1$ are the constants for a $1^{st}$ order Butterworth filter, $k$ and $k-1$ represent the current and previous measurement.
 
-The calculated constants for the $1^{st}$ order Butterworth are rational numbers and a proper scaling is applied in order to compute the multiplication with the measured and filtered values (the FPGA soft core does not handle floating point numbers). A 14 bit fix point arithmetic is applied in this case to compute the constants (This is multiply by $2^{14}$ and round the number as seen in Table \ref{tbl:ButtConstants}). \todo{this has to be explained more thoroughly, the arithmetics}
+The calculated constants for the $1^{st}$ order Butterworth are rational numbers and a proper scaling is applied in order to compute the multiplication with the measured and filtered values (the FPGA soft core does not handle floating point numbers). A 14 bit fix point arithmetic is applied in this case to compute the constants (This is multiply by $2^{14}$ and round the number as seen in Table \ref{tbl:ButtConstants}).
 
 \begin{table}[ht]
 \centering
@@ -470,7 +470,7 @@ We would have obviously liked to see the quadcopter hover, but it has already in
 
 %----------------------------------------------------------------------------------------
 
-\bibliographystyle{plain}
-\bibliography{report}
+%\bibliographystyle{plain}
+%\bibliography{report}
 
 \end{document}
