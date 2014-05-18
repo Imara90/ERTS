@@ -535,11 +535,7 @@ void decode(void)
 }
 
 
-/*------------------------------------------------------------------[r: 0], [phi: 4], [theta: 0], [flag: 5], [Chk: 1] Chksum OK = 1 
-
-[r: 0], [phi: 4], [theta: 0], [flag: 5], [Chk: 1] Chksum OK = 1 
-
-[r: 0], [phi: 4], [theta: 0], [flag: 5], [Chk: 1]
+/*------------------------------------------------------------------
  * Check the checksum and return error message is package is corrupted
  * By Imara Speek 1506374
  *------------------------------------------------------------------
@@ -755,7 +751,8 @@ void send_telemetry(void)
 // Code for the final lab
 #else
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
-		cbWrite(txcb, (BYTE)(r), &sum);
+		//cbWrite(txcb, (BYTE)(r), &sum);
+		cbWrite(txcb, (BYTE)(package[MODE]), &sum);
 /*
 		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
 		cbWrite(txcb, (BYTE)(ae[0]), &sum);
@@ -764,21 +761,19 @@ void send_telemetry(void)
 
 		cbWrite(txcb, (BYTE)(0x00), &sum);
 		cbWrite(txcb, (BYTE)(pcontrol), &sum);
-*/		
+		
 		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
 		cbWrite(txcb, (BYTE)(phi), &sum);
+*/
+
+		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
+		cbWrite(txcb, (BYTE)(ae[0]), &sum);
+		
 		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
 		cbWrite(txcb, (BYTE)(theta), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
 #endif
-		// make sure the checksum isn't the starting byte 0x80
-		/*
-		if (sum == STARTING_BYTE)
-		{
-			sum = 0x00;
-		}
-		*/
 		checkcheck(&sum);
 
 		cbWritenoSum(txcb, (BYTE)sum);

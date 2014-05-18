@@ -108,8 +108,8 @@ int main()
 	term_nonblocking();
 	keyboard_nonblocking();
     
-    //Engine Values for mode selection
-    int ae[4]={0,0,0,0};
+	//Engine Values for mode selection
+	int ae[4]={0,0,0,0};
 	//Initializes the keymap from the keyboarde
 	int keymap[8] = {MODE_SAFE,0,0,0,0,0,0,0};
 	//Initializes the keymap from the keyboard
@@ -121,8 +121,8 @@ int main()
 		return 0;
 	}
 	//Joystick buffer clearence and calibration of yaw axis
-	clear_js_buffer();
- 	js_calibration();
+	//clear_js_buffer();
+ 	//js_calibration();
 
 	/*Initializes the Package Data (Lift,Roll,Pitch,Yaw for Control Modes)
 	 *(P,P1,P2,0 for Control Gains Mode)*/
@@ -188,7 +188,7 @@ int main()
 	
 	while (key != 43) {// + key
 		//reads data from the joystick ...comment if joystick is not connected
-		abort = read_js(jmap);
+		//abort = read_js(jmap);
 		//Gets the pressed key in the keyboard ... for termination (Press ESC)
 		key = getchar();
 		//printf("key %i\n",key);
@@ -288,8 +288,10 @@ int main()
 // final telemetry 
 #else						
 						//printf("\n[r: %d], [phi: %d], [theta: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (short)(TeleData[3] << 8 | TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
-printf("\n[r: %d], [phi: %d], [SP: %d], [sphi: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (char)(TeleData[3]), (char)(TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
-//printf("\n[r: %d], [ae[0]: %d], [pcontrol: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (char)(TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+//printf("\n[r: %d], [phi: %d], [SP: %d], [sphi: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (char)(TeleData[3]), (char)(TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+printf("\n[mode: %d], [ae[0]: %d], [SP: %d], [sphi: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (char)(TeleData[3]), (char)(TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
+
+						//printf("\n[r: %d], [ae[0]: %d], [pcontrol: %d], [flag: %d], [Chk: %d]",(char)TeleData[0], (short)(TeleData[1] << 8 | TeleData[2]), (char)(TeleData[4]), TeleData[TELPKGLEN - 2], TeleData[TELPKGLEN - 1]);	
 #endif						
 						// using the telemetry for mode switching
 						TELEMETRY_FLAG = TeleData[TELPKGLEN - 2];
