@@ -559,7 +559,7 @@ int check_sum(void)
 		sum = 0x00;
 	}
 */
-	
+	//printf("sum in fpga: %x", sum);
 	if (package[CHECKSUM] != sum) {
 		return 0;
 	}
@@ -798,6 +798,16 @@ void send_telemetry(void)
 int main() 
 {
 	int i;	
+	
+	// DEBUG IMARA
+	BYTE testpackage[nParams + 1];
+	testpackage[0] = STARTING_BYTE;
+	testpackage[1] = SAFE_MODE;
+	testpackage[2] = 0x30;
+	testpackage[3] = 0x30;
+	testpackage[4] = 0x30;
+	testpackage[5] = 0x30;
+	testpackage[6] = ~(SAFE_MODE + 0x30 + 0x30 + 0x30 + 0x30);
 
 
 	/**********************************************************/
@@ -849,8 +859,13 @@ int main()
 	maxtime = 0;
 
 	// Enable all interrupts, starting the system
-        ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-
+        //ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+	
+	for (i = 0; i < nParams + 1; i++)
+	{
+	  cbWritenoSum(rxcb, testpackage[i]);
+	}
+	
 	while (! program_done) 
 	{		
 		// reset the commflag to check communication
@@ -862,12 +877,17 @@ int main()
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte		
 		cbGet(rxcb, &c);
+		//if (c != 0x00)
+		//  printf("c: %x\n", c);
 
 		if (c == STARTING_BYTE)
 		{
 			decode();
+			printf("Package is arrived: %x, %x, %x, \n", package[MODE], package[LIFT], package[CHECKSUM]);
+
 			if (check_sum())
 			{
+			  printf("%x, %x, %x\n", package[MODE], package[LIFT], package[CHECKSUM]);
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
