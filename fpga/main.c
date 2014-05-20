@@ -347,31 +347,6 @@ void KalmanFilter(void)
     q_b = q_b + ((theta - stheta) >> C2);
 
 }
-
-/*------------------------------------------------------------------
- * Sensor Handling
- * By Diogo Monteiro (21-03-2014)
- *------------------------------------------------------------------
- */
-void sensor_handling(void)
-{
-    
-	//DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-    	// get sensor and timestamp values
-	x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
-	x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
-	// get sensor and timestamp values
-	//x0[0] = 500; x0[1] = 501; //x0[2] = X32_QR_s2; 
-	//x0[3] = 503; x0[4] = 504; x0[5] = 505;
-	
-	Butt2Filter();
-	KalmanFilter();
-	//Yaw Rate
-	r = x0[5] - OFFSET_x0[5];
-	//ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 	
-
-}
-
  
 /*------------------------------------------------------------------
  * Circular buffer initialization 
@@ -403,6 +378,8 @@ void cbClean(CBuffer *cb) {
 void isr_qr_link(void)
 {
 	int	ae_index;
+	
+	//starttime = X32_us_clock;
 	// Clip engine values to be positive and 10 bits.
 	for (ae_index = 0; ae_index < 4; ae_index++) 
 	{
@@ -434,6 +411,7 @@ void isr_qr_link(void)
  */
 void isr_rs232_rx(void)
 {
+	//starttime = X32_us_clock;
 	// Reset the communication flag
 	commflag = 0;
 
@@ -445,6 +423,7 @@ void isr_rs232_rx(void)
 	{
 		cbWritenoSum(rxcb, (BYTE)X32_rs232_data)
 	}
+	//functiontime = X32_us_clock - starttime;
 }
 
 /*------------------------------------------------------------------
@@ -455,7 +434,9 @@ void isr_rs232_rx(void)
 void isr_rs232_tx(void)
 {
 	// signal interrupt
+	//starttime = X32_us_clock;
 	toggle_led(4);
+	//functiontime = X32_us_clock - starttime;
 }
 
 /*------------------------------------------------------------------
@@ -543,7 +524,7 @@ int check_sum(void)
 	BYTE sum;
 	int i;
 	
-	starttime = X32_us_clock;
+	//starttime = X32_us_clock;
 
 	// independent of the package structure
 	for (i = 0; i < (nParams - 1); i++)
@@ -561,12 +542,12 @@ int check_sum(void)
 */
 	//printf("sum in fpga: %x", sum);
 	if (package[CHECKSUM] != sum) {
-		printf("time to check sum: %d\n", X32_us_clock - starttime);
+		//printf("time to check sum: %d\n", X32_us_clock - starttime);
 		return 0;
 	}
 	else
 	{ 
-		printf("time to check sum: %d\n", X32_us_clock - starttime);
+		//printf("time to check sum: %d\n", X32_us_clock - starttime);
 		return 1;
 	}
 }
@@ -770,8 +751,8 @@ void send_telemetry(void)
 		cbWrite(txcb, (BYTE)(phi), &sum);
 */
 
-		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
-		cbWrite(txcb, (BYTE)(ae[0]), &sum);
+		cbWrite(txcb, (BYTE)(functiontime >> 8), &sum);
+		cbWrite(txcb, (BYTE)(functiontime), &sum);
 		
 		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
 		cbWrite(txcb, (BYTE)(theta), &sum);
@@ -805,6 +786,7 @@ int main()
 	
 	/**********************************************************/
 	// DEBUG IMARA
+	/*
 	BYTE testpackage[nParams + 1];
 	testpackage[0] = STARTING_BYTE;
 	testpackage[1] = FULL_CONTROL_MODE;
@@ -813,9 +795,10 @@ int main()
 	testpackage[4] = 0x30;
 	testpackage[5] = 0x30;
 	testpackage[6] = ~(testpackage[1] + testpackage[2] + testpackage[3] + testpackage[4] + testpackage[5]);
+	*/
 	/**********************************************************/
 
-	starttime = X32_us_clock;
+	//starttime = X32_us_clock;
 
 	/**********************************************************/
 	/*              INTERRUPT INITIALIZING                    */
@@ -866,45 +849,47 @@ int main()
 	maxtime = 0;
 
 	// Enable all interrupts, starting the system
-        //ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+        ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	
 	/**********************************************************/
+	/*
 	for (i = 0; i < nParams + 1; i++)
 	{
 	  cbWritenoSum(rxcb, testpackage[i]);
 	}
+	*/
 	/**********************************************************/
 	
-	printf(" time to startup: %d\n", X32_us_clock - starttime);
+	//printf(" time to startup: %d\n", X32_us_clock - starttime);
 	
 	while (! program_done) 
 	{	
-		starttime = X32_us_clock;
+		//starttime = X32_us_clock;
 		// reset the commflag to check communication
 		if (commflag++ > commthres)
 		{
 			package[MODE] = PANIC_MODE;
 		}	
-		printf(" time to check commflag: %d\n", X32_us_clock - starttime);
+		//printf(" time to check commflag: %d\n", X32_us_clock - starttime);
 
 		// See if there is a character in the buffer
 		// and check whether that is the starting byte	
-		starttime = X32_us_clock;
+		//starttime = X32_us_clock;
 		cbGet(rxcb, &c);
-		printf(" time to get a character: %d\n", X32_us_clock - starttime);
+		//printf(" time to get a character: %d\n", X32_us_clock - starttime);
 
 		if (c == STARTING_BYTE)
 		{
-			starttime = X32_us_clock;
+			//starttime = X32_us_clock;
 			decode();
-			printf(" time to decode: %d\n", X32_us_clock - starttime);
+			//printf(" time to decode: %d\n", X32_us_clock - starttime);
 			//printf("Package is arrived: %x, %x, %x, \n", package[MODE], package[LIFT], package[CHECKSUM]);
 
 			// timing checksum is done within function
 			if (check_sum())
 			{
 			//printf("%x, %x, %x\n", package[MODE], package[LIFT], package[CHECKSUM]);
-				starttime = X32_us_clock;
+				//starttime = X32_us_clock;
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
@@ -974,8 +959,8 @@ int main()
 						DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 					    	// get sensor and timestamp values
 						x0[5] = X32_QR_s5;
-						    	//Yaw Rate
-						    	r = x0[5] - OFFSET_x0[5];
+						    //Yaw Rate
+						    r = x0[5] - OFFSET_x0[5];
                         			yaw_control_mode();	
 						ENABLE_INTERRUPT(INTERRUPT_GLOBAL);	
 						break;
@@ -985,10 +970,10 @@ int main()
 					    	// get sensor and timestamp values
 						x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
 						x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
-							Butt2Filter();
-							KalmanFilter();
-						    	//Yaw Rate
-						    	r = x0[5] - OFFSET_x0[5];
+						Butt2Filter();
+						KalmanFilter();
+						  //Yaw Rate
+						  r = x0[5] - OFFSET_x0[5];
 						full_control_mode();
 						ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
 						break;
@@ -1005,19 +990,19 @@ int main()
 					default :
 						break;
 				}
-				printf(" time to switch case: %d\n", X32_us_clock - starttime);
+				//printf(" time to switch case: %d\n", X32_us_clock - starttime);
 			
-				starttime = X32_us_clock;				
+				//starttime = X32_us_clock;				
 				
 				// if the package was correct, store the correct data
 				store_data();
 
-				printf(" time to store data: %d\n", X32_us_clock - starttime);
-				if ((X32_us_clock - starttime) > maxdatastore)
-				{
-				  maxdatastore = X32_us_clock - starttime;
-				}
-				printf(" MAX time to store data: %d\n", maxdatastore);
+				//printf(" time to store data: %d\n", X32_us_clock - starttime);
+				//if ((X32_us_clock - starttime) > maxdatastore)
+				//{
+				//  maxdatastore = X32_us_clock - starttime;
+				//}
+				//printf(" MAX time to store data: %d\n", maxdatastore);
 
 			
 				/*
@@ -1028,16 +1013,16 @@ int main()
 				X32_display = maxtime;
 				*/
   
-				starttime = X32_us_clock;		
+				//starttime = X32_us_clock;		
 				// sends the telemetry at 10Hz
 				send_telemetry();
 				
-				printf(" time to send telemetry: %d\n", X32_us_clock - starttime);
-				if ((X32_us_clock - starttime) > maxsendtel)
-				{
-				  maxsendtel = X32_us_clock - starttime;
-				}
-				printf(" MAX time to send telemetry: %d\n", maxsendtel);
+				//printf(" time to send telemetry: %d\n", X32_us_clock - starttime);
+				//if ((X32_us_clock - starttime) > maxsendtel)
+				//{
+				//  maxsendtel = X32_us_clock - starttime;
+				//}
+				//printf(" MAX time to send telemetry: %d\n", maxsendtel);
 
 				// profiling the control time	
 				//controltime = X32_us_clock;

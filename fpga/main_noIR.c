@@ -807,12 +807,12 @@ int main()
 	// DEBUG IMARA
 	BYTE testpackage[nParams + 1];
 	testpackage[0] = STARTING_BYTE;
-	testpackage[1] = SAFE_MODE;
+	testpackage[1] = FULL_CONTROL_MODE;
 	testpackage[2] = 0x30;
 	testpackage[3] = 0x30;
 	testpackage[4] = 0x30;
 	testpackage[5] = 0x30;
-	testpackage[6] = ~(SAFE_MODE + 0x30 + 0x30 + 0x30 + 0x30);
+	testpackage[6] = ~(testpackage[1] + testpackage[2] + testpackage[3] + testpackage[4] + testpackage[5]);
 	/**********************************************************/
 
 	starttime = X32_us_clock;

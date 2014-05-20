@@ -1,4 +1,4 @@
- When profiling without any interrupts 
+ When profiling without any interrupts all in us
 
 time to get a character: 14
 time to decode: 171
@@ -15,3 +15,12 @@ time to switch case CALIBRATION_MODE: 199
 time to switch case YAW_CONTROL_MODE: 346
 time to switch case FULL_CONTROL_MODE: 606
 
+isr_rs232_rx: 49
+isr_rs232_tx: 60/17
+
+Improvements possible:
+
+- storing data
+- send telemetry
+- checksum
+- full control mode
