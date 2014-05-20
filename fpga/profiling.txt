@@ -15,6 +15,8 @@ time to switch case CALIBRATION_MODE: 199
 time to switch case YAW_CONTROL_MODE: 346
 time to switch case FULL_CONTROL_MODE: 606
 
+total control loop: 5151
+
 isr_rs232_rx: 49
 isr_rs232_tx: 60/17
 
@@ -24,3 +26,9 @@ Improvements possible:
 - send telemetry
 - checksum
 - full control mode
+
+
+After checking the storetime within the main function:
+ time to store data: 723
+ total control loop: 3442
+ time to store data: 10

@@ -186,6 +186,7 @@ long	functiontime = 0;
 long	starttime = 0;
 long	maxdatastore = 0;
 long 	maxsendtel = 0;
+long	starttime2 = 0;
 
 // array to save rx packet in 
 BYTE 	package[nParams];
@@ -440,6 +441,16 @@ void isr_rs232_tx(void)
 }
 
 /*------------------------------------------------------------------
+ * isr_qr_timer -- Timer IR for datalogging and telemetry 
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+void isr_qr_timer(void)
+{
+  
+}
+
+/*------------------------------------------------------------------
  * delay_ms -- busy-wait for ms milliseconds
  *------------------------------------------------------------------
  */
@@ -562,63 +573,11 @@ void store_data(void)
 {
 	BYTE sum;
 	sum = 0;
-
-	if (X32_ms_clock - storetime >= DATASTORETIMEMS)
-	{
+	
 		//starttime = X32_ms_clock;
 
 		cbWritenoSum(dscb, (BYTE)STARTING_BYTE);
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-		/*cbWrite(dscb, (BYTE)(X32_ms_clock >> 8), &sum);
-		cbWrite(dscb, (BYTE)(X32_ms_clock), &sum);
-		cbWrite(dscb, package[MODE], &sum);
-		cbWrite(dscb, package[LIFT], &sum);
-		cbWrite(dscb, package[ROLL], &sum);
-		cbWrite(dscb, package[PITCH], &sum);
-		cbWrite(dscb, package[YAW], &sum);
-		cbWrite(dscb, (BYTE)(ae[0] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[0]), &sum);
-
-		cbWrite(dscb, (BYTE)(ae[1] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[1]), &sum);
-		cbWrite(dscb, (BYTE)(ae[2] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[2]), &sum);
-		cbWrite(dscb, (BYTE)(ae[3] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[3]), &sum);
-		cbWrite(dscb, (BYTE)(x0[0] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[0]), &sum);
-		cbWrite(dscb, (BYTE)(x0[1] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[1]), &sum);
-
-		cbWrite(dscb, (BYTE)(x0[2] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[2]), &sum);
-		cbWrite(dscb, (BYTE)(x0[3] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[3]), &sum);
-		cbWrite(dscb, (BYTE)(x0[4] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[4]), &sum);
-		cbWrite(dscb, (BYTE)(x0[5] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[5]), &sum);
-		cbWrite(dscb, (BYTE)(y0[0]), &sum);
-		cbWrite(dscb, (BYTE)(y0[1]), &sum);
-
-		cbWrite(dscb, (BYTE)(y0[2]), &sum);
-		cbWrite(dscb, (BYTE)(y0[3]), &sum);
-		cbWrite(dscb, (BYTE)(y0[4]), &sum);
-		cbWrite(dscb, (BYTE)(y0[5]), &sum);
-		cbWrite(dscb, (BYTE)(phi >> 8), &sum);
-		cbWrite(dscb, (BYTE)(phi), &sum);
-		cbWrite(dscb, (BYTE)(theta >> 8), &sum);
-		cbWrite(dscb, (BYTE)(theta), &sum);
-		cbWrite(dscb, (BYTE)(p), &sum);
-		cbWrite(dscb, (BYTE)(q), &sum);
-
-		cbWrite(dscb, (BYTE)(pcontrol >> 8), &sum);
-		cbWrite(dscb, (BYTE)(pcontrol), &sum);
-		cbWrite(dscb, (BYTE)(p1control >> 8), &sum);
-		cbWrite(dscb, (BYTE)(p1control), &sum);
-		cbWrite(dscb, (BYTE)(p2control >> 8), &sum);
-		cbWrite(dscb, (BYTE)(p2control), &sum);
-		cbWrite(dscb, (BYTE)(controltime), &sum);*/
 
         //FINAL DATALOG
         	cbWrite(dscb, (BYTE)(X32_ms_clock - storetime), &sum);
@@ -666,10 +625,10 @@ void store_data(void)
 */
 		checkcheck(&sum);
 		cbWritenoSum(dscb, (BYTE)(sum));
-	
-		storetime = X32_ms_clock;
 		//functiontime = X32_ms_clock - starttime;
-	}
+	
+	//printf(" time to datalog: %d\n", X32_us_clock - starttime);
+	
 	
 }
 
@@ -704,52 +663,16 @@ void send_telemetry(void)
 
 	// Checks if more than or 100 ms have passed since the last 
 	// telemetry
-	if (X32_ms_clock - polltime >= POLLTIMEMS)
-	{
 		// initialize checksum
 		sum = 0;
 
 		// set a flag when the sum is biger than 0
 		sumae = ae[0] + ae[1] + ae[2] + ae[3];
 		(sumae > 0) ? (telemetry_flag |= 0x04) : (telemetry_flag &= 0x03); 
-
-#ifdef DEBUGGING
-		// profiling
-		//starttime = X32_us_clock;
-
-		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
-		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
-		//cbWrite(txcb, package[MODE], &sum(char)TeleData[0]);
-		cbWrite(txcb, (BYTE)(r), &sum);
-		//cbWrite(txcb, (BYTE)(controltime >> 8), &sum);
-		//cbWrite(txcb, (BYTE)controltime, &sum);
-		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
-		cbWrite(txcb, (BYTE)(ae[0]), &sum);
-		//cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
-		cbWrite(txcb, (BYTE)(0x00), &sum);
-		cbWrite(txcb, (BYTE)(0x01), &sum);
-		//cbWrite(txcb, (BYTE)(ae[1]), &sum);
-		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
-
-		//functiontime = X32_us_clock - starttime;
 		
 // Code for the final lab
-#else
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
-		//cbWrite(txcb, (BYTE)(r), &sum);
 		cbWrite(txcb, (BYTE)(package[MODE]), &sum);
-/*
-		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
-		cbWrite(txcb, (BYTE)(ae[0]), &sum);
-		//cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
-		//cbWrite(txcb, (BYTE)(ae[1]), &sum);
-
-		cbWrite(txcb, (BYTE)(0x00), &sum);
-		cbWrite(txcb, (BYTE)(pcontrol), &sum);
-		
-		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
-		cbWrite(txcb, (BYTE)(phi), &sum);
-*/
 
 		cbWrite(txcb, (BYTE)(functiontime >> 8), &sum);
 		cbWrite(txcb, (BYTE)(functiontime), &sum);
@@ -757,8 +680,17 @@ void send_telemetry(void)
 		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
 		cbWrite(txcb, (BYTE)(theta), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
-
-#endif
+		
+		/* Code for the final lab
+		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
+		cbWrite(txcb, (BYTE)(r), &sum);
+		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
+		cbWrite(txcb, (BYTE)(phi), &sum);
+		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
+		cbWrite(txcb, (BYTE)(theta), &sum);
+		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
+		*/
+		
 		checkcheck(&sum);
 
 		cbWritenoSum(txcb, (BYTE)sum);
@@ -771,8 +703,6 @@ void send_telemetry(void)
 
 			cbGet(txcb, &X32_rs232_data);	
 		}
-		polltime = X32_ms_clock;
-	}
 }
 
 /*------------------------------------------------------------------
@@ -786,7 +716,7 @@ int main()
 	
 	/**********************************************************/
 	// DEBUG IMARA
-	/*
+	
 	BYTE testpackage[nParams + 1];
 	testpackage[0] = STARTING_BYTE;
 	testpackage[1] = FULL_CONTROL_MODE;
@@ -795,7 +725,7 @@ int main()
 	testpackage[4] = 0x30;
 	testpackage[5] = 0x30;
 	testpackage[6] = ~(testpackage[1] + testpackage[2] + testpackage[3] + testpackage[4] + testpackage[5]);
-	*/
+	
 	/**********************************************************/
 
 	//starttime = X32_us_clock;
@@ -811,9 +741,9 @@ int main()
         ENABLE_INTERRUPT(INTERRUPT_XUFO);
  	
 	// timer interrupt - less high priority
-        //X32_timer_per = 100 * CLOCKS_PER_MS;
-        //SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
-        //SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 18);
+        X32_timer_per = 100 * CLOCKS_PER_MS;
+        SET_INTERRUPT_VECTOR(INTERRUPT_TIMER1, &isr_qr_timer);
+        SET_INTERRUPT_PRIORITY(INTERRUPT_TIMER1, 10);
         //ENABLE_INTERRUPT(INTERRUPT_TIMER1);
 
 	// prepare rs232 rx interrupt and getchar handler
@@ -849,21 +779,22 @@ int main()
 	maxtime = 0;
 
 	// Enable all interrupts, starting the system
-        ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+        //ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	
 	/**********************************************************/
-	/*
+	
 	for (i = 0; i < nParams + 1; i++)
 	{
 	  cbWritenoSum(rxcb, testpackage[i]);
 	}
-	*/
+	
 	/**********************************************************/
 	
 	//printf(" time to startup: %d\n", X32_us_clock - starttime);
 	
 	while (! program_done) 
 	{	
+		
 		//starttime = X32_us_clock;
 		// reset the commflag to check communication
 		if (commflag++ > commthres)
@@ -880,6 +811,7 @@ int main()
 
 		if (c == STARTING_BYTE)
 		{
+			controltime = X32_us_clock;
 			//starttime = X32_us_clock;
 			decode();
 			//printf(" time to decode: %d\n", X32_us_clock - starttime);
@@ -992,12 +924,17 @@ int main()
 				}
 				//printf(" time to switch case: %d\n", X32_us_clock - starttime);
 			
-				//starttime = X32_us_clock;				
+				starttime2 = X32_us_clock;				
 				
 				// if the package was correct, store the correct data
-				store_data();
+				if (X32_ms_clock - storetime > 100)
+				{
+				    store_data();
+				    storetime = X32_ms_clock;
+				}
+				//store_data();
 
-				//printf(" time to store data: %d\n", X32_us_clock - starttime);
+				printf(" time to store data: %d\n", X32_us_clock - starttime2);
 				//if ((X32_us_clock - starttime) > maxdatastore)
 				//{
 				//  maxdatastore = X32_us_clock - starttime;
@@ -1012,10 +949,10 @@ int main()
 				}
 				X32_display = maxtime;
 				*/
-  
+				
 				//starttime = X32_us_clock;		
 				// sends the telemetry at 10Hz
-				send_telemetry();
+				//send_telemetry();
 				
 				//printf(" time to send telemetry: %d\n", X32_us_clock - starttime);
 				//if ((X32_us_clock - starttime) > maxsendtel)
@@ -1030,7 +967,17 @@ int main()
 				// turn l the leds off
 				// X32_leds = 0;		
 			}
+			
+			controltime = X32_us_clock - controltime;
+			printf(" total control loop: %d\n", controltime);
+			if (controltime > maxtime)
+			{
+			maxtime = controltime; 
+			}
+			//printf(" MAX control loop: %d\n", maxtime);
 		}
+		
+		
 	}
 	// send the data log to the pc
 	send_data();	
