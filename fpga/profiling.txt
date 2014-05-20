@@ -1,0 +1,17 @@
+ When profiling without any interrupts 
+
+time to get a character: 14
+time to decode: 171
+time to check sum: 97
+time to store data: 827
+MAX time to store data: 2748
+time to send telemetry: 620
+MAX time to send telemetry: 3579
+time to check commflag: 16
+
+time to switch case SAFE_MODE: 277
+time to switch case MANUAL_MODE: 187
+time to switch case CALIBRATION_MODE: 199
+time to switch case YAW_CONTROL_MODE: 346
+time to switch case FULL_CONTROL_MODE: 606
+
