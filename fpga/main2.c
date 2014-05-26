@@ -786,7 +786,7 @@ int main()
 	
 	/**********************************************************/
 	// DEBUG IMARA
-	
+	/*
 	BYTE testpackage[nParams + 1];
 	testpackage[0] = STARTING_BYTE;
 	testpackage[1] = FULL_CONTROL_MODE;
@@ -795,7 +795,7 @@ int main()
 	testpackage[4] = 0x30;
 	testpackage[5] = 0x30;
 	testpackage[6] = ~(testpackage[1] + testpackage[2] + testpackage[3] + testpackage[4] + testpackage[5]);
-	
+	*/
 	/**********************************************************/
 
 	//starttime = X32_us_clock;
@@ -849,15 +849,15 @@ int main()
 	maxtime = 0;
 
 	// Enable all interrupts, starting the system
-        //ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+        ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	
 	/**********************************************************/
-	
+	/*
 	for (i = 0; i < nParams + 1; i++)
 	{
 	  cbWritenoSum(rxcb, testpackage[i]);
 	}
-	
+	*/
 	/**********************************************************/
 	
 	//printf(" time to startup: %d\n", X32_us_clock - starttime);

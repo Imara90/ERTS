@@ -4,9 +4,7 @@ time to get a character: 14
 time to decode: 171
 time to check sum: 97
 time to store data: 827
-MAX time to store data: 2748
 time to send telemetry: 620
-MAX time to send telemetry: 3579
 time to check commflag: 16
 
 time to switch case SAFE_MODE: 277
