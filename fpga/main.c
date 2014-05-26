@@ -495,23 +495,14 @@ void off_led(int i)
  * By Imara Speek 1506374
  *------------------------------------------------------------------
  */
-void decode(void)
-{	
-	/* Get the next character in the buffer after the starting byte
-	 * Whilst disabling all the interrupts CRITICAL SECTION
-	 */
-	int i;
-
-	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-
-	// Changing of the mode is taken care of in the pc part
-	for (i = 0; i < nParams; i++)
-	{
-		 cbGet(rxcb, &package[i]);
+#define decode(){							\
+	DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 				\
+	for (i = 0; i < nParams; i++)					\
+	{								\
+		 cbGet(rxcb, &package[i]);				\
+	}								\
+	ENABLE_INTERRUPT(INTERRUPT_GLOBAL);				\
 	}
-	
-	ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
-}
 
 
 /*------------------------------------------------------------------
@@ -527,10 +518,17 @@ int check_sum(void)
 	//starttime = X32_us_clock;
 
 	// independent of the package structure
+	/*
 	for (i = 0; i < (nParams - 1); i++)
 	{
 		sum += package[i];
 	}	
+	*/
+	sum += package[0];
+	sum += package[1];
+	sum += package[2];
+	sum += package[3];
+	sum += package[4];
 	sum = ~sum;
 	
 	checkcheck(&sum);
@@ -813,15 +811,15 @@ int main()
 
 		if (c == STARTING_BYTE)
 		{
-			starttime = X32_us_clock;
+			//starttime = X32_us_clock;
 			decode();
-			printf(" time to decode: %d\n", X32_us_clock - starttime);
+			//printf(" time to decode: %d\n", X32_us_clock - starttime);
 			//printf("Package is arrived: %x, %x, %x, \n", package[MODE], package[LIFT], package[CHECKSUM]);
 
 			// timing checksum is done within function
 			if (check_sum())
 			{
-			//printf("%x, %x, %x\n", package[MODE], package[LIFT], package[CHECKSUM]);
+			printf("%x, %x, %x\n", package[MODE], package[LIFT], package[CHECKSUM]);
 				//starttime = X32_us_clock;
 				switch (package[MODE])
 				{

@@ -42,3 +42,13 @@ time to store data: 607
 time to send telemetry: 565
 
 cbGet, for 30 characters now takes 528 us
+when inlining the decode function, it has a slight speedup of 21us:
+
+time to decode: 150
+
+Writing in a for loop takes much longer for example writing 10 elements to a buffer takes 203 us, 
+but outside the for loop it takes 127 us. So we are doing that for the checksum. This provides
+a speedup of 54 us.
+
+Time to check sum: 43 us.
+

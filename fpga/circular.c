@@ -164,6 +164,20 @@ int main()
 	printf("time to print no sum: %d \n", X32_us_clock - starttime);
 	
 	starttime = X32_us_clock;
+	cbWrite(testcb, 0);
+	cbWrite(testcb, 1);
+	cbWrite(testcb, 2);
+	cbWrite(testcb, 3);
+	cbWrite(testcb, 4);
+	cbWrite(testcb, 5);
+	cbWrite(testcb, 6);
+	cbWrite(testcb, 7);
+	cbWrite(testcb, 8);
+	cbWrite(testcb, 9);
+	
+	printf("time to print no sum: %d \n", X32_us_clock - starttime);
+	
+	starttime = X32_us_clock;
 	for (i = 0; i < 10; i++)
 	{
 		cbWriteSum(testcb, i, &sum);
@@ -176,6 +190,20 @@ int main()
 		cbWriteIn(i);
 	}
 	printf("time to print with sum inline: %d \n", X32_us_clock - starttime);
+	
+	starttime = X32_us_clock;
+	cbWriteIn(0);
+	cbWriteIn(1);
+	cbWriteIn(2);
+	cbWriteIn(3);
+	cbWriteIn(4);
+	cbWriteIn(5);
+	cbWriteIn(6);
+	cbWriteIn(7);
+	cbWriteIn(8);
+	cbWriteIn(9);
+	
+	printf("time to print with sum2 inline: %d \n", X32_us_clock - starttime);
 	
 	starttime = X32_us_clock;
 	for (i = 0; i < 10; i++)
