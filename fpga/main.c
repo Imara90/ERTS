@@ -518,12 +518,6 @@ int check_sum(void)
 	//starttime = X32_us_clock;
 
 	// independent of the package structure
-	/*
-	for (i = 0; i < (nParams - 1); i++)
-	{
-		sum += package[i];
-	}	
-	*/
 	sum += package[0];
 	sum += package[1];
 	sum += package[2];
@@ -532,12 +526,7 @@ int check_sum(void)
 	sum = ~sum;
 	
 	checkcheck(&sum);
-/*
-	if (sum == 0x80)
-	{
-		sum = 0x00;
-	}
-*/
+
 	//printf("sum in fpga: %x", sum);
 	if (package[CHECKSUM] != sum) {
 		//printf("time to check sum: %d\n", X32_us_clock - starttime);
@@ -819,7 +808,7 @@ int main()
 			// timing checksum is done within function
 			if (check_sum())
 			{
-			printf("%x, %x, %x\n", package[MODE], package[LIFT], package[CHECKSUM]);
+			//printf("%x, %x, %x\n", package[MODE], package[LIFT], package[CHECKSUM]);
 				//starttime = X32_us_clock;
 				switch (package[MODE])
 				{
