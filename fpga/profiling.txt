@@ -4,7 +4,9 @@ time to get a character: 14
 time to decode: 171
 time to check sum: 97
 time to store data: 827
+MAX time to store data: 2750
 time to send telemetry: 620
+MAX time to send telemetry: 3574
 time to check commflag: 16
 
 time to switch case SAFE_MODE: 277
@@ -22,3 +24,10 @@ Improvements possible:
 - send telemetry
 - checksum
 - full control mode
+
+Printing with sum improvement was initially done to pretify the code, however when running the
+the circular.c code I wrote that for writing 10 elements:
+time to print without sum: 202 
+time to print no sum: 282 
+
+So I will optimize to write to the buffer without adding the sum

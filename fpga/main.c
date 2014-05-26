@@ -849,8 +849,9 @@ int main()
 	maxtime = 0;
 
 	// Enable all interrupts, starting the system
-        //ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
+        ENABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 	
+	starttime = X32_us_clock;
 	/**********************************************************/
 	
 	for (i = 0; i < nParams + 1; i++)
@@ -860,7 +861,7 @@ int main()
 	
 	/**********************************************************/
 	
-	//printf(" time to startup: %d\n", X32_us_clock - starttime);
+	printf(" time to write to rx: %d\n", X32_us_clock - starttime);
 	
 	while (! program_done) 
 	{	
@@ -998,11 +999,13 @@ int main()
 				store_data();
 
 				//printf(" time to store data: %d\n", X32_us_clock - starttime);
-				//if ((X32_us_clock - starttime) > maxdatastore)
-				//{
-				//  maxdatastore = X32_us_clock - starttime;
-				//}
-				//printf(" MAX time to store data: %d\n", maxdatastore);
+				/*
+				if ((X32_us_clock - starttime) > maxdatastore)
+				{
+				  maxdatastore = X32_us_clock - starttime;
+				}
+				printf(" MAX time to store data: %d\n", maxdatastore);
+				*/
 
 			
 				/*
@@ -1018,12 +1021,13 @@ int main()
 				send_telemetry();
 				
 				//printf(" time to send telemetry: %d\n", X32_us_clock - starttime);
-				//if ((X32_us_clock - starttime) > maxsendtel)
-				//{
-				//  maxsendtel = X32_us_clock - starttime;
-				//}
-				//printf(" MAX time to send telemetry: %d\n", maxsendtel);
-
+				/*
+				if ((X32_us_clock - starttime) > maxsendtel)
+				{
+				  maxsendtel = X32_us_clock - starttime;
+				}
+				printf(" MAX time to send telemetry: %d\n", maxsendtel);
+				*/
 				// profiling the control time	
 				//controltime = X32_us_clock;
 				

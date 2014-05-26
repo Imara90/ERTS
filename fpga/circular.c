@@ -83,6 +83,16 @@ CBuffer testcb;
 	}						\
 }
 
+#define cbWriteSum(CB, VAL, sum){ 				\
+    CB.elems[CB.end] = VAL; 				\
+    CB.end = (CB.end + 1) % CB.size;			\
+    if (CB.end == CB.start)				\
+	{        					\
+		CB.start = (CB.start + 1) % CB.size; 	\
+	}						\
+    *sum ^= VAL;					\
+}
+
 /*------------------------------------------------------------------
  * get char from buffer 
  * Read oldest element. App must ensure !cbIsEmpty() first. 
@@ -98,6 +108,9 @@ CBuffer testcb;
 #define DLOGSIZE	50000 
 BYTE   	dl[DLOGSIZE];
 BYTE 	c;
+BYTE	sum;
+long	starttime = 0;
+long 	funtiontime = 0;
 
 
 void testcbInit(CBuffer *cb, int size, BYTE* array) {
@@ -113,12 +126,25 @@ int main()
 	int i;
 
 	testcbInit(&testcb, (DLOGSIZE - 1), dl);
+	
+	//printf("buh\n");
 
+	sum = 0;
 
+	starttime = X32_us_clock;
 	for (i = 0; i < 10; i++)
 	{
 		cbWrite(testcb, i);
 	}
+	printf("time to print no sum: %d \n", X32_us_clock - starttime);
+	
+	starttime = X32_us_clock;
+	for (i = 0; i < 10; i++)
+	{
+		cbWriteSum(testcb, i, &sum);
+	}
+	printf("time to print with sum: %d \n", X32_us_clock - starttime);
+	
 
 	while(testcb.end != testcb.start)
 	{
