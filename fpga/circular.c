@@ -93,21 +93,45 @@ CBuffer testcb;
     *sum ^= VAL;					\
 }
 
+void cbWriteIn(BYTE VAL){ 				
+    testcb.elems[testcb.end] = VAL; 				
+    testcb.end = (testcb.end + 1) % testcb.size;			
+    if (testcb.end == testcb.start)				
+	{        					
+		testcb.start = (testcb.start + 1) % testcb.size; 	
+	}						
+}
+
 /*------------------------------------------------------------------
  * get char from buffer 
  * Read oldest element. App must ensure !cbIsEmpty() first. 
  * By Imara Speek 1506374
  *------------------------------------------------------------------  
  */
-#define cbGet(CB, c) {						\
+
+ #define cbGet(CB, c) {						\
 	*c = CB.elems[CB.start];				\
 	CB.start = (CB.start + 1) % CB.size;			\
 }
 
 
+/*
+#define cbGet(CB) {						\
+	c = CB.elems[CB.start];				\
+	CB.start = (CB.start + 1) % CB.size;			\
+}
+*/
+
+BYTE cbReturn(CBuffer *CB) {
+	BYTE c;
+	c = CB->elems[CB->start];				
+	CB->start = (CB->start + 1) % CB->size;
+	return c;
+}
+
+
 #define DLOGSIZE	50000 
 BYTE   	dl[DLOGSIZE];
-BYTE 	c;
 BYTE	sum;
 long	starttime = 0;
 long 	funtiontime = 0;
@@ -124,6 +148,7 @@ int main()
 {
 
 	int i;
+	BYTE c;
 
 	testcbInit(&testcb, (DLOGSIZE - 1), dl);
 	
@@ -145,13 +170,55 @@ int main()
 	}
 	printf("time to print with sum: %d \n", X32_us_clock - starttime);
 	
+	starttime = X32_us_clock;
+	for (i = 0; i < 10; i++)
+	{
+		cbWriteIn(i);
+	}
+	printf("time to print with sum inline: %d \n", X32_us_clock - starttime);
+	
+	starttime = X32_us_clock;
+	for (i = 0; i < 10; i++)
+	{
+		    testcb.elems[testcb.end] = i; 				
+		    testcb.end = (testcb.end + 1) % testcb.size;			
+		    if (testcb.end == testcb.start)				
+			{        					
+				testcb.start = (testcb.start + 1) % testcb.size; 	
+			}	
+	}
+	printf("time to print with real inline: %d \n", X32_us_clock - starttime);
+	
 
+	starttime = X32_us_clock; 
+	/*
 	while(testcb.end != testcb.start)
 	{
-		cbGet(testcb, &c);
+		c = cbReturn(&testcb);
 		printf("[%d]", c);
 	}
 	printf("\n");	
+	*/
+	
+	while(testcb.end != testcb.start)
+	{
+		cbGet(testcb, &c);
+		//printf("[%d]", c);
+	}
+	//printf("\n");	
+	
+/*
+	while(testcb.end != testcb.start)
+	{
+		cbGet(testcb);
+		//printf("[%d]", c);
+	}
+	//printf("\n");
+	*/
+	printf("time to get characters: %d \n", X32_us_clock - starttime);
+	
+	
+	
 	return 0;
 }
 

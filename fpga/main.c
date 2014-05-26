@@ -670,30 +670,29 @@ void send_telemetry(void)
 		(sumae > 0) ? (telemetry_flag |= 0x04) : (telemetry_flag &= 0x03); 
 
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
-		//cbWrite(txcb, (BYTE)(r), &sum);
-		cbWrite(txcb, (BYTE)(package[MODE]), &sum);
-/*
-		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
-		cbWrite(txcb, (BYTE)(ae[0]), &sum);
-		//cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
-		//cbWrite(txcb, (BYTE)(ae[1]), &sum);
-
-		cbWrite(txcb, (BYTE)(0x00), &sum);
-		cbWrite(txcb, (BYTE)(pcontrol), &sum);
-		
-		cbWrite(txcb, (BYTE)(phi >> 8), &sum);
-		cbWrite(txcb, (BYTE)(phi), &sum);
+		/*
+		 cbWritenoSum(txcb, (BYTE)(r));
+		 cbWritenoSum(txcb, (BYTE)(theta >> 8));
+		 cbWritenoSum(txcb, (BYTE)(theta));				
+		 cbWritenoSum(txcb, (BYTE)(phi >> 8));
+		 cbWritenoSum(txcb, (BYTE)(phi));
+		 cbWritenoSum(txcb, (BYTE)telemetry_flag);
+		 
+		 sum ^= (BYTE)(r) ^ (BYTE)(phi >> 8) ^ (BYTE)(phi)
+		      ^ (BYTE)(theta >> 8) ^ (BYTE)(theta) ^ (BYTE)(telemetry_flag);
 */
 
-		cbWrite(txcb, (BYTE)(functiontime >> 8), &sum);
-		cbWrite(txcb, (BYTE)(functiontime), &sum);
-		
-		cbWrite(txcb, (BYTE)(theta >> 8), &sum);
-		cbWrite(txcb, (BYTE)(theta), &sum);
-		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
+		 cbWritenoSum(txcb, (BYTE)(package[MODE]));
+		 cbWritenoSum(txcb, (BYTE)(functiontime >> 8));
+		 cbWritenoSum(txcb, (BYTE)(functiontime));
+		 cbWritenoSum(txcb, (BYTE)(theta >> 8));
+		 cbWritenoSum(txcb, (BYTE)(theta));
+		 cbWritenoSum(txcb, (BYTE)telemetry_flag);
+		 
+		 sum ^= (BYTE)(package[MODE]) ^ (BYTE)(functiontime >> 8) ^ (BYTE)(functiontime)
+		      ^ (BYTE)(theta >> 8) ^ (BYTE)(theta) ^ (BYTE)(telemetry_flag);
 
 		checkcheck(&sum);
-
 		cbWritenoSum(txcb, (BYTE)sum);
 		
 		// Send the data untill the buffer is empty
@@ -814,9 +813,9 @@ int main()
 
 		if (c == STARTING_BYTE)
 		{
-			//starttime = X32_us_clock;
+			starttime = X32_us_clock;
 			decode();
-			//printf(" time to decode: %d\n", X32_us_clock - starttime);
+			printf(" time to decode: %d\n", X32_us_clock - starttime);
 			//printf("Package is arrived: %x, %x, %x, \n", package[MODE], package[LIFT], package[CHECKSUM]);
 
 			// timing checksum is done within function
@@ -950,7 +949,7 @@ int main()
 				*/
   
 				//starttime = X32_us_clock;		
-				// sends the telemetry at 10Hz
+				// sends the telemetry at 10Hzhttps://sourceware.org/glibc/wiki/x32
 				send_telemetry();
 				
 				//printf(" time to send telemetry: %d\n", X32_us_clock - starttime);

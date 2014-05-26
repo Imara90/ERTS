@@ -35,3 +35,10 @@ is 32, so that should save 3 * 80 us = 240 us. The calculation of the sum should
 Time to compute the sum now is 123, so that saves is 240 - 123 us = 117 us. 
 
 We can also do this with the sending of the telemetry
+
+    New times:
+
+time to store data: 607
+time to send telemetry: 565
+
+cbGet, for 30 characters now takes 528 us
