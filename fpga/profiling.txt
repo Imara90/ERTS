@@ -30,4 +30,8 @@ the circular.c code I wrote that for writing 10 elements:
 time to print without sum: 202 
 time to print no sum: 282 
 
-So I will optimize to write to the buffer without adding the sum
+So I will optimize to write to the buffer without adding the sum, the number of elements in the buffer is 
+is 32, so that should save 3 * 80 us = 240 us. The calculation of the sum should be less then.
+Time to compute the sum now is 123, so that saves is 240 - 123 us = 117 us. 
+
+We can also do this with the sending of the telemetry

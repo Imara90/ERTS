@@ -569,106 +569,62 @@ void store_data(void)
 
 		cbWritenoSum(dscb, (BYTE)STARTING_BYTE);
 		// the ms clock is actually 4 bytes, so takes least significant 2 bytes and log
-		/*cbWrite(dscb, (BYTE)(X32_ms_clock >> 8), &sum);
-		cbWrite(dscb, (BYTE)(X32_ms_clock), &sum);
-		cbWrite(dscb, package[MODE], &sum);
-		cbWrite(dscb, package[LIFT], &sum);
-		cbWrite(dscb, package[ROLL], &sum);
-		cbWrite(dscb, package[PITCH], &sum);
-		cbWrite(dscb, package[YAW], &sum);
-		cbWrite(dscb, (BYTE)(ae[0] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[0]), &sum);
-
-		cbWrite(dscb, (BYTE)(ae[1] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[1]), &sum);
-		cbWrite(dscb, (BYTE)(ae[2] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[2]), &sum);
-		cbWrite(dscb, (BYTE)(ae[3] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[3]), &sum);
-		cbWrite(dscb, (BYTE)(x0[0] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[0]), &sum);
-		cbWrite(dscb, (BYTE)(x0[1] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[1]), &sum);
-
-		cbWrite(dscb, (BYTE)(x0[2] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[2]), &sum);
-		cbWrite(dscb, (BYTE)(x0[3] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[3]), &sum);
-		cbWrite(dscb, (BYTE)(x0[4] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[4]), &sum);
-		cbWrite(dscb, (BYTE)(x0[5] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(x0[5]), &sum);
-		cbWrite(dscb, (BYTE)(y0[0]), &sum);
-		cbWrite(dscb, (BYTE)(y0[1]), &sum);
-
-		cbWrite(dscb, (BYTE)(y0[2]), &sum);
-		cbWrite(dscb, (BYTE)(y0[3]), &sum);
-		cbWrite(dscb, (BYTE)(y0[4]), &sum);
-		cbWrite(dscb, (BYTE)(y0[5]), &sum);
-		cbWrite(dscb, (BYTE)(phi >> 8), &sum);
-		cbWrite(dscb, (BYTE)(phi), &sum);
-		cbWrite(dscb, (BYTE)(theta >> 8), &sum);
-		cbWrite(dscb, (BYTE)(theta), &sum);
-		cbWrite(dscb, (BYTE)(p), &sum);
-		cbWrite(dscb, (BYTE)(q), &sum);
-
-		cbWrite(dscb, (BYTE)(pcontrol >> 8), &sum);
-		cbWrite(dscb, (BYTE)(pcontrol), &sum);
-		cbWrite(dscb, (BYTE)(p1control >> 8), &sum);
-		cbWrite(dscb, (BYTE)(p1control), &sum);
-		cbWrite(dscb, (BYTE)(p2control >> 8), &sum);
-		cbWrite(dscb, (BYTE)(p2control), &sum);
-		cbWrite(dscb, (BYTE)(controltime), &sum);*/
 
         //FINAL DATALOG
-        	cbWrite(dscb, (BYTE)(X32_ms_clock - storetime), &sum);
-		cbWrite(dscb, package[MODE], &sum);
-		cbWrite(dscb, package[LIFT], &sum);
-		cbWrite(dscb, package[ROLL], &sum);
-		cbWrite(dscb, package[PITCH], &sum);
-		cbWrite(dscb, package[YAW], &sum);
-		cbWrite(dscb, (BYTE)(ae[0] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[0]), &sum);
-		cbWrite(dscb, (BYTE)(ae[1] >> 8), &sum);
+        	cbWritenoSum(dscb, (BYTE)(X32_ms_clock - storetime) );
+		cbWritenoSum(dscb, package[MODE] );
+		cbWritenoSum(dscb, package[LIFT] );
+		cbWritenoSum(dscb, package[ROLL] );
+		cbWritenoSum(dscb, package[PITCH] );
+		cbWritenoSum(dscb, package[YAW] );
+		cbWritenoSum(dscb, (BYTE)(ae[0] >> 8) );
+		cbWritenoSum(dscb, (BYTE)(ae[0]) );
+		cbWritenoSum(dscb, (BYTE)(ae[1] >> 8) );
 
-		cbWrite(dscb, (BYTE)(ae[1]), &sum);
-		cbWrite(dscb, (BYTE)(ae[2] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[2]), &sum);
-		cbWrite(dscb, (BYTE)(ae[3] >> 8), &sum);
-		cbWrite(dscb, (BYTE)(ae[3]), &sum);
-		cbWrite(dscb, (BYTE)(x0[0] - OFFSET_x0[0]), &sum);
-		cbWrite(dscb, (BYTE)(x0[1] - OFFSET_x0[1]), &sum);
+		cbWritenoSum(dscb, (BYTE)(ae[1]) );
+		cbWritenoSum(dscb, (BYTE)(ae[2] >> 8) );
+		cbWritenoSum(dscb, (BYTE)(ae[2]) );
+		cbWritenoSum(dscb, (BYTE)(ae[3] >> 8) );
+		cbWritenoSum(dscb, (BYTE)(ae[3]) );
+		cbWritenoSum(dscb, (BYTE)(x0[0] - OFFSET_x0[0]) );
+		cbWritenoSum(dscb, (BYTE)(x0[1] - OFFSET_x0[1]) );
 		// dont nee x02 
-		cbWrite(dscb, (BYTE)(x0[3] - OFFSET_x0[3]), &sum);
-		cbWrite(dscb, (BYTE)(x0[4] - OFFSET_x0[4]), &sum);
-		cbWrite(dscb, (BYTE)(x0[5] - OFFSET_x0[5]), &sum);
+		cbWritenoSum(dscb, (BYTE)(x0[3] - OFFSET_x0[3]) );
+		cbWritenoSum(dscb, (BYTE)(x0[4] - OFFSET_x0[4]) );
+		cbWritenoSum(dscb, (BYTE)(x0[5] - OFFSET_x0[5]) );
 
-		cbWrite(dscb, (BYTE)(y0[0]), &sum);
-		cbWrite(dscb, (BYTE)(y0[1]), &sum);
-		cbWrite(dscb, (BYTE)(phi >> 8), &sum);
-		cbWrite(dscb, (BYTE)(phi), &sum);
-		cbWrite(dscb, (BYTE)(theta >> 8), &sum);
-		cbWrite(dscb, (BYTE)(theta), &sum);
-		cbWrite(dscb, (BYTE)(p), &sum);
-		cbWrite(dscb, (BYTE)(q), &sum);
-		cbWrite(dscb, (BYTE)(pcontrol), &sum);
-		cbWrite(dscb, (BYTE)(p1control), &sum);
+		cbWritenoSum(dscb, (BYTE)(y0[0]) );
+		cbWritenoSum(dscb, (BYTE)(y0[1]) );
+		cbWritenoSum(dscb, (BYTE)(phi >> 8) );
+		cbWritenoSum(dscb, (BYTE)(phi) );
+		cbWritenoSum(dscb, (BYTE)(theta >> 8) );
+		cbWritenoSum(dscb, (BYTE)(theta) );
+		cbWritenoSum(dscb, (BYTE)(p) );
+		cbWritenoSum(dscb, (BYTE)(q) );
+		cbWritenoSum(dscb, (BYTE)(pcontrol) );
+		cbWritenoSum(dscb, (BYTE)(p1control) );
 
-		cbWrite(dscb, (BYTE)(p2control), &sum);
-		cbWrite(dscb, (BYTE)(controltime), &sum);
+		cbWritenoSum(dscb, (BYTE)(p2control) );
+		cbWritenoSum(dscb, (BYTE)(controltime) );
+		
+		// One very ugle line to calculate the code
 
+		//starttime = X32_us_clock;
+		sum ^= (BYTE)(X32_ms_clock - storetime) ^ package[MODE] ^ package[LIFT] ^ package[ROLL]
+		  ^ package[PITCH] ^ package[YAW] ^  (BYTE)(ae[0] >> 8) ^  (BYTE)(ae[0]) ^ (BYTE)(ae[1] >> 8)
+		  ^ (BYTE)(ae[1]) ^  (BYTE)(ae[2] >> 8) ^ (BYTE)(ae[2]) ^  (BYTE)(ae[3] >> 8)
+		  ^  (BYTE)(ae[3]) ^ (BYTE)(x0[0] - OFFSET_x0[0]) ^ (BYTE)(x0[1] - OFFSET_x0[1])
+		  ^ (BYTE)(x0[3] - OFFSET_x0[3]) ^ (BYTE)(x0[4] - OFFSET_x0[4]) ^ (BYTE)(x0[5] - OFFSET_x0[5])
+		  ^ (BYTE)(y0[0]) ^ (BYTE)(y0[1]) ^ (BYTE)(phi >> 8) ^ (BYTE)(phi) ^ (BYTE)(theta >> 8)
+		  ^ (BYTE)(theta) ^ (BYTE)(p) ^ (q) ^ (BYTE)(pcontrol) ^ (BYTE)(p1control) 
+		  ^ (BYTE)(p2control) ^ (BYTE)(controltime);
+		 //printf(" time to compute sum: %d \n", X32_us_clock - starttime);
+		  
 		// check whether the checksum  is the same as the starting byte
-/*
-	   	if (sum == 0x80)
-		{
-			sum = 0;
-	    	}
-*/
 		checkcheck(&sum);
 		cbWritenoSum(dscb, (BYTE)(sum));
 	
 		storetime = X32_ms_clock;
-		//functiontime = X32_ms_clock - starttime;
 	}
 	
 }
@@ -713,28 +669,6 @@ void send_telemetry(void)
 		sumae = ae[0] + ae[1] + ae[2] + ae[3];
 		(sumae > 0) ? (telemetry_flag |= 0x04) : (telemetry_flag &= 0x03); 
 
-#ifdef DEBUGGING
-		// profiling
-		//starttime = X32_us_clock;
-
-		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
-		//cbWrite(txcb, (BYTE)(X32_ms_clock >> 8), &sum);
-		//cbWrite(txcb, package[MODE], &sum(char)TeleData[0]);
-		cbWrite(txcb, (BYTE)(r), &sum);
-		//cbWrite(txcb, (BYTE)(controltime >> 8), &sum);
-		//cbWrite(txcb, (BYTE)controltime, &sum);
-		cbWrite(txcb, (BYTE)(ae[0] >> 8), &sum);
-		cbWrite(txcb, (BYTE)(ae[0]), &sum);
-		//cbWrite(txcb, (BYTE)(ae[1] >> 8), &sum);
-		cbWrite(txcb, (BYTE)(0x00), &sum);
-		cbWrite(txcb, (BYTE)(0x01), &sum);
-		//cbWrite(txcb, (BYTE)(ae[1]), &sum);
-		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
-
-		//functiontime = X32_us_clock - starttime;
-		
-// Code for the final lab
-#else
 		cbWritenoSum(txcb, (BYTE)STARTING_BYTE);
 		//cbWrite(txcb, (BYTE)(r), &sum);
 		cbWrite(txcb, (BYTE)(package[MODE]), &sum);
@@ -758,7 +692,6 @@ void send_telemetry(void)
 		cbWrite(txcb, (BYTE)(theta), &sum);
 		cbWrite(txcb, (BYTE)telemetry_flag, &sum);
 
-#endif
 		checkcheck(&sum);
 
 		cbWritenoSum(txcb, (BYTE)sum);
