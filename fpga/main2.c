@@ -416,7 +416,7 @@ void isr_rs232_rx(void)
 	commflag = 0;
 
 	// signal interrupt
-	toggle_led(3);
+	//toggle_led(3);
 
 	// may have received > 1 char before IRQ is serviced so loop
 	while (X32_rs232_char) 
@@ -435,7 +435,7 @@ void isr_rs232_tx(void)
 {
 	// signal interrupt
 	//starttime = X32_us_clock;
-	toggle_led(4);
+	//toggle_led(4);
 	//functiontime = X32_us_clock - starttime;
 }
 

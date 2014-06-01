@@ -51,4 +51,17 @@ but outside the for loop it takes 127 us. So we are doing that for the checksum.
 a speedup of 54 us.
 
 Time to check sum: 43 us.
+if we further inline this, it takes 37us
 
+Time to check sum: 37us.
+
+when inlining and extracting the for loop of safemode we can increase the speed pf the safe mode
+with a speedup of 104us
+
+Time to switch case SAFE_MODE: 173
+
+toggleing a led
+
+0x0041				65 us
+
+When inlining the butt2filter, the full control mode is reduced to 579 us. 

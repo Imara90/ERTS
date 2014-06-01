@@ -297,7 +297,42 @@ BYTE 	c;
 	}					\
 }
 
-
+/*------------------------------------------------------------------
+ * SAFE_MODE
+ * By Imara Speek 1506374
+ *------------------------------------------------------------------
+ */
+#define safemodeinline(){			\
+  telemetry_flag &= 0x01;			\
+ae[0] = ae[0] - 5;			\
+	  if (ae[0] < 0)			\
+	  {					\
+	      ae[0] = 0;			\
+	      phi = theta = p = q = r = sp = sphi = sq = stheta = p_b = q_b = 0;	\
+	      calibration_counter = 0; 		\
+	  }					\
+ae[1] = ae[1] - 5;			\
+	  if (ae[1] < 0)			\
+	  {					\
+	      ae[1] = 0;			\
+	      phi = theta = p = q = r = sp = sphi = sq = stheta = p_b = q_b = 0;	\
+	      calibration_counter = 0; 		\
+	  }					\
+	  ae[2] = ae[2] - 5;			\
+	  if (ae[2] < 0)			\
+	  {					\
+	      ae[2] = 0;			\
+	      phi = theta = p = q = r = sp = sphi = sq = stheta = p_b = q_b = 0;	\
+	      calibration_counter = 0; 		\
+	  }					\
+	  ae[3] = ae[3] - 5;			\
+	  if (ae[3] < 0)			\
+	  {					\
+	      ae[3] = 0;			\
+	      phi = theta = p = q = r = sp = sphi = sq = stheta = p_b = q_b = 0;	\
+	      calibration_counter = 0; 		\
+	  }					\
+}
 
 /*****************************************************************************/
 
@@ -307,6 +342,7 @@ BYTE 	c;
  * By Daniel Lemus
  *------------------------------------------------------------------
  */
+/*
 void Butt2Filter(void)
 {
 	int i;
@@ -316,6 +352,16 @@ void Butt2Filter(void)
 		y1[i] = y0[i];
 	}
 }
+*/
+// macro by Imara
+#define Butt2Filter()							\
+{									\
+	for (i=0; i<2; i++) {						\
+		y0[i] = (mult(A0,x0[i]-OFFSET_x0[i]) + mult(A1,x1[i]) + mult(B1,y1[i]));	\
+ 		x1[i] = x0[i]-OFFSET_x0[i];				\
+		y1[i] = y0[i];						\
+	}								\
+}									\
 
 
 /*------------------------------------------------------------------
@@ -323,6 +369,7 @@ void Butt2Filter(void)
  * By Diogo Monteiro (21-03-2014)
  *------------------------------------------------------------------
  */
+/*
 void KalmanFilter(void)
 { 
     //Kalman for p, phi    
@@ -347,7 +394,24 @@ void KalmanFilter(void)
     q_b = q_b + ((theta - stheta) >> C2);
 
 }
- 
+*/
+// macro by Imara
+#define KalmanFilter()						\
+{   								\
+    sphi = -y0[1];						\
+    sp = -(x0[3] - OFFSET_x0[3]);				\
+    p = sp - p_b;						\
+    phi = phi + (p>>5);						\
+    phi = phi - ((phi - sphi) >> C1);				\
+    p_b = p_b + ((phi - sphi) >> C2);				\
+    stheta = y0[0]; 						\
+    sq = x0[4] - OFFSET_x0[4];					\
+    q = sq - q_b;						\
+    theta = theta + mult(q,P2PHI);				\
+    theta = theta - ((theta - stheta) >> C1);			\
+    q_b = q_b + ((theta - stheta) >> C2);			\
+}	
+
 /*------------------------------------------------------------------
  * Circular buffer initialization 
  * Point start and end to the adress of the allocated vector of elements
@@ -515,7 +579,7 @@ int check_sum(void)
 	BYTE sum;
 	int i;
 	
-	//starttime = X32_us_clock;
+	starttime = X32_us_clock;
 
 	// independent of the package structure
 	sum += package[0];
@@ -529,12 +593,12 @@ int check_sum(void)
 
 	//printf("sum in fpga: %x", sum);
 	if (package[CHECKSUM] != sum) {
-		//printf("time to check sum: %d\n", X32_us_clock - starttime);
+		printf("time to check sum: %d\n", X32_us_clock - starttime);
 		return 0;
 	}
 	else
 	{ 
-		//printf("time to check sum: %d\n", X32_us_clock - starttime);
+		printf("time to check sum: %d\n", X32_us_clock - starttime);
 		return 1;
 	}
 }
@@ -701,7 +765,9 @@ void send_telemetry(void)
  */
 int main() 
 {
-	int i;	
+	int i;
+	int checkbool;
+	BYTE sum;
 	
 	/**********************************************************/
 	// DEBUG IMARA
@@ -715,6 +781,8 @@ int main()
 	testpackage[5] = 0x30;
 	testpackage[6] = ~(testpackage[1] + testpackage[2] + testpackage[3] + testpackage[4] + testpackage[5]);
 	
+	sum = 0;
+	checkbool = 0;
 	/**********************************************************/
 
 	//starttime = X32_us_clock;
@@ -805,15 +873,31 @@ int main()
 			//printf(" time to decode: %d\n", X32_us_clock - starttime);
 			//printf("Package is arrived: %x, %x, %x, \n", package[MODE], package[LIFT], package[CHECKSUM]);
 
+			//starttime = X32_us_clock;
+			// independent of the package structure
+			
+			sum = 0;
+			sum += package[0];
+			sum += package[1];
+			sum += package[2];
+			sum += package[3];
+			sum += package[4];
+			sum = ~sum;
+			// check whether checksum is not 0x80, or change
+			checkcheck(&sum);
+			//checkbool = (sum == package[CHECKSUM]);
+			//printf(" time to inline checksum: %d\n", X32_us_clock - starttime);
+			
 			// timing checksum is done within function
-			if (check_sum())
+			if (sum == package[CHECKSUM])
+			//if (check_sum())
 			{
 			//printf("%x, %x, %x\n", package[MODE], package[LIFT], package[CHECKSUM]);
-				//starttime = X32_us_clock;
+				starttime = X32_us_clock;
 				switch (package[MODE])
 				{
 					case SAFE_MODE:
-						safe_mode();
+						safemodeinline();
 						break;
 					case PANIC_MODE:
 						//on_led(1);
@@ -879,8 +963,8 @@ int main()
 						DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 					    	// get sensor and timestamp values
 						x0[5] = X32_QR_s5;
-						    //Yaw Rate
-						    r = x0[5] - OFFSET_x0[5];
+						//Yaw Rate
+						r = x0[5] - OFFSET_x0[5];
                         			yaw_control_mode();	
 						ENABLE_INTERRUPT(INTERRUPT_GLOBAL);	
 						break;
@@ -910,13 +994,11 @@ int main()
 					default :
 						break;
 				}
-				//printf(" time to switch case: %d\n", X32_us_clock - starttime);
+				printf(" time to switch case: %d\n", X32_us_clock - starttime);
 			
 				//starttime = X32_us_clock;				
-				
 				// if the package was correct, store the correct data
 				store_data();
-
 				//printf(" time to store data: %d\n", X32_us_clock - starttime);
 				/*
 				if ((X32_us_clock - starttime) > maxdatastore)
@@ -938,7 +1020,6 @@ int main()
 				//starttime = X32_us_clock;		
 				// sends the telemetry at 10Hzhttps://sourceware.org/glibc/wiki/x32
 				send_telemetry();
-				
 				//printf(" time to send telemetry: %d\n", X32_us_clock - starttime);
 				/*
 				if ((X32_us_clock - starttime) > maxsendtel)
