@@ -64,4 +64,7 @@ toggleing a led
 
 0x0041				65 us
 
-When inlining the butt2filter, the full control mode is reduced to 579 us. 
+When inlining the butt2filter, the full control mode is reduced to 579 us. also, inlined the kalman, but has
+no effect. Without the butterworth it takes 462 us. Dont need the buttrworth. 
+
+after rewriting the kalman filter it takes 316 us.

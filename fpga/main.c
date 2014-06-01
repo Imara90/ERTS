@@ -401,14 +401,12 @@ void KalmanFilter(void)
     sphi = -y0[1];						\
     sp = -(x0[3] - OFFSET_x0[3]);				\
     p = sp - p_b;						\
-    phi = phi + (p>>5);						\
-    phi = phi - ((phi - sphi) >> C1);				\
+    phi = (phi + (p>>5)) - ((phi-sphi) >> C1);			\
     p_b = p_b + ((phi - sphi) >> C2);				\
     stheta = y0[0]; 						\
     sq = x0[4] - OFFSET_x0[4];					\
     q = sq - q_b;						\
-    theta = theta + mult(q,P2PHI);				\
-    theta = theta - ((theta - stheta) >> C1);			\
+    theta = (theta + mult(q,P2PHI)) - ((theta - stheta) >> C1); \
     q_b = q_b + ((theta - stheta) >> C2);			\
 }	
 
@@ -774,7 +772,7 @@ int main()
 	
 	BYTE testpackage[nParams + 1];
 	testpackage[0] = STARTING_BYTE;
-	testpackage[1] = FULL_CONTROL_MODE;
+	testpackage[1] = YAW_CONTROL_MODE;
 	testpackage[2] = 0x30;
 	testpackage[3] = 0x30;
 	testpackage[4] = 0x30;
@@ -963,21 +961,21 @@ int main()
 						DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 					    	// get sensor and timestamp values
 						x0[5] = X32_QR_s5;
+						//Butt2Filter();
 						//Yaw Rate
 						r = x0[5] - OFFSET_x0[5];
                         			yaw_control_mode();	
 						ENABLE_INTERRUPT(INTERRUPT_GLOBAL);	
 						break;
 					case FULL_CONTROL_MODE:
-                        			
 						DISABLE_INTERRUPT(INTERRUPT_GLOBAL); 
 					    	// get sensor and timestamp values
 						x0[0] = X32_QR_s0; x0[1] = X32_QR_s1; //x0[2] = X32_QR_s2; 
 						x0[3] = X32_QR_s3; x0[4] = X32_QR_s4; x0[5] = X32_QR_s5;
-						Butt2Filter();
+						//Butt2Filter();
 						KalmanFilter();
-						  //Yaw Rate
-						  r = x0[5] - OFFSET_x0[5];
+						//Yaw Rate
+						r = x0[5] - OFFSET_x0[5];
 						full_control_mode();
 						ENABLE_INTERRUPT(INTERRUPT_GLOBAL);
 						break;

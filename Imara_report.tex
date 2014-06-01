@@ -1,0 +1,137 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% In 4073 Embedded Real-Time Systems Course report
+% Imara C.T.M. Speek
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\documentclass{article}
+\usepackage{float}
+
+\usepackage{caption}
+\usepackage{graphicx} % Required for the inclusion of images
+%\usepackage{natbib} % Required to change bibliography style to APA
+\usepackage{amsmath} % Required for some math elements 
+\usepackage{anysize}
+\marginsize{2cm}{1.5cm}{0.5cm}{2cm} % decrease the margins
+\usepackage{subcaption}
+
+\usepackage{xcolor}
+\newcommand\worries[1]{\textcolor{red}{#1}} %add command to specify worries in red
+\newcommand\todo[1]{\textcolor{blue}{#1}} % add command to specify todo in blue
+
+\usepackage[toc, page]{appendix} % to include appendices
+\usepackage{listings} % to include source code
+
+%\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+\renewcommand{\labelenumi}{\alph{enumi}.} % Make numbering in the enumerate environment by letter rather than number (e.g. section 6)
+
+%\usepackage{times} % Uncomment to use the Times New Roman font
+
+%----------------------------------------------------------------------------------------
+%	DOCUMENT INFORMATION
+%----------------------------------------------------------------------------------------
+
+\title{IN4073 Embedded Real-Time Systems Speedup Report} % Title
+
+\author{Imara C.T.M. \textsc{Speek} 1506374} % Authors' names
+
+\date{\today} % Date for the report
+
+\begin{document}
+
+\maketitle % Insert the title, author and date
+
+%----------------------------------------------------------------------------------------
+%	INTRODUCTION
+%	include the problem statement
+%----------------------------------------------------------------------------------------
+
+\section{Speed-up report}
+\label{sec:introduction}
+Additional to the original QR report, this report discusses improvements made to speed up the original code. These modifications were done on the fpga part of the system. This report will briefly go through the profiling results and the modifications made.
+
+%-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+%   Profiling
+%\section{Profiling}
+%\label{sec:profiling}
+
+The profiling results as presented in table \ref{tbl:profiling} were made using the X32\_us\_clock and measured by sending a dummy packet to the rx buffer with the interrupts disabled. The timing measurements of the interrupts were taken with the interrupt service routines enabled. The third column of table \ref{tbl:profiling} represents the timing measurements after the improvements were made. 
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{|l|c|c|c|}
+\hline 
+\textbf{Function} & \textbf{Original time in ($\mu$s)}  & \textbf{New time ($\mu$s)} & \textbf{Speedup ($\mu$s)}\\ 
+\hline
+\hline
+\texttt{time to get a character} & 14  & - & -\\
+\hline
+\texttt{time to decode} & 172 & 150 & 22\\
+\hline
+\texttt{time to check sum} & 97 & 43 & 54\\
+\hline
+\texttt{time to store data} & 827 & 607 & 220\\
+\hline
+\texttt{time to send telemetry} & 620 & 565 & 145\\
+\hline 
+\texttt{time to check commflag} & 16 & - & -\\
+\hline
+\texttt{time to switch case SAFE\_MODE} & 277 & 173 & 104\\
+\hline
+\texttt{time to switch case MANUAL\_MODE} & 187 & - & -\\
+\hline
+\texttt{time to switch case CALIBRATION\_MODE} & 199 & - & -\\
+\hline
+\texttt{time to switch case YAW\_CONTROL\_MODE} & 346 & - & -\\
+\hline
+\texttt{time to switch case FULL\_CONTROL\_MODE} & 606  & 316 & 290 \\
+\hline
+\texttt{isr\_rs232\_tx} & 60  & - & -\\
+\hline
+\texttt{isr\_rs232\_rx} &  49 & -& -\\
+\hline
+\hline
+\texttt{total control loop MANUAL\_MODE} & 595 & 429 & 166 \\
+\hline
+\texttt{total control loop YAW\_CONTROL\_ MODE} & 754 & 588 & 166 \\
+\hline
+\texttt{total control loop FULL\-CONTROL\_MODE} & 1014 & 648 & 366 \\
+\hline
+\end{tabular} 
+\caption{Profiling results (total control loops exclude the storing and sending of the data)}
+\label{tbl:profiling}
+\end{table}
+
+\subsection{Modifications}
+\label{sec:modifications}
+The biggest improvements can be made in the storing of the data, the sending of the telemetry, calculating the checksum, but mostly within the control loop in manual, yaw-control and full-control mode. 
+
+To achieve speed up within the storing of the data and the sending of the telemetry I addressed the \texttt{cbWrite()} function that writes elements to a buffer and calculates the sum by passing a pointer to it. Calculating the sum afterwards for 32 byte elements provided a speed up for storing the data and sending the telemetry. 
+The \texttt{decode()} function is also called every control loop and in turn calls the \texttt{cbGet()} which gets a character out of the buffer. By inlining \texttt{cbGet()} a speed up of 21$\mu$s is achieved for decoding. 
+In the \texttt{check\_sum()}, the checksum is calculated and compared to the received checksum. By extracting the assignments from the for loop and writing every single assignment a speed up of 54$\mu$s can be achieved. In-lining this further downsizes the function to 37 $\mu$s. In-lining and extracting the for loop in the \texttt{SAFE\_MODE} switch case works in a similar manner. 
+
+However, most important was the speed up achieved in the full control mode. By leaving out the Butterworth filter and rewriting the Kalman filter to a faster macro I was able to save 290 $\mu$s. This caused the full control mode loop to fit in the response time of 0.7 ms, the refresh rate of the sensor interrupt routine. 
+
+
+%----------------------------------------------------------------------------------------
+%	APPENDIX
+%----------------------------------------------------------------------------------------
+
+%\newpage
+%\section{Appendices}
+%
+%\appendix
+%\section{Title of Appendix A}
+%\section{Title of Appendix B}
+
+
+
+%----------------------------------------------------------------------------------------
+
+%\bibliographystyle{plain}
+%\bibliography{report}
+
+\end{document}
